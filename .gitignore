@@ -1,0 +1,5 @@
+# Local data directory
+data
+
+# Vim swap files
+*.swp
