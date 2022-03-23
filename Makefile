@@ -1,15 +1,28 @@
-py_main          := ./src/edge-deep-learning.py
+py_dir              := ./src
+py_main             := $(py_dir)/edge-deep-learning.py
+py_stats            := $(py_dir)/collect-statistics.py
 
-data_init_script := ./scripts/init-test-data.sh
-data_dir         := data
-data_filename    := orange_0.jpg
+data_dir            := data
 
-$(data_dir):
-	$(data_init_script) $(data_dir) $(data_filename)
+samples_dir         := $(data_dir)/samples
+samples_init_script := ./scripts/init-test-data.sh
+samples_filename    := orange_0.jpg
+
+stats_dir           := $(data_dir)/stats
+
+$(samples_dir):
+	$(samples_init_script) $(samples_dir) $(samples_filename)
+
+$(stats_dir):
+	mkdir -p $(stats_dir)
 
 .PHONY: run
-run: $(data_dir)
-	python3 $(py_main) $(data_dir)/$(data_filename)
+run: $(samples_dir)
+	python3 $(py_main) $(samples_dir)/$(samples_filename)
+
+.PHONY: collect-stats
+collect-stats: $(stats_dir)
+	python3 $(py_stats)
 
 .PHONY: clean
 clean:
