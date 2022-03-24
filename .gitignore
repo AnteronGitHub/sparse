@@ -3,3 +3,6 @@ data
 
 # Vim swap files
 *.swp
+
+# Python temporary files
+__pycache__
