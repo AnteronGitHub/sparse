@@ -2,7 +2,7 @@ import torch
 from torch import nn
 
 from models.neural_network import NeuralNetwork
-from datasets.mnist import load_mnist_dataset
+from datasets.mnist_fashion import load_mnist_fashion_dataset
 
 def get_device():
     device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -43,9 +43,21 @@ def test(dataloader, model, loss_fn):
     correct /= size
     print(f"Test Error: \n Accuracy: {(100*correct):>0.1f}%, Avg loss: {test_loss:>8f} \n")
 
+def evaluate_model(model, dataloader, classes):
+    model.eval()
+    x, y = next(iter(dataloader))
+    with torch.no_grad():
+        pred = model(x[0])
+        predicted, actual = classes[pred[0].argmax(0)], classes[y[0]]
+        print(f'Predicted: "{predicted}", Actual: "{actual}"')
+
+def save_model(model, filepath):
+    torch.save(model.state_dict(), filepath)
+    print("Saved PyTorch Model State to {:s}".format(filepath))
+
 device = get_device()
 model = NeuralNetwork().to(device)
-train_dataloader, test_dataloader, classes = load_mnist_dataset()
+train_dataloader, test_dataloader, classes = load_mnist_fashion_dataset()
 
 loss_fn = nn.CrossEntropyLoss()
 optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
@@ -58,13 +70,4 @@ for t in range(epochs):
     test(test_dataloader, model, loss_fn)
 print("Done!")
 
-# torch.save(model.state_dict(), model_path)
-# print("Saved PyTorch Model State to {:s}".format(model_path))
-
-# Evaluation
-model.eval()
-x, y = next(iter(test_dataloader))
-with torch.no_grad():
-    pred = model(x[0])
-    predicted, actual = classes[pred[0].argmax(0)], classes[y[0]]
-    print(f'Predicted: "{predicted}", Actual: "{actual}"')
+evaluate_model(model, test_dataloader, classes)
