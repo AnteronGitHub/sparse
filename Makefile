@@ -1,6 +1,7 @@
 py_dir              := ./src
 py_main             := $(py_dir)/edge-deep-learning.py
 py_segnet           := $(py_dir)/segnet.py
+py_training         := $(py_dir)/training.py
 py_stats            := $(py_dir)/collect-statistics.py
 py_cache            := $(shell find . -iname __pycache__)
 
@@ -30,9 +31,13 @@ run-classification: $(samples_dir)/$(sample_classification)
 run-segnet: $(samples_dir)/$(sample_segmentation)
 	python3 $(py_segnet) $(samples_dir)/$(sample_segmentation)
 
+.PHONY: run-training
+run-training:
+	python3 $(py_training)
+
 .PHONY: run
 run:
-	make run-classification
+	make run-training
 
 .PHONY: collect-stats
 collect-stats: $(stats_dir)
