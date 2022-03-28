@@ -25,9 +25,12 @@ $(samples_dir)/$(sample_segmentation):
 $(stats_dir):
 	mkdir -p $(stats_dir)
 
-$(py_venv): $(py_training_requirements)
+$(py_venv): $(py_venv)/touchfile
+
+$(py_venv)/touchfile: $(py_training_requirements)
 	python3 -m venv $(py_venv)
 	$(py_venv)/bin/pip install -r $(py_training_requirements)
+	touch $(py_venv)/touchfile
 
 .PHONY: run-classification
 run-classification: $(samples_dir)/$(sample_classification)
@@ -38,7 +41,7 @@ run-segnet: $(samples_dir)/$(sample_segmentation)
 	python3 $(py_segnet) $(samples_dir)/$(sample_segmentation)
 
 .PHONY: run-training
-run-training: $(py_venv)
+run-training: $(py_venv) $(py_training_requirements)
 	$(py_venv)/bin/python $(py_training)
 
 .PHONY: run
