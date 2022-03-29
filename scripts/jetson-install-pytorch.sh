@@ -5,7 +5,7 @@
 sudo apt-get install -y python3-pip libopenblas-base libopenmpi-dev 
 
 # Download wheel provided by NVIDIA
-WHEEL_PATH=lib/wheels
+WHEEL_PATH=build/wheels
 mkdir -p ${WHEEL_PATH}
 
 PYTORCH_VERSION=1.8.0    # This version matches with the NVIDIA url below
