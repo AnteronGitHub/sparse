@@ -16,6 +16,11 @@ sample_segmentation    := city_0.jpg
 
 stats_dir           := $(data_dir)/stats
 
+build_dir := build
+
+jetson_install_pytorch_script        := ./scripts/jetson-install-pytorch.sh
+jetson_install_torchvision_script    := ./scripts/jetson-install-torchvision.sh
+
 $(samples_dir)/$(sample_classification):
 	$(samples_init_script) $(samples_dir) $(sample_classification)
 
@@ -32,6 +37,11 @@ $(py_venv)/touchfile: $(py_training_requirements)
 	$(py_venv)/bin/pip install -r $(py_training_requirements)
 	touch $(py_venv)/touchfile
 
+.PHONY: jetson-dependencies
+jetson-dependencies:
+	$(jetson_install_pytorch_script)
+	$(jetson_install_torchvision_script)
+
 .PHONY: run-classification
 run-classification: $(samples_dir)/$(sample_classification)
 	python3 $(py_main) $(samples_dir)/$(sample_classification)
@@ -41,12 +51,20 @@ run-segnet: $(samples_dir)/$(sample_segmentation)
 	python3 $(py_segnet) $(samples_dir)/$(sample_segmentation)
 
 .PHONY: run-training
-run-training: $(py_venv) $(py_training_requirements)
+run-training:
+	python3 $(py_training)
+
+.PHONY: run-training-venv
+run-training-venv: $(py_venv) $(py_training_requirements)
 	$(py_venv)/bin/python $(py_training)
 
 .PHONY: run
 run:
 	make run-training
+
+.PHONY: run-venv
+run-venv:
+	make run-training-venv
 
 .PHONY: collect-stats
 collect-stats: $(stats_dir)
@@ -54,4 +72,4 @@ collect-stats: $(stats_dir)
 
 .PHONY: clean
 clean:
-	rm -rf $(data_dir) $(py_cache) $(py_venv)
+	rm -rf $(data_dir) $(py_cache) $(py_venv) $(build_dir)

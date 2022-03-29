@@ -55,6 +55,7 @@ def evaluate_model(model, dataloader, classes):
     print("\nEvaluating model")
     model.eval()
     x, y = next(iter(dataloader))
+    x, y = x.to(device), y.to(device)
     with torch.no_grad():
         pred = model(x[0])
         predicted, actual = classes[pred[0].argmax(0)], classes[y[0]]
