@@ -1,7 +1,7 @@
 py_dir              := ./src
 py_main             := $(py_dir)/edge-deep-learning.py
 py_segnet           := $(py_dir)/segnet.py
-py_training         := $(py_dir)/training.py
+py_training         := $(py_dir)/training2.py
 py_training_requirements  := requirements-training.txt
 py_stats            := $(py_dir)/collect-statistics.py
 py_cache            := $(shell find . -iname __pycache__)
