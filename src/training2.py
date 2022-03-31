@@ -12,7 +12,18 @@ def get_device():
     print(f"Using {device} device")
     return device
 
-def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server):
+def offload_layers(model, split_activation, y, loss_fn, optimizer):
+    split_activation = Variable(split_activation, requires_grad=True).to('cpu')
+    pred = model(split_activation)
+    loss = loss_fn(pred, y)
+    optimizer.zero_grad()
+    loss.backward()
+    gradient = split_activation.grad.to(device)
+    optimizer.step()
+
+    return gradient, loss
+
+def train_epoch(dataloader, model_local, model_server, loss_fn, optimizer_local, optimizer_server):
     size = len(dataloader.dataset)
     model_local.train()
     model_server.train()
@@ -20,25 +31,19 @@ def train(dataloader, model_local, model_server, loss_fn, optimizer_local, optim
     for batch, (X, y) in enumerate(dataloader):
         X, y = X.to(device), y.to('cpu')
 
-        # Compute prediction error
+        # Local forward propagation
         split_vals = model_local(X)
-        #detached_split_vals = split_vals.detach().to('cpu')
-        detached_split_vals = Variable(split_vals, requires_grad=True).to('cpu')
-        pred = model_server(detached_split_vals)
 
-        loss = loss_fn(pred, y)
+        # Offloaded layers
+        split_grad, loss = offload_layers(model_server,
+                                          split_vals,
+                                          y,
+                                          loss_fn,
+                                          optimizer_server)
 
-        # Backpropagation
+        # Local back propagation
         optimizer_local.zero_grad()
-        optimizer_server.zero_grad()
-
-        loss.backward()
-        split_grad = detached_split_vals.grad.to(device)
-
-        optimizer_server.step()
-
         split_vals.backward(split_grad)
-
         optimizer_local.step()
 
         if batch % 100 == 0:
@@ -83,7 +88,7 @@ optimizer2 = torch.optim.SGD(model2.parameters(), lr=1e-3)
 epochs = 5
 for t in range(epochs):
     print(f"Epoch {t+1}\n-------------------------------")
-    train(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2)
+    train_epoch(train_dataloader, model1, model2, loss_fn, optimizer1, optimizer2)
     test(test_dataloader, model1, model2, loss_fn)
 print("Done!")
 
