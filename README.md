@@ -26,6 +26,9 @@ pip3 install -r requirements-training.txt
 ```
 
 ## Run program
+
+### Client
+
 With software dependencies installed, the program can be run with make utility, by running the following command at the
 repository root:
 
@@ -37,6 +40,14 @@ Alternatively, the dependencies can be installed into a Python virtual environme
 (not recommended on resource-constrained devices, such as Jetson Nano):
 ```
 make run-venv
+```
+
+### Server
+
+In order to run split training over the network, before running the client program, start a server in a separate
+process, by running the following command:
+```
+make run-server
 ```
 
 ## Collect statistics

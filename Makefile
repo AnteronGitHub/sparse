@@ -3,6 +3,7 @@ py_main             := $(py_dir)/edge-deep-learning.py
 py_segnet           := $(py_dir)/segnet.py
 py_training         := $(py_dir)/training2.py
 py_training_requirements  := requirements-training.txt
+py_server           := $(py_dir)/server.py
 py_stats            := $(py_dir)/collect-statistics.py
 py_cache            := $(shell find . -iname __pycache__)
 py_venv             := venv
@@ -49,6 +50,10 @@ run-classification: $(samples_dir)/$(sample_classification)
 .PHONY: run-segnet
 run-segnet: $(samples_dir)/$(sample_segmentation)
 	python3 $(py_segnet) $(samples_dir)/$(sample_segmentation)
+
+.PHONY: run-server
+run-server:
+	python3 $(py_server)
 
 .PHONY: run-training
 run-training:
