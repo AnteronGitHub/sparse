@@ -2,15 +2,14 @@
 # -*- coding: UTF-8 -*-
 
 from datetime import datetime
+import importlib
+import psutil
+import time
 import os
 
-from jtop import jtop
 import pandas as pd
 
-if __name__ == "__main__":
-    print("")
-
-    # Collect statistics
+def collect_statistics_jtop():
     stats = start_time = None
     print("Collecting device statistics")
     with jtop() as jetson:
@@ -39,6 +38,7 @@ if __name__ == "__main__":
 
             except KeyboardInterrupt:
                 break
+
     print("Stopped collecting device statistics")
     print("")
 
@@ -49,8 +49,6 @@ if __name__ == "__main__":
     # Store statistics
     print("")
     print("Saving collected statistics")
-    OUTPUT_DIR = './data/stats'
-    experiment_time = datetime.now().strftime("%Y%m%d-%H%M%S")
 
     # GPU utilization
     gpu_filepath = os.path.join(OUTPUT_DIR, 'gpu-usage-{:s}.csv'.format(experiment_time))
@@ -62,4 +60,57 @@ if __name__ == "__main__":
     stats.to_csv(ram_filepath, columns=['timestamp', 'RAM'], index=False)
     print("Saved RAM usage statistics to file '{:s}'".format(ram_filepath))
 
-# EOF
+    return stats
+
+def collect_statistics_general(filepath, if_name = 'lo'):
+    print(f'Writing statistics to file {filepath!r}')
+    with open(filepath, 'a') as f:
+        header_row = 'timestamp,bytes_sent,bytes_recv'
+        print(header_row)
+        f.write(header_row + '\n')
+
+        nic_stats = psutil.net_io_counters(pernic=True)
+        initial_time = initial_bytes_sent = initial_bytes_recv = None
+
+        while True:
+            try:
+                # Read new measurements
+                curr_time = time.time_ns()
+                bytes_sent, bytes_recv = read_network_stats()
+                if initial_time == None:
+                    initial_time = curr_time
+                    initial_bytes_sent = bytes_sent
+                    initial_bytes_recv = bytes_recv
+                    row = f"0,0,0"
+                else:
+                    row = f"{curr_time-initial_time},{bytes_sent-initial_bytes_sent},{bytes_recv-initial_bytes_recv}"
+
+                # Write measurements
+                print(row)
+                f.write(row + '\n')
+                time.sleep(1)
+
+            except KeyboardInterrupt:
+                break
+
+
+def read_network_stats(if_name = 'lo'):
+    nic_stats = psutil.net_io_counters(pernic=True)
+    [bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout] = nic_stats[if_name]
+    return bytes_sent, bytes_recv
+
+if __name__ == "__main__":
+    OUTPUT_DIR = './data/stats'
+    experiment_time = datetime.now().strftime("%Y%m%d-%H%M%S")
+    filepath = os.path.join(OUTPUT_DIR, f'statistics-{experiment_time}.csv')
+
+    print("")
+
+    if importlib.util.find_spec("jtop") is not None:
+        from jtop import jtop
+
+        collect_statistics_jtop()
+    else:
+        print("No jtop available, collecting general statistics")
+        collect_statistics_general(filepath)
+
