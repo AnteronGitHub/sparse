@@ -9,7 +9,7 @@ from torch import nn
 from torch.autograd import Variable
 
 from networking import decode_offload_request, encode_offload_response
-from models.neural_network2 import NeuralNetwork_server
+from models.neural_network import NeuralNetwork_server
 from utils import get_device
 
 # Model training initialization

@@ -22,15 +22,31 @@ Unless otherwise specified, the experiment suites can be run on common laptops u
 need to be installed:
 
 ```
-pip3 install -r requirements-training.txt
+pip3 install -r requirements-client.txt
 ```
 
 ## Run program
+
+### Server
+
+In order to run split training over the network, before running the client program, start a server in a separate
+process, by running the following command:
+```
+python3 src/server.py
+```
+
+The same command can also be invoked with make utility, by running:
+```
+make run-server
+```
 
 ### Client
 
 With software dependencies installed, the program can be run with make utility, by running the following command at the
 repository root:
+```
+python3 src/client.py
+```
 
 ```
 make run
@@ -40,14 +56,6 @@ Alternatively, the dependencies can be installed into a Python virtual environme
 (not recommended on resource-constrained devices, such as Jetson Nano):
 ```
 make run-venv
-```
-
-### Server
-
-In order to run split training over the network, before running the client program, start a server in a separate
-process, by running the following command:
-```
-make run-server
 ```
 
 ## Collect statistics
