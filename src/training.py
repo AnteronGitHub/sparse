@@ -14,10 +14,10 @@ def train_epoch(dataloader, model_local, loss_fn, optimizer_local, device = 'cpu
         split_vals = model_local(X)
 
         # Offloaded layers
-        np_split_grad, loss = run_offload_training(split_vals.detach().numpy(), y.detach().numpy())
+        split_grad, loss = run_offload_training(split_vals.detach(), y.detach())
 
         # Local back propagation
-        split_grad = torch.from_numpy(np_split_grad).to('cpu')
+        split_grad = split_grad.to('cpu')
         optimizer_local.zero_grad()
         split_vals.backward(split_grad)
         optimizer_local.step()

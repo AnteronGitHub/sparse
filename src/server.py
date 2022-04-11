@@ -24,16 +24,11 @@ PORT = 50007
 
 async def handle_offload_request(reader, writer):
     offload_request = await reader.read()
+
     activation_layer, labels = decode_offload_request(offload_request)
+    gradient, loss = compute_gradient(activation_layer, labels)
 
-    split_activation = torch.from_numpy(activation_layer)
-    y = torch.from_numpy(labels)
-
-    gradient, loss = compute_gradient(split_activation, y)
-    np_gradient = gradient.detach().numpy()
-    message = encode_offload_response(np_gradient, loss)
-
-    writer.write(message)
+    writer.write(encode_offload_response(gradient.detach(), loss))
     await writer.drain()
     writer.close()
     print("Served gradient offloading request")
