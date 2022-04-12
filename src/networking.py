@@ -1,30 +1,29 @@
 import asyncio
-import json
+import pickle
 
 import torch
 import numpy as np
 
 def encode_offload_request(activation_layer : torch.tensor, labels : torch.tensor):
-    return json.dumps({
-        'activation': activation_layer.numpy().tolist(),
-        'labels': labels.numpy().tolist()
-    }).encode()
+    return pickle.dumps({
+        'activation': activation_layer,
+        'labels': labels
+    })
 
 def decode_offload_request(request : bytes):
-    deserialized = json.loads(request.decode())
-    return torch.from_numpy(np.asarray(deserialized['activation'], dtype=np.float32)), \
-           torch.from_numpy(np.asarray(deserialized['labels'], dtype=np.long))
+    payload = pickle.loads(request)
+    return payload['activation'], payload['labels']
 
 def encode_offload_response(gradient : torch.tensor, loss : float):
-    return json.dumps({
-        'gradient': gradient.numpy().tolist(),
+    return pickle.dumps({
+        'gradient': gradient,
         'loss': loss
-    }).encode()
+    })
 
-def decode_offload_response(response : bytes):
-    deserialized = json.loads(response.decode())
-    return torch.from_numpy(np.asarray(deserialized['gradient'], dtype=np.float32)), \
-           deserialized['loss']
+def decode_offload_response(data : bytes):
+    payload = pickle.loads(data)
+    return payload['gradient'], \
+           payload['loss']
 
 async def offload_training(np_split_vals : torch.tensor, np_labels : torch.tensor,
                            server_host : str, server_port : int):
