@@ -1,0 +1,1 @@
+{"buildTargets":["clean","collect-stats","data/samples/city_0.jpg","data/samples/orange_0.jpg","data/stats","jetson-dependencies","run","run-classification","run-segnet","run-server","run-training","run-training-venv","run-venv","venv","venv/touchfile"],"launchTargets":[],"customConfigurationProvider":{"workspaceBrowse":{"browsePath":[],"compilerArgs":[]},"fileIndex":[]}}

@@ -1,0 +1,405 @@
+make all --print-data-base --no-builtin-variables --no-builtin-rules --question
+# GNU Make 3.81
+# Copyright (C) 2006  Free Software Foundation, Inc.
+# This is free software; see the source for copying conditions.
+# There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A
+# PARTICULAR PURPOSE.
+
+# This program built for i386-apple-darwin11.3.0
+ 
+make: *** No rule to make target `all'.  Stop.
+
+
+# Make data base, printed on Thu Apr 14 13:05:58 2022
+
+# Variables
+
+# automatic
+<D = $(patsubst %/,%,$(dir $<))
+# automatic
+?F = $(notdir $?)
+# makefile (from `Makefile', line 15)
+sample_classification := orange_0.jpg
+# environment
+VSCODE_LOG_NATIVE = false
+# makefile (from `Makefile', line 6)
+py_server := ./src/server.py
+# automatic
+?D = $(patsubst %/,%,$(dir $?))
+# environment
+CPPFLAGS = -I/usr/local/opt/zlib/include -I/usr/local/opt/bzip2/include
+# automatic
+@D = $(patsubst %/,%,$(dir $@))
+# automatic
+@F = $(notdir $@)
+# makefile
+CURDIR := /Users/danski/workspace/edge-deep-learning-code
+# makefile
+SHELL = /bin/sh
+# environment
+VSCODE_NLS_CONFIG = {"locale":"en-us","availableLanguages":{},"_languagePackSupport":true}
+# makefile (from `Makefile', line 3)
+py_segnet := ./src/segnet.py
+# environment
+_ = /usr/bin/make
+# makefile (from `Makefile', line 1)
+MAKEFILE_LIST :=  Makefile
+# makefile (from `Makefile', line 9)
+py_venv := venv
+# environment
+VSCODE_VERBOSE_LOGGING = true
+# environment
+__CFBundleIdentifier = com.microsoft.VSCode
+# environment
+INFOPATH = /opt/homebrew/share/info:
+# makefile (from `Makefile', line 11)
+data_dir := data
+# environment
+VSCODE_IPC_HOOK_EXTHOST = /var/folders/rr/hwxlvqw118l42h548dqgmw1c0000gn/T/vscode-ipc-31b640d2-7a7c-49aa-bca2-cce88d09f420.sock
+# environment
+VSCODE_CWD = /
+# makefile (from `Makefile', line 22)
+jetson_install_pytorch_script := ./scripts/jetson-install-pytorch.sh
+# environment
+PATH = /opt/homebrew/Cellar/pyenv-virtualenv/1.1.5/shims:/usr/local/bin:/Users/danski/.pyenv/bin:/opt/local/bin:/opt/local/sbin:/Users/danski/.pyenv/shims:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
+# makefile (from `Makefile', line 20)
+build_dir := build
+# makefile (from `Makefile', line 8)
+py_cache := ./src/models/__pycache__
+# makefile (from `Makefile', line 7)
+py_stats := ./src/collect-statistics.py
+# environment
+LaunchInstanceID = 75604720-3968-48B6-AA34-8A4A78B502EE
+# environment
+VSCODE_LOG_STACK = false
+# environment
+ELECTRON_RUN_AS_NODE = 1
+# environment
+LDFLAGS = -L/usr/local/opt/zlib/lib -L/usr/local/opt/bzip2/lib
+# default
+.FEATURES := target-specific order-only second-expansion else-if archives jobserver check-symlink
+# makefile (from `Makefile', line 13)
+samples_dir := data/samples
+# environment
+SSH_AUTH_SOCK = /private/tmp/com.apple.launchd.PBdfleyDUX/Listeners
+# automatic
+%F = $(notdir $%)
+# environment
+VSCODE_PIPE_LOGGING = true
+# environment
+PWD = /Users/danski/workspace/edge-deep-learning-code
+# environment
+HOMEBREW_CELLAR = /opt/homebrew/Cellar
+# makefile (from `Makefile', line 18)
+stats_dir := data/stats
+# environment
+ORIGINAL_XDG_CURRENT_DESKTOP = undefined
+# environment
+MANPATH = /opt/local/share/man:/opt/homebrew/share/man::
+# environment
+VSCODE_AMD_ENTRYPOINT = vs/workbench/api/node/extensionHostProcess
+# environment
+PYENV_SHELL = zsh
+# environment
+HOME = /Users/danski
+# default
+MAKEFILEPATH = $(shell /usr/bin/xcode-select -print-path 2>/dev/null || echo /Developer)/Makefiles
+ 
+# environment
+VSCODE_CODE_CACHE_PATH = /Users/danski/Library/Application Support/Code/CachedData/8dfae7a5cd50421d10cd99cb873990460525a898
+# environment
+LOGNAME = danski
+# environment
+APPLICATION_INSIGHTS_NO_DIAGNOSTIC_CHANNEL = 1
+# makefile (from `Makefile', line 4)
+py_training := ./src/training2.py
+# environment
+VSCODE_HANDLES_UNCAUGHT_ERRORS = true
+# automatic
+^D = $(patsubst %/,%,$(dir $^))
+# makefile (from `Makefile', line 1)
+py_dir := ./src
+# environment
+XPC_FLAGS = 0x0
+# default
+MAKE = $(MAKE_COMMAND)
+# default
+MAKECMDGOALS := all
+# environment
+SHLVL = 1
+# default
+MAKE_VERSION := 3.81
+# environment
+USER = danski
+# makefile
+.DEFAULT_GOAL := data/samples/orange_0.jpg
+# makefile (from `Makefile', line 14)
+samples_init_script := ./scripts/init-test-data.sh
+# makefile (from `Makefile', line 16)
+sample_segmentation := city_0.jpg
+# automatic
+%D = $(patsubst %/,%,$(dir $%))
+# default
+MAKE_COMMAND := /Library/Developer/CommandLineTools/usr/bin/make
+# default
+.VARIABLES := 
+# environment
+TMPDIR = /var/folders/rr/hwxlvqw118l42h548dqgmw1c0000gn/T/
+# automatic
+*F = $(notdir $*)
+# environment
+VSCODE_IPC_HOOK = /Users/danski/Library/Application Support/Code/1.66.1-main.sock
+# makefile
+MAKEFLAGS = Rrqp
+# environment
+MFLAGS = -Rrqp
+# automatic
+*D = $(patsubst %/,%,$(dir $*))
+# environment
+XPC_SERVICE_NAME = application.com.microsoft.VSCode.6544798.6544804
+# environment
+HOMEBREW_PREFIX = /opt/homebrew
+# automatic
++D = $(patsubst %/,%,$(dir $+))
+# automatic
++F = $(notdir $+)
+# environment
+HOMEBREW_REPOSITORY = /opt/homebrew
+# environment
+GUILE_TLS_CERTIFICATE_DIRECTORY = /opt/homebrew/etc/gnutls/
+# environment
+__CF_USER_TEXT_ENCODING = 0x1F5:0x0:0x0
+# environment
+COMMAND_MODE = unix2003
+# default
+MAKEFILES := 
+# automatic
+<F = $(notdir $<)
+# makefile (from `Makefile', line 2)
+py_main := ./src/edge-deep-learning.py
+# makefile (from `Makefile', line 5)
+py_training_requirements := requirements-training.txt
+# environment
+LC_ALL = C
+# environment
+SECURITYSESSIONID = 186b2
+# automatic
+^F = $(notdir $^)
+# default
+SUFFIXES := 
+# environment
+PYENV_VIRTUALENV_INIT = 1
+# environment
+MAKELEVEL := 0
+# makefile (from `Makefile', line 23)
+jetson_install_torchvision_script := ./scripts/jetson-install-torchvision.sh
+# environment
+LANG = C
+# environment
+VSCODE_PID = 1481
+# variable set hash-table stats:
+# Load=91/1024=9%, Rehash=0, Collisions=30/139=22%
+
+# Pattern-specific Variable Values
+
+# No pattern-specific variable values.
+
+# Directories
+
+# . (device 16777233, inode 7580859): 13 files, no impossibilities.
+
+# 13 files, no impossibilities in 1 directories.
+
+# Implicit Rules
+
+# No implicit rules.
+
+# Files
+
+run-venv:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 72):
+	make run-training-venv
+	
+
+# Not a target:
+all:
+#  Command-line target.
+#  Implicit rule search has been done.
+#  File does not exist.
+#  File has not been updated.
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/0=0%
+
+# Not a target:
+requirements-training.txt:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+.PHONY: jetson-dependencies run-classification run-segnet run-server run-training run-training-venv run run-venv collect-stats clean
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+run-server:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 56):
+	python3 $(py_server)
+	
+
+# Not a target:
+.SUFFIXES:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+run-segnet: data/samples/city_0.jpg
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 52):
+	python3 $(py_segnet) $(samples_dir)/$(sample_segmentation)
+	
+
+# Not a target:
+Makefile:
+#  Implicit rule search has been done.
+#  Last modified 2022-04-14 10:02:05
+#  File has been updated.
+#  Successfully updated.
+# variable set hash-table stats:
+# Load=0/32=0%, Rehash=0, Collisions=0/0=0%
+
+run-training:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 60):
+	python3 $(py_training)
+	
+
+venv/touchfile: requirements-training.txt
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 37):
+	python3 -m venv $(py_venv)
+	$(py_venv)/bin/pip install -r $(py_training_requirements)
+	touch $(py_venv)/touchfile
+	
+
+run-classification: data/samples/orange_0.jpg
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 48):
+	python3 $(py_main) $(samples_dir)/$(sample_classification)
+	
+
+# Not a target:
+.DEFAULT:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+data/samples/city_0.jpg:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 29):
+	$(samples_init_script) $(samples_dir) $(sample_segmentation)
+	
+
+jetson-dependencies:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 43):
+	$(jetson_install_pytorch_script)
+	$(jetson_install_torchvision_script)
+	
+
+collect-stats: data/stats
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 76):
+	python3 $(py_stats)
+	
+
+run:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 68):
+	make run-training
+	
+
+venv: venv/touchfile
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+
+clean:
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 80):
+	rm -rf $(data_dir) $(py_cache) $(py_venv) $(build_dir)
+	
+
+run-training-venv: venv requirements-training.txt
+#  Phony target (prerequisite of .PHONY).
+#  Implicit rule search has not been done.
+#  File does not exist.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 64):
+	$(py_venv)/bin/python $(py_training)
+	
+
+data/samples/orange_0.jpg:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 26):
+	$(samples_init_script) $(samples_dir) $(sample_classification)
+	
+
+data/stats:
+#  Implicit rule search has not been done.
+#  Modification time never checked.
+#  File has not been updated.
+#  commands to execute (from `Makefile', line 32):
+	mkdir -p $(stats_dir)
+	
+
+# files hash-table stats:
+# Load=21/1024=2%, Rehash=0, Collisions=0/59=0%
+# VPATH Search Paths
+
+# No `vpath' search paths.
+
+# No general (`VPATH' variable) search path.
+
+# # of strings in strcache: 1
+# # of strcache buffers: 1
+# strcache size: total = 4096 / max = 4096 / min = 4096 / avg = 4096
+# strcache free: total = 4087 / max = 4087 / min = 4087 / avg = 4087
+
+# Finished Make data base on Thu Apr 14 13:05:58 2022
+
+ 
