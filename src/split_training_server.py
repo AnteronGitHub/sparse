@@ -3,7 +3,7 @@ import asyncio
 import torch
 from torch import nn
 
-from networking import decode_offload_request, encode_offload_response
+from serialization import decode_offload_request, encode_offload_response
 from models.neural_network import NeuralNetwork_server
 from roles.worker import Worker
 from training import compute_gradient

@@ -2,31 +2,6 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
-from networking import run_offload_training
-
-def train_epoch(dataloader, model_local, loss_fn, optimizer_local, device = 'cpu'):
-    size = len(dataloader.dataset)
-    model_local.train()
-
-    for batch, (X, y) in enumerate(dataloader):
-        X, y = X.to(device), y.to('cpu')
-
-        # Local forward propagation
-        split_vals = model_local(X)
-
-        # Offloaded layers
-        split_grad, loss = run_offload_training(split_vals.detach(), y.detach())
-
-        # Local back propagation
-        split_grad = split_grad.to('cpu')
-        optimizer_local.zero_grad()
-        split_vals.backward(split_grad)
-        optimizer_local.step()
-
-        if batch % 100 == 0:
-            current = batch * len(X)
-            print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
-
 # TODO: Implement evaluation over network
 def test(dataloader, model1, model2, loss_fn, device = 'cpu'):
     size = len(dataloader.dataset)
