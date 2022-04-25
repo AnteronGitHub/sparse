@@ -28,20 +28,3 @@ def evaluate_model(model1, model2, dataloader):
         pred = model2(model1(x[0]))
         predicted, actual = classes[pred[0].argmax(0)], classes[y[0]]
         print(f'Predicted: "{predicted}", Actual: "{actual}"')
-
-def compute_gradient(model : torch.nn.Module,
-                     loss_fn,
-                     optimizer,
-                     device,
-                     split_activation : torch.Tensor,
-                     y : torch.Tensor) -> (torch.Tensor, float):
-    split_activation = Variable(split_activation, requires_grad=True).to('cpu')
-    pred = model(split_activation)
-    loss = loss_fn(pred, y)
-    optimizer.zero_grad()
-    loss.backward()
-    gradient = split_activation.grad.to(device)
-    optimizer.step()
-
-    return gradient, loss.item()
-

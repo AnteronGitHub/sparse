@@ -21,5 +21,5 @@ class TaskDeployer:
         return asyncio.run(self.stream_task_synchronous(input_data))
 
 class Master:
-    def __init__(self, task_deployer : TaskDeployer = TaskDeployer()):
-        self.task_deployer = task_deployer
+    def __init__(self, task_deployer : TaskDeployer = None):
+        self.task_deployer = task_deployer or TaskDeployer()
