@@ -1,9 +1,9 @@
 py_dir              := ./src
 py_jetson_demo      := $(py_dir)/jetson_demo.py
 py_segnet           := $(py_dir)/segnet.py
-py_client           := $(py_dir)/client.py
+py_client           := $(py_dir)/split_training_client.py
 py_client_requirements  := requirements-client.txt
-py_server           := $(py_dir)/server.py
+py_server           := $(py_dir)/split_training_server.py
 py_stats            := $(py_dir)/collect-statistics.py
 py_cache            := $(shell find . -iname __pycache__)
 py_venv             := venv
