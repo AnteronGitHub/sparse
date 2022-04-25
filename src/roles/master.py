@@ -1,9 +1,13 @@
 import asyncio
 
 class TaskDeployer:
+    """Class that handles network connections to available worker nodes.
+    """
+
     def __init__(self, upstream_host : str = '127.0.0.1', upstream_port : int = 50007):
         self.upstream_host = upstream_host
         self.upstream_port = upstream_port
+        print(f"Using upstream {self.upstream_host}:{self.upstream_port}")
 
     async def stream_task_synchronous(self, input_data : bytes):
         reader, writer = await asyncio.open_connection(self.upstream_host, self.upstream_port)

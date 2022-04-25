@@ -14,10 +14,14 @@ class GradientCalculator(TaskExecutor):
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)
 
     def start(self):
+        """Initialize executor by transferring the model to the processor memory.
+        """
         self.model.to(self.device)
         self.model.train()
 
     def execute_task(self, input_data : bytes) -> bytes:
+        """Execute a single gradient computation for the offloaded layers.
+        """
         # Input de-serialization
         split_layer, labels = decode_offload_request(input_data)
         split_layer = Variable(split_layer, requires_grad=True).to(self.device)

@@ -17,8 +17,6 @@ class SplitTrainingClient(Master):
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)
 
     def train(self, epochs : int = 5):
-        print(f"Using upstream {self.task_deployer.upstream_host}:{self.task_deployer.upstream_port}")
-
         for t in range(epochs):
             print(f"Epoch {t+1}\n-------------------------------")
             size = len(self.train_dataloader.dataset)
