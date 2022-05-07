@@ -2,6 +2,15 @@
 
 This repository contains source code for experiments about Deep learning in the Edge.
 
+## Compatibility
+
+The software has been tested, and thus can be considered compatible with, the following devices and the following
+software:
+
+| Device          | JetPack version | Python version | Pytorch version | Docker version |
+| --------------- | --------------- | -------------- | --------------- | -------------- |
+| Jetson Nano 2GB | 4.6.1           | 3.6.9          | 1.9.0           | 20.10.7        |
+
 ## Install
 
 The repository uses PyTorch as the primary Deep Learning framework.

@@ -1,0 +1,7 @@
+FROM nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.9-py3
+
+WORKDIR /app
+
+COPY src .
+
+CMD ["python3", "split_training_client.py"]
