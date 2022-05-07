@@ -4,11 +4,14 @@ from torch.autograd import Variable
 
 from serialization import decode_offload_request, encode_offload_response
 from models.neural_network import NeuralNetwork_server
-from roles.worker import Worker, TaskExecutor
+from roles.worker import Worker
+from roles.task_executor import TaskExecutor
+from utils import get_device
 
 class GradientCalculator(TaskExecutor):
     def __init__(self):
         super().__init__()
+        self.device = get_device()
         self.loss_fn = nn.CrossEntropyLoss()
         self.model = NeuralNetwork_server()
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)

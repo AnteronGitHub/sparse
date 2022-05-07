@@ -5,11 +5,11 @@ from datasets.mnist_fashion import load_mnist_fashion_dataset
 from models.neural_network import NeuralNetwork_local
 from serialization import encode_offload_request, decode_offload_response
 from roles.master import Master, TaskDeployer
-from utils import get_device
+from utils import get_device, use_legacy_asyncio
 
 class SplitTrainingClient(Master):
     def __init__(self, upstream_host='127.0.0.1'):
-        super().__init__(upstream_host=upstream_host)
+        super().__init__(upstream_host=upstream_host, legacy_asyncio = use_legacy_asyncio())
         self.device = get_device()
         self.model = NeuralNetwork_local()
         self.train_dataloader, self.test_dataloader, self.classes = load_mnist_fashion_dataset()
