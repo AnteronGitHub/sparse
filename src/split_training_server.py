@@ -24,7 +24,8 @@ class GradientCalculator(TaskExecutor):
         """
         # Input de-serialization
         split_layer, labels = decode_offload_request(input_data)
-        split_layer = Variable(split_layer, requires_grad=True).to(self.device)
+        split_layer, labels = Variable(split_layer, requires_grad=True).to(self.device), labels.to(self.device)
+        split_layer.retain_grad()
 
         # Finish forward pass
         pred = self.model(split_layer)
@@ -36,7 +37,7 @@ class GradientCalculator(TaskExecutor):
         self.optimizer.step()
 
         # Result serialization
-        return encode_offload_response(split_layer.grad.detach(), loss.item())
+        return encode_offload_response(split_layer.grad.to('cpu').detach(), loss.item())
 
 class SplitTrainingServer(Worker):
     def __init__(self):
