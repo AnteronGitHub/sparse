@@ -1,7 +1,0 @@
-FROM nvcr.io/nvidia/l4t-pytorch:r34.1.0-pth1.12-py3
-
-WORKDIR /app
-
-COPY src .
-
-CMD ["python3", "split_training_server.py"]

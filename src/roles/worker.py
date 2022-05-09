@@ -1,7 +1,6 @@
-from utils import use_legacy_asyncio
-
 from .rx_pipe import get_supported_rx_pipe
 from .task_executor import TaskExecutor
+from ..utils import use_legacy_asyncio
 
 class Worker:
     def __init__(self,

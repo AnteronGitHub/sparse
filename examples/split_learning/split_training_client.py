@@ -1,12 +1,14 @@
 import torch
 from torch import nn
 
-from config_manager import MasterConfigManager
+from sparse.config_manager import MasterConfigManager
+from sparse.roles.master import Master, TaskDeployer
+from sparse.utils import use_legacy_asyncio
+
 from datasets.mnist_fashion import load_mnist_fashion_dataset
 from models.neural_network import NeuralNetwork_local
 from serialization import encode_offload_request, decode_offload_response
-from roles.master import Master, TaskDeployer
-from utils import get_device, use_legacy_asyncio
+from utils import get_device
 
 class SplitTrainingClient(Master):
     def __init__(self, upstream_host='127.0.0.1'):

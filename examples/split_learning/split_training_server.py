@@ -2,11 +2,12 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
-from config_manager import WorkerConfigManager
+from sparse.config_manager import WorkerConfigManager
+from sparse.roles.worker import Worker
+from sparse.roles.task_executor import TaskExecutor
+
 from serialization import decode_offload_request, encode_offload_response
 from models.neural_network import NeuralNetwork_server
-from roles.worker import Worker
-from roles.task_executor import TaskExecutor
 from utils import get_device
 
 class GradientCalculator(TaskExecutor):

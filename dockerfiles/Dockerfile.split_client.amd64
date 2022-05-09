@@ -1,7 +1,0 @@
-FROM pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime
-
-WORKDIR /app
-
-COPY src .
-
-CMD ["python3", "split_training_client.py"]

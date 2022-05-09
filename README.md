@@ -7,11 +7,11 @@ This repository contains source code for experiments about Deep learning in the 
 The software has been tested, and thus can be considered compatible with, the following devices and the following
 software:
 
-| Device            | JetPack version | Python version | PyTorch version | Docker version | Docker file suffix |
-| ----------------- | --------------- | -------------- | --------------- | -------------- | ------------------ |
-| Jetson AGX Xavier | 5.0 preview     | 3.8.10         | 1.12.0a0        | 20.10.12       | jp50               |
-| Jetson Nano 2GB   | 4.6.1           | 3.6.9          | 1.9.0           | 20.10.7        | jp461              |
-| Lenovo ThinkPad   | -               | 3.8.12         | 1.11.0          | 20.10.15       | amd64              |
+| Device            | JetPack version | Python version | PyTorch version | Docker version | Base image                                     | Docker tag suffix |
+| ----------------- | --------------- | -------------- | --------------- | -------------- | ---------------------------------------------- | ------------------ |
+| Jetson AGX Xavier | 5.0 preview     | 3.8.10         | 1.12.0a0        | 20.10.12       | nvcr.io/nvidia/l4t-pytorch:r34.1.0-pth1.12-py3 | jp50               |
+| Jetson Nano 2GB   | 4.6.1           | 3.6.9          | 1.9.0           | 20.10.7        | nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.9-py3  | jp461              |
+| Lenovo ThinkPad   | -               | 3.8.12         | 1.11.0          | 20.10.15       | pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime | amd64              |
 
 ## Install
 
@@ -38,12 +38,30 @@ details.*
 
 ### Docker
 
-Software dependencies are included in Docker images which can be built locally. Run the following command, replacing
-\<node\> with the node that is being built (client/server), and \<arch\> with the compatible architecture or Jetson SDK
-(see Docker suffix in the compatibility table above).
+#### Base image
+
+Software dependencies are included in Docker images which can be built locally. Run the following command in order to
+build the base image for Deep Learning applications using the stream processing framework:
+```
+docker build . -t sparse:amd64
+```
+
+When building image for Jetson devices, specify the appropriate base image with build argument. See compatibility table
+above for the appropriate images, as well as tags that one should use. For example, in order to build the base image
+for JetPack 5.0, one should run the following command:
 
 ```
-docker build . -f dockerfiles/Dockerfile.split_<node>.<arch> -t edge-deep-learning-code:split_<node>.<arch>
+docker build . --build-arg BASE_IMAGE=nvcr.io/nvidia/l4t-pytorch:r34.1.0-pth1.12-py3 -t sparse:jp50
+```
+
+#### Application image
+
+Use the previously built base image as the base image for applications using the framework. For instance, in order to
+build image for split learning client, using the example provided in the repository, run:
+
+```
+cd examples/split_learning
+docker build . -f Dockerfile.client -t split_learning:client.amd64
 ```
 
 ## Run program
@@ -59,11 +77,11 @@ python3 src/split_training_<node>.py
 
 ### Docker
 
-With docker images built according to the above instructions, new containers can be created by running the following
-command, replacing \<node\> and \<arch\> as when building the images:
+Use the previously built docker files to create new application containers. For instance, run the following command to
+start a split learning server on amd64 supported devices:
 
 ```
-docker run --rm -it edge-deep-learning-code:split_<node>.<arch>
+docker run --rm -it split_learning:server.amd64
 ```
 
 ## Configure
