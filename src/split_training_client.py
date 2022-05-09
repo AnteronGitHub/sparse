@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 
+from config_manager import MasterConfigManager
 from datasets.mnist_fashion import load_mnist_fashion_dataset
 from models.neural_network import NeuralNetwork_local
 from serialization import encode_offload_request, decode_offload_response
@@ -53,6 +54,8 @@ class SplitTrainingClient(Master):
 
 
 if __name__ == '__main__':
-    SplitTrainingClient(upstream_host='127.0.0.1').train()
+    config_manager = MasterConfigManager()
+    config_manager.load_config()
+    SplitTrainingClient(upstream_host=config_manager.upstream_host).train()
 
     # TODO: evaluate

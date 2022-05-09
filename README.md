@@ -36,6 +36,19 @@ need to be installed:
 pip3 install -r requirements-client.txt
 ```
 
+## Configure
+
+Nodes can be configured by setting the following environment variables. Parameters prefixed with MASTER are used by
+master nodes, and the ones prefixed with WORKER by worker nodes. When not specified, default configuration parameters
+are used.
+
+| Configuration parameter | Environment variable  | Default value |
+| ----------------------- | --------------------- | ------------- |
+| Master upstream host    | MASTER_UPSTREAM_HOST  | 127.0.0.1     |
+| Master upstream port    | MASTER_UPSTREAM_PORT  | 50007         |
+| Worker listen address   | WORKER_LISTEN_ADDRESS | 127.0.0.1     |
+| Worker listen port      | WORKER_LISTEN_PORT    | 50007         |
+
 ## Run program
 
 ### Server

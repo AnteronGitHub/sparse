@@ -12,4 +12,5 @@ class Worker:
         self.rx_pipe = get_supported_rx_pipe(self.task_executor, listen_address, listen_port, legacy_asyncio = use_legacy_asyncio())
 
     def start(self):
+        self.task_executor.start()
         self.rx_pipe.start()

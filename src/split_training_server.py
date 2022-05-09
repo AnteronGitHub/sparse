@@ -2,6 +2,7 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
+from config_manager import WorkerConfigManager
 from serialization import decode_offload_request, encode_offload_response
 from models.neural_network import NeuralNetwork_server
 from roles.worker import Worker
@@ -42,13 +43,11 @@ class GradientCalculator(TaskExecutor):
         # Result serialization
         return encode_offload_response(split_layer.grad.to('cpu').detach(), loss.item())
 
-class SplitTrainingServer(Worker):
-    def __init__(self):
-        super().__init__(task_executor = GradientCalculator())
-
-    def start(self):
-        self.task_executor.start()
-        super().start()
-
 if __name__ == "__main__":
-    SplitTrainingServer().start()
+    config_manager = WorkerConfigManager()
+    config_manager.load_config()
+
+    split_training_server = Worker(task_executor = GradientCalculator(),
+                                   listen_address = config_manager.listen_address,
+                                   listen_port = config_manager.listen_port)
+    split_training_server.start()
