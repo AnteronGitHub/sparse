@@ -7,33 +7,63 @@ This repository contains source code for experiments about Deep learning in the 
 The software has been tested, and thus can be considered compatible with, the following devices and the following
 software:
 
-| Device            | JetPack version | Python version | Pytorch version | Docker version |
-| ----------------- | --------------- | -------------- | --------------- | -------------- |
-| Jetson AGX Xavier | 5.0 preview     | 3.8.10         | 1.12.0a0        | 20.10.12       |
-| Jetson Nano 2GB   | 4.6.1           | 3.6.9          | 1.9.0           | 20.10.7        |
-| Lenovo ThinkPad   | -               | 3.8.12         | 1.11.0          | 20.10.15       |
+| Device            | JetPack version | Python version | PyTorch version | Docker version | Docker file suffix |
+| ----------------- | --------------- | -------------- | --------------- | -------------- | ------------------ |
+| Jetson AGX Xavier | 5.0 preview     | 3.8.10         | 1.12.0a0        | 20.10.12       | jp50               |
+| Jetson Nano 2GB   | 4.6.1           | 3.6.9          | 1.9.0           | 20.10.7        | jp461              |
+| Lenovo ThinkPad   | -               | 3.8.12         | 1.11.0          | 20.10.15       | amd64              |
 
 ## Install
 
-The repository uses PyTorch as the primary Deep Learning framework.
-[`jetson-infrence`](https://github.com/dusty-nv/jetson-inference) repository, provided openly by NVIDIA, is also used
-for some test suites on Jetson devices (see below).
+The repository uses PyTorch as the primary Deep Learning framework. Software dependencies can be installed with pip or
+by using Docker.
 
-### Jetson Nano 2GB
-In order to use PyTorch on Jetson Nano 2GB, it has to be built using distributions provided by NVIDIA. The repository
-includes installation scripts for doing this. Install dependencies by running the following command at the repository
-root:
-```
-make jetson-dependencies
-```
+### Python
 
-### Laptop
-
-Unless otherwise specified, the experiment suites can be run on common laptops using CPU. For this, Python dependencies
-need to be installed:
+For running on common amd64 processor architecture, public PyPi distributions can be used. Install PyTorch by running:
 
 ```
-pip3 install -r requirements-client.txt
+pip install torch
+```
+
+On client nodes install torchvision, by running:
+
+```
+pip install torchvision
+```
+
+*NB! On Jetson devices, PyTorch has to be installed by using pip wheels provided by NVIDIA. See
+[NVIDIA forum](https://forums.developer.nvidia.com/t/pytorch-for-jetson-version-1-11-now-available/72048) for more
+details.*
+
+### Docker
+
+Software dependencies are included in Docker images which can be built locally. Run the following command, replacing
+\<node\> with the node that is being built (client/server), and \<arch\> with the compatible architecture or Jetson SDK
+(see Docker suffix in the compatibility table above).
+
+```
+docker build . -f dockerfiles/Dockerfile.split_<node>.<arch> -t edge-deep-learning-code:split_<node>.<arch>
+```
+
+## Run program
+
+### Python
+
+With dependencies installed locally, agents can be started with the following command, by replacing \<node\> with the
+corresponding node (client/server):
+
+```
+python3 src/split_training_<node>.py
+```
+
+### Docker
+
+With docker images built according to the above instructions, new containers can be created by running the following
+command, replacing \<node\> and \<arch\> as when building the images:
+
+```
+docker run --rm -it edge-deep-learning-code:split_<node>.<arch>
 ```
 
 ## Configure
@@ -48,39 +78,6 @@ are used.
 | Master upstream port    | MASTER_UPSTREAM_PORT  | 50007         |
 | Worker listen address   | WORKER_LISTEN_ADDRESS | 127.0.0.1     |
 | Worker listen port      | WORKER_LISTEN_PORT    | 50007         |
-
-## Run program
-
-### Server
-
-In order to run split training over the network, before running the client program, start a server in a separate
-process, by running the following command:
-```
-python3 src/server.py
-```
-
-The same command can also be invoked with make utility, by running:
-```
-make run-server
-```
-
-### Client
-
-With software dependencies installed, the program can be run with make utility, by running the following command at the
-repository root:
-```
-python3 src/client.py
-```
-
-```
-make run
-```
-
-Alternatively, the dependencies can be installed into a Python virtual environment, by running the following command
-(not recommended on resource-constrained devices, such as Jetson Nano):
-```
-make run-venv
-```
 
 ## Collect statistics
 
