@@ -2,7 +2,6 @@ import asyncio
 import pickle
 
 import torch
-import numpy as np
 
 def encode_offload_request(activation_layer : torch.tensor, labels : torch.tensor):
     return pickle.dumps({
