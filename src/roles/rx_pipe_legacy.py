@@ -24,15 +24,16 @@ class RXPipeLegacy(RXPipe):
         writer.write(result_data)
         yield from writer.drain()
         writer.close()
-        print("Processed task")
+        self.logger.debug("Processed task")
 
     def start(self):
+        self.logger.debug("Starting RX pipe")
         loop = asyncio.get_event_loop()
         coro = asyncio.start_server(self.receive_task, self.listen_address, self.listen_port, loop=loop)
         server = loop.run_until_complete(coro)
 
         # Serve requests until Ctrl+C is pressed
-        print(f'RX pipe listening on {self.listen_address}:{self.listen_port}')
+        self.logger.info(f"RX pipe listening on {self.listen_address}:{self.listen_port}")
         try:
             loop.run_forever()
         except KeyboardInterrupt:

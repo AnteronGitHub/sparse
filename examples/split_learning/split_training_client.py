@@ -3,7 +3,6 @@ from torch import nn
 
 from sparse.config_manager import MasterConfigManager
 from sparse.roles.master import Master, TaskDeployer
-from sparse.utils import use_legacy_asyncio
 
 from datasets.mnist_fashion import load_mnist_fashion_dataset
 from models.neural_network import NeuralNetwork_local
@@ -12,7 +11,7 @@ from utils import get_device
 
 class SplitTrainingClient(Master):
     def __init__(self, upstream_host='127.0.0.1'):
-        super().__init__(upstream_host=upstream_host, legacy_asyncio = use_legacy_asyncio())
+        super().__init__(upstream_host=upstream_host)
         self.device = get_device()
         self.model = NeuralNetwork_local()
         self.train_dataloader, self.test_dataloader, self.classes = load_mnist_fashion_dataset()
@@ -20,14 +19,14 @@ class SplitTrainingClient(Master):
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)
 
     def train(self, epochs : int = 5):
-        print("Starting training")
+        self.logger.info(f"Starting training using {self.device} for local computations")
 
         # Transfer model to device
         model = self.model.to(self.device)
         model.train()
 
         for t in range(epochs):
-            print(f"Epoch {t+1}\n-------------------------------")
+            self.logger.info(f"--------- Epoch {str(t+1).ljust(3)}  --------")
             size = len(self.train_dataloader.dataset)
 
             for batch, (X, y) in enumerate(self.train_dataloader):
@@ -50,9 +49,9 @@ class SplitTrainingClient(Master):
 
                 if batch % 100 == 0:
                     current = batch * len(X)
-                    print(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
+                    self.logger.info(f"loss: {loss:>7f}  [{current:>5d}/{size:>5d}]")
 
-        print("Done!")
+        self.logger.info("Done!")
 
 
 if __name__ == '__main__':

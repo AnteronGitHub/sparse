@@ -1,3 +1,5 @@
+import logging
+
 class TaskDeployer:
     """Class that handles network connections to available worker nodes.
     """
@@ -5,7 +7,9 @@ class TaskDeployer:
     def __init__(self, upstream_host : str, upstream_port : int):
         self.upstream_host = upstream_host
         self.upstream_port = upstream_port
-        print(f"Using upstream {self.upstream_host}:{self.upstream_port}")
+
+    def set_logger(self, logger : logging.Logger):
+        self.logger = logger
 
     def deploy_task(self, input_data : bytes):
         pass

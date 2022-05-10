@@ -16,6 +16,8 @@ class TaskDeployerLegacy(TaskDeployer):
         result_data = yield from reader.read()
         writer.close()
 
+        self.logger.debug("Received result for offloaded task")
+
         return result_data
 
     def deploy_task(self, input_data : bytes):

@@ -1,3 +1,5 @@
+import logging
+
 from .task_executor import TaskExecutor
 
 class RXPipe:
@@ -8,10 +10,16 @@ class RXPipe:
     the framework. Currently only one such implementation exists, namely this class.
     """
 
-    def __init__(self, task_executor : TaskExecutor, listen_address : str, listen_port : int):
+    def __init__(self,
+                 task_executor : TaskExecutor,
+                 listen_address : str,
+                 listen_port : int):
         self.listen_address = listen_address
         self.listen_port = listen_port
         self.task_executor = task_executor
+
+    def set_logger(self, logger : logging.Logger):
+        self.logger = logger
 
     def start(self):
         pass

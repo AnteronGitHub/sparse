@@ -21,6 +21,8 @@ class GradientCalculator(TaskExecutor):
     def start(self):
         """Initialize executor by transferring the model to the processor memory.
         """
+        super().start()
+        self.logger.info(f"Task executor using {self.device} for processing")
         self.model.to(self.device)
         self.model.train()
 
