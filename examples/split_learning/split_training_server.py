@@ -2,7 +2,6 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
-from sparse.config_manager import WorkerConfigManager
 from sparse.roles.worker import Worker
 from sparse.roles.task_executor import TaskExecutor
 
@@ -47,10 +46,5 @@ class GradientCalculator(TaskExecutor):
         return encode_offload_response(split_layer.grad.to('cpu').detach(), loss.item())
 
 if __name__ == "__main__":
-    config_manager = WorkerConfigManager()
-    config_manager.load_config()
-
-    split_training_server = Worker(task_executor = GradientCalculator(),
-                                   listen_address = config_manager.listen_address,
-                                   listen_port = config_manager.listen_port)
+    split_training_server = Worker(task_executor = GradientCalculator())
     split_training_server.start()
