@@ -7,7 +7,7 @@ from sparse.roles.task_executor import TaskExecutor
 
 from serialization import decode_offload_request, encode_offload_response
 
-# from models.neural_network import NeuralNetwork_server
+from models.basic_nn import NeuralNetwork_server
 from models.index import SECOND_SPLIT
 from utils import get_device
 
@@ -17,6 +17,7 @@ class GradientCalculator(TaskExecutor):
         super().__init__()
         self.device = get_device()
         self.loss_fn = nn.CrossEntropyLoss()
+        # self.model = NeuralNetwork_server()  # SECOND_SPLIT[model_kind]()
         self.model = SECOND_SPLIT[model_kind]()
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)
 
@@ -50,5 +51,5 @@ class GradientCalculator(TaskExecutor):
 
 
 if __name__ == "__main__":
-    split_training_server = Worker(task_executor=GradientCalculator())
+    split_training_server = Worker(task_executor=GradientCalculator("basic"))
     split_training_server.start()

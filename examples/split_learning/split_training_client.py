@@ -5,7 +5,7 @@ from sparse.roles.master import Master
 
 from datasets.mnist_fashion import load_mnist_fashion_dataset
 
-# from models.neural_network import NeuralNetwork_local
+from models.basic_nn import NeuralNetwork_local
 from models.index import FIRST_SPLIT
 from serialization import encode_offload_request, decode_offload_response
 from utils import get_device
@@ -15,6 +15,7 @@ class SplitTrainingClient(Master):
     def __init__(self, model_kind: str = "basic"):
         super().__init__()
         self.device = get_device()
+        # self.model = NeuralNetwork_local()  # FIRST_SPLIT[model_kind]()
         self.model = FIRST_SPLIT[model_kind]()
         (
             self.train_dataloader,
@@ -63,6 +64,6 @@ class SplitTrainingClient(Master):
 
 
 if __name__ == "__main__":
-    SplitTrainingClient().train()
+    SplitTrainingClient("basic").train()
 
     # TODO: evaluate
