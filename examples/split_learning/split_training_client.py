@@ -4,21 +4,30 @@ from torch import nn
 from sparse.roles.master import Master
 
 from datasets.mnist_fashion import load_mnist_fashion_dataset
-from models.neural_network import NeuralNetwork_local
+
+# from models.neural_network import NeuralNetwork_local
+from models.index import FIRST_SPLIT
 from serialization import encode_offload_request, decode_offload_response
 from utils import get_device
 
+
 class SplitTrainingClient(Master):
-    def __init__(self):
+    def __init__(self, model_kind: str = "basic_nn"):
         super().__init__()
         self.device = get_device()
-        self.model = NeuralNetwork_local()
-        self.train_dataloader, self.test_dataloader, self.classes = load_mnist_fashion_dataset()
+        self.model = FIRST_SPLIT[model_kind]
+        (
+            self.train_dataloader,
+            self.test_dataloader,
+            self.classes,
+        ) = load_mnist_fashion_dataset()
         self.loss_fn = nn.CrossEntropyLoss()
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)
 
-    def train(self, epochs : int = 5):
-        self.logger.info(f"Starting training using {self.device} for local computations")
+    def train(self, epochs: int = 5):
+        self.logger.info(
+            f"Starting training using {self.device} for local computations"
+        )
 
         # Transfer model to device
         model = self.model.to(self.device)
@@ -36,7 +45,7 @@ class SplitTrainingClient(Master):
                 split_vals = model(X)
 
                 # Offloaded layers
-                input_data = encode_offload_request(split_vals.to('cpu').detach(), y)
+                input_data = encode_offload_request(split_vals.to("cpu").detach(), y)
                 result_data = self.task_deployer.deploy_task(input_data)
                 split_grad, loss = decode_offload_response(result_data)
 
@@ -53,7 +62,7 @@ class SplitTrainingClient(Master):
         self.logger.info("Done!")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     SplitTrainingClient().train()
 
     # TODO: evaluate
