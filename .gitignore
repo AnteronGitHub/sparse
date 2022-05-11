@@ -1,5 +1,6 @@
 # Local data directory
 data
+.vscode/
 
 # Vim swap files
 *.swp

@@ -8,6 +8,6 @@ FIRST_SPLIT = {
 }
 
 SECOND_SPLIT = {
-    "basic": basic_nn.NeuralNetwork_local,
+    "basic": basic_nn.NeuralNetwork_server,
     "vgg": vgg.NeuralNetwork_server,
 }

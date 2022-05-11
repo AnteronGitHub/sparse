@@ -12,10 +12,10 @@ from utils import get_device
 
 
 class SplitTrainingClient(Master):
-    def __init__(self, model_kind: str = "basic_nn"):
+    def __init__(self, model_kind: str = "basic"):
         super().__init__()
         self.device = get_device()
-        self.model = FIRST_SPLIT[model_kind]
+        self.model = FIRST_SPLIT[model_kind]()
         (
             self.train_dataloader,
             self.test_dataloader,

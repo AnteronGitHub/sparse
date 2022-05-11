@@ -13,11 +13,11 @@ from utils import get_device
 
 
 class GradientCalculator(TaskExecutor):
-    def __init__(self, model_kind: str = "basic_nn"):
+    def __init__(self, model_kind: str = "basic"):
         super().__init__()
         self.device = get_device()
         self.loss_fn = nn.CrossEntropyLoss()
-        self.model = SECOND_SPLIT[model_kind]
+        self.model = SECOND_SPLIT[model_kind]()
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)
 
     def start(self):
