@@ -10,5 +10,9 @@ ARG BASE_IMAGE=pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime
 
 FROM $BASE_IMAGE
 
-WORKDIR /app
-COPY src sparse
+# Install the library code
+ARG INSTALL_LOCATION=/usr/lib
+
+RUN mkdir -p $INSTALL_LOCATION
+ENV PYTHONPATH=$PYTHONPATH:$INSTALL_LOCATION
+COPY src $INSTALL_LOCATION/sparse

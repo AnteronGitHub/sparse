@@ -5,6 +5,8 @@
 ARG ARCH_TAG=amd64
 FROM sparse/pytorch:$ARCH_TAG
 
+WORKDIR /app
+
 COPY . .
 
 CMD ["python3", "split_training_client.py"]
