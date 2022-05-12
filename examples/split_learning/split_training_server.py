@@ -51,5 +51,5 @@ class GradientCalculator(TaskExecutor):
 
 
 if __name__ == "__main__":
-    split_training_server = Worker(task_executor=GradientCalculator("basic"))
+    split_training_server = Worker(task_executor=GradientCalculator("vgg"))
     split_training_server.start()
