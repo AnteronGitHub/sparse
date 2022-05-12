@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  split_training_server:
+    image: 'split_training:server.amd64'
+    environment:
+      WORKER_LISTEN_ADDRESS: '0.0.0.0'
+    volumes:
+      - .:/app
+
+  split_training_client:
+    image: 'split_training:client.amd64'
+    environment:
+      MASTER_UPSTREAM_HOST: 'split_training_server'
+    volumes:
+      - .:/app
