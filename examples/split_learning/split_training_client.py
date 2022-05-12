@@ -69,6 +69,6 @@ class SplitTrainingClient(Master):
 
 
 if __name__ == "__main__":
-    SplitTrainingClient("basic").train()
+    SplitTrainingClient("vgg").train()
 
     # TODO: evaluate
