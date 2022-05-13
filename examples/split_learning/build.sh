@@ -1,0 +1,2 @@
+DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker build . -f Dockerfile.server -t split_learning:server.amd64
+DOCKER_BUILDKIT=0 COMPOSE_DOCKER_CLI_BUILD=0 docker build . -f Dockerfile.client -t split_learning:client.amd64
