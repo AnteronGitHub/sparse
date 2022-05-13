@@ -45,7 +45,7 @@ details.*
 Software dependencies are included in Docker images which can be built locally. Run the following command in order to
 build the base image for Deep Learning applications using the stream processing framework:
 ```
-docker build . -t sparse:amd64
+docker build . -t sparse/pytorch:amd64
 ```
 
 When building image for Jetson devices, specify the appropriate base image with build argument. See compatibility table
