@@ -1,6 +1,8 @@
-# Edge Deep Learning
+# Sparse
 
-This repository contains source code for experiments about Deep learning in the Edge.
+This repository contains source code for Stream Processing Architecture for Resource Subtle Environments (or just
+Sparse for short). Additionally, sample applications utilizing Sparse for deep learning can be found in examples
+directory.
 
 ## Compatibility
 
