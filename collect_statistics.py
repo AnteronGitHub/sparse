@@ -1,13 +1,8 @@
-#!/usr/bin/env python
-# -*- coding: UTF-8 -*-
-
 from datetime import datetime
 import importlib
+import os
 import psutil
 import time
-import os
-
-import pandas as pd
 
 def collect_statistics_jtop():
     stats = start_time = None
@@ -27,8 +22,7 @@ def collect_statistics_jtop():
 
                 # Drop unnecessary columns
                 new_frame = new_frame.drop(columns=['uptime', 'jetson_clocks', 'nvp model', 'NVENC', 'NVDEC', 'NVJPG'])
-                if stats is None:
-                    stats = new_frame
+                if start_time is None:
                     start_time = timestamp
                     new_frame['timestamp'] = 0
                 else:
@@ -62,55 +56,63 @@ def collect_statistics_jtop():
 
     return stats
 
-def collect_statistics_general(filepath, if_name = 'lo'):
-    print(f'Writing statistics to file {filepath!r}')
-    with open(filepath, 'a') as f:
-        header_row = 'timestamp,bytes_sent,bytes_recv'
-        print(header_row)
-        f.write(header_row + '\n')
+def collect_statistics_general(filehandle, if_name):
+    header_row = 'timestamp,bytes_sent,bytes_recv'
+    print(header_row)
+    f.write(header_row + '\n')
 
-        nic_stats = psutil.net_io_counters(pernic=True)
-        initial_time = initial_bytes_sent = initial_bytes_recv = None
+    initial_time = initial_bytes_sent = initial_bytes_recv = None
+    while True:
+        try:
+            # Read new measurements
+            curr_time = time.time_ns()
+            bytes_sent, bytes_recv = read_network_stats(if_name)
+            if initial_time == None:
+                initial_time = curr_time
+                initial_bytes_sent = bytes_sent
+                initial_bytes_recv = bytes_recv
+                row = f"0,0,0"
+            else:
+                row = f"{curr_time-initial_time},{bytes_sent-initial_bytes_sent},{bytes_recv-initial_bytes_recv}"
 
-        while True:
-            try:
-                # Read new measurements
-                curr_time = time.time_ns()
-                bytes_sent, bytes_recv = read_network_stats()
-                if initial_time == None:
-                    initial_time = curr_time
-                    initial_bytes_sent = bytes_sent
-                    initial_bytes_recv = bytes_recv
-                    row = f"0,0,0"
-                else:
-                    row = f"{curr_time-initial_time},{bytes_sent-initial_bytes_sent},{bytes_recv-initial_bytes_recv}"
+            # Write measurements
+            print(row)
+            f.write(row + '\n')
 
-                # Write measurements
-                print(row)
-                f.write(row + '\n')
-                time.sleep(1)
+            # Wait for a while
+            time.sleep(1)
 
-            except KeyboardInterrupt:
-                break
+        except KeyboardInterrupt:
+            break
 
 
-def read_network_stats(if_name = 'lo'):
+def read_network_stats(if_name):
     nic_stats = psutil.net_io_counters(pernic=True)
     [bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout] = nic_stats[if_name]
     return bytes_sent, bytes_recv
 
 if __name__ == "__main__":
+    print("========================================================================")
+
     OUTPUT_DIR = './data/stats'
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     experiment_time = datetime.now().strftime("%Y%m%d-%H%M%S")
     filepath = os.path.join(OUTPUT_DIR, f'statistics-{experiment_time}.csv')
+    print(f'Writing statistics to file {filepath!r}')
 
-    print("")
+    IF_NAME = 'lo'
+    print(f'Collecting network statistics from interface {IF_NAME!r}')
 
-    if importlib.util.find_spec("jtop") is not None:
+    jtop_available = importlib.util.find_spec("jtop") is not None
+    if not jtop_available:
+        print("No jtop available, collecting only network statistics")
+
+    print("========================================================================")
+
+    if jtop_available:
         from jtop import jtop
-
         collect_statistics_jtop()
     else:
-        print("No jtop available, collecting general statistics")
-        collect_statistics_general(filepath)
+        with open(filepath, 'a') as f:
+            collect_statistics_general(f, if_name=IF_NAME)
 

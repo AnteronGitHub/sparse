@@ -4,7 +4,7 @@ py_segnet           := $(py_dir)/segnet.py
 py_client           := $(py_dir)/split_training_client.py
 py_client_requirements  := requirements-client.txt
 py_server           := $(py_dir)/split_training_server.py
-py_stats            := $(py_dir)/collect-statistics.py
+py_stats            := ./collect_statistics.py
 py_cache            := $(shell find . -iname __pycache__)
 py_venv             := venv
 
@@ -72,7 +72,7 @@ run-venv:
 	make run-client-venv
 
 .PHONY: collect-stats
-collect-stats: $(stats_dir)
+collect-stats:
 	python3 $(py_stats)
 
 .PHONY: clean

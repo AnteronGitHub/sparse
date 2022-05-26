@@ -1,2 +1,1 @@
 jetson-stats~=3.1.2
-pandas~=1.1.5
