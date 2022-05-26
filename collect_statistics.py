@@ -6,6 +6,7 @@ import time
 
 def read_jetson_stats(stats):
     curr_time = int(stats['time'].timestamp() * 1000000000)
+    # todo: Replace RAM usage with relative value
     gpu_util = stats['GPU']
     ram_usage = stats['RAM']
     swap_usage = stats['SWAP']
@@ -32,17 +33,12 @@ def collect_statistics_jtop(filehandle, if_name):
                 bytes_sent, bytes_recv = read_network_stats(if_name)
                 curr_time, gpu_util, ram_usage, swap_usage, power_cur = read_jetson_stats(jetson.stats)
 
-                # todo: Replace RAM usage with relative value
-
-                # Drop unnecessary columns
-                # new_frame = new_frame.drop(columns=['uptime', 'jetson_clocks', 'nvp model', 'NVENC', 'NVDEC', 'NVJPG'])
                 if initial_time == None:
                     initial_time = curr_time
                     initial_bytes_sent = bytes_sent
                     initial_bytes_recv = bytes_recv
-                    row = f"0,0,0"
-                else:
-                    row = f"{curr_time-initial_time},{gpu_util},{ram_usage},{swap_usage},{power_cur},{bytes_sent-initial_bytes_sent},{bytes_recv-initial_bytes_recv}"
+
+                row = f"{curr_time-initial_time},{gpu_util},{ram_usage},{swap_usage},{power_cur},{bytes_sent-initial_bytes_sent},{bytes_recv-initial_bytes_recv}"
 
                 print(row)
                 f.write(row + '\n')
