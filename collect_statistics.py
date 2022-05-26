@@ -4,57 +4,52 @@ import os
 import psutil
 import time
 
-def collect_statistics_jtop():
-    stats = start_time = None
-    print("Collecting device statistics")
+def read_jetson_stats(stats):
+    curr_time = int(stats['time'].timestamp() * 1000000000)
+    gpu_util = stats['GPU']
+    ram_usage = stats['RAM']
+    swap_usage = stats['SWAP']
+    power_cur = stats['power cur']
+
+    return curr_time, gpu_util, ram_usage, swap_usage, power_cur
+
+def read_network_stats(if_name):
+    nic_stats = psutil.net_io_counters(pernic=True)
+    [bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout] = nic_stats[if_name]
+    return bytes_sent, bytes_recv
+
+def collect_statistics_jtop(filehandle, if_name):
+    header_row = 'timestamp,gpu_util,ram_usage,swap_usage_mbytes,power_cur,bytes_sent,bytes_recv'
+    print(header_row)
+    f.write(header_row + '\n')
+
+    initial_time = stats = initial_bytes_sent = initial_bytes_recv = None
     with jtop() as jetson:
         # jetson.ok() will provide the proper update frequency
         while jetson.ok():
             try:
-                # Read tegra stats
-                new_frame = pd.DataFrame(jetson.stats, index=[jetson.stats['time']])
+                # Read new measurements
+                bytes_sent, bytes_recv = read_network_stats(if_name)
+                curr_time, gpu_util, ram_usage, swap_usage, power_cur = read_jetson_stats(jetson.stats)
 
-                # Replace datetime with timestamp (in seconds)
-                timestamp = pd.Timestamp(new_frame['time'][0]).timestamp()
-
-                # Replace RAM usage with relative value
-                new_frame['RAM'] = new_frame['RAM'][0] / 2000000.0 * 100.0
+                # todo: Replace RAM usage with relative value
 
                 # Drop unnecessary columns
-                new_frame = new_frame.drop(columns=['uptime', 'jetson_clocks', 'nvp model', 'NVENC', 'NVDEC', 'NVJPG'])
-                if start_time is None:
-                    start_time = timestamp
-                    new_frame['timestamp'] = 0
+                # new_frame = new_frame.drop(columns=['uptime', 'jetson_clocks', 'nvp model', 'NVENC', 'NVDEC', 'NVJPG'])
+                if initial_time == None:
+                    initial_time = curr_time
+                    initial_bytes_sent = bytes_sent
+                    initial_bytes_recv = bytes_recv
+                    row = f"0,0,0"
                 else:
-                    new_frame['timestamp'] = timestamp - start_time
-                    stats = pd.concat([stats, new_frame])
-                print(new_frame)
+                    row = f"{curr_time-initial_time},{gpu_util},{ram_usage},{swap_usage},{power_cur},{bytes_sent-initial_bytes_sent},{bytes_recv-initial_bytes_recv}"
+
+                print(row)
+                f.write(row + '\n')
 
             except KeyboardInterrupt:
+                print("Stopping due to keyboard interrupt")
                 break
-
-    print("Stopped collecting device statistics")
-    print("")
-
-    # Print statistics
-    print("Collected statistics")
-    print(stats)
-
-    # Store statistics
-    print("")
-    print("Saving collected statistics")
-
-    # GPU utilization
-    gpu_filepath = os.path.join(OUTPUT_DIR, 'gpu-usage-{:s}.csv'.format(experiment_time))
-    stats.to_csv(gpu_filepath, columns=['timestamp', 'GPU'], index=False)
-    print("Saved GPU usage statistics to file '{:s}'".format(gpu_filepath))
-
-    # RAM usage
-    ram_filepath = os.path.join(OUTPUT_DIR, 'ram-usage-{:s}.csv'.format(experiment_time))
-    stats.to_csv(ram_filepath, columns=['timestamp', 'RAM'], index=False)
-    print("Saved RAM usage statistics to file '{:s}'".format(ram_filepath))
-
-    return stats
 
 def collect_statistics_general(filehandle, if_name):
     header_row = 'timestamp,bytes_sent,bytes_recv'
@@ -83,13 +78,8 @@ def collect_statistics_general(filehandle, if_name):
             time.sleep(1)
 
         except KeyboardInterrupt:
+            print("Stopping due to keyboard interrupt")
             break
-
-
-def read_network_stats(if_name):
-    nic_stats = psutil.net_io_counters(pernic=True)
-    [bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout] = nic_stats[if_name]
-    return bytes_sent, bytes_recv
 
 if __name__ == "__main__":
     print("========================================================================")
@@ -104,15 +94,16 @@ if __name__ == "__main__":
     print(f'Collecting network statistics from interface {IF_NAME!r}')
 
     jtop_available = importlib.util.find_spec("jtop") is not None
-    if not jtop_available:
+    if jtop_available:
+        from jtop import jtop
+    else:
         print("No jtop available, collecting only network statistics")
 
     print("========================================================================")
 
-    if jtop_available:
-        from jtop import jtop
-        collect_statistics_jtop()
-    else:
-        with open(filepath, 'a') as f:
-            collect_statistics_general(f, if_name=IF_NAME)
+    with open(filepath, 'a') as f:
+        if jtop_available:
+            collect_statistics_jtop(f, IF_NAME)
+        else:
+            collect_statistics_general(f, IF_NAME)
 
