@@ -2,10 +2,10 @@ import torch
 from torch import nn
 
 from sparse.roles.master import Master
+from sparse.dl.serialization import encode_offload_request, decode_offload_response
+from sparse.dl.utils import get_device
 
 from models.index import FIRST_SPLIT
-from serialization import encode_offload_request, decode_offload_response
-from utils import get_device
 
 
 class SplitTrainingClient(Master):
@@ -69,6 +69,6 @@ class SplitTrainingClient(Master):
 
 
 if __name__ == "__main__":
-    SplitTrainingClient("vgg").train()
+    SplitTrainingClient("basic").train()
 
     # TODO: evaluate
