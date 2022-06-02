@@ -6,8 +6,9 @@ class Master(Node):
     def __init__(self,
                  upstream_host : str = '127.0.0.1',
                  upstream_port : int = 50007,
-                 task_deployer : TaskDeployer = None):
-        super().__init__(config_manager = MasterConfigManager())
+                 task_deployer : TaskDeployer = None,
+                 config_manager = MasterConfigManager()):
+        Node.__init__(self, config_manager = config_manager)
         if task_deployer:
             self.task_deployer = task_deployer
         else:

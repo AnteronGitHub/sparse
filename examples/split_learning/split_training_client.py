@@ -1,34 +1,33 @@
 import torch
 from torch import nn
 
+from sparse.config_manager import MasterConfigManager, WorkerConfigManager
 from sparse.roles.master import Master
+from sparse.roles.worker import Worker
+from sparse.dl.gradient_calculator import GradientCalculator
 from sparse.dl.serialization import encode_offload_request, decode_offload_response
 from sparse.dl.utils import get_device
 
 from models.index import FIRST_SPLIT
 
+class SplitTrainingClient(Master, Worker):
+    def __init__(self, model, loss_fn, optimizer, train_dataloader, classes, task_executor):
+        worker_config_manager = WorkerConfigManager()
+        config_manager = MasterConfigManager()
+        config_manager.listen_address = worker_config_manager.listen_address
+        config_manager.listen_port = worker_config_manager.listen_port
 
-class SplitTrainingClient(Master):
-    def __init__(self, model_kind: str = "basic"):
-        super().__init__()
+        Master.__init__(self, config_manager = config_manager)
+        Worker.__init__(self, task_executor = task_executor, config_manager = config_manager)
+
         self.device = get_device()
-        self.model = FIRST_SPLIT[model_kind]()
-        if model_kind == "vgg":
-            from datasets.cifar10 import load_CIFAR10_dataset
-            (
-                self.train_dataloader,
-                self.test_dataloader,
-                self.classes,
-            ) = load_CIFAR10_dataset()
-        else:
-            from datasets.mnist_fashion import load_mnist_fashion_dataset
-            (
-                self.train_dataloader,
-                self.test_dataloader,
-                self.classes,
-            ) = load_mnist_fashion_dataset()
-        self.loss_fn = nn.CrossEntropyLoss()
-        self.optimizer = torch.optim.SGD(self.model.parameters(), lr=1e-3)
+
+        self.model = model
+        self.loss_fn = loss_fn
+        self.optimizer = optimizer
+
+        self.train_dataloader = train_dataloader
+        self.classes = classes
 
     def train(self, epochs: int = 5):
         self.logger.info(
@@ -69,6 +68,34 @@ class SplitTrainingClient(Master):
 
 
 if __name__ == "__main__":
-    SplitTrainingClient("basic").train()
+    model_kind = "basic"
+    model = FIRST_SPLIT[model_kind]()
+    loss_fn = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
+
+    first_split_calculator = GradientCalculator(model=model,
+                                                loss_fn=nn.CrossEntropyLoss(),
+                                                optimizer=torch.optim.SGD(model.parameters(), lr=1e-3))
+    if model_kind == "vgg":
+        from datasets.cifar10 import load_CIFAR10_dataset
+        (
+            train_dataloader,
+            test_dataloader,
+            classes,
+        ) = load_CIFAR10_dataset()
+    else:
+        from datasets.mnist_fashion import load_mnist_fashion_dataset
+        (
+            train_dataloader,
+            test_dataloader,
+            classes,
+        ) = load_mnist_fashion_dataset()
+
+    SplitTrainingClient(model=model,
+                        loss_fn=loss_fn,
+                        optimizer=optimizer,
+                        train_dataloader=train_dataloader,
+                        classes=classes,
+                        task_executor=first_split_calculator).train()
 
     # TODO: evaluate
