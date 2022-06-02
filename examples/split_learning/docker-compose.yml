@@ -13,6 +13,15 @@ services:
     image: 'split_training:client.amd64'
     environment:
       MASTER_UPSTREAM_HOST: 'split_training_server'
+      WORKER_LISTEN_ADDRESS: '0.0.0.0'
+    volumes:
+      - .:/app
+      - ../../src:/usr/lib/sparse
+
+  split_training_source:
+    image: 'split_training:source.amd64'
+    environment:
+      MASTER_UPSTREAM_HOST: 'split_training_client'
     volumes:
       - .:/app
       - ../../src:/usr/lib/sparse

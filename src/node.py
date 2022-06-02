@@ -4,10 +4,10 @@ import sys
 from .config_manager import ConfigManager
 
 class Node:
-    def __init__(self, config_manager : ConfigManager, log_level : int = logging.INFO):
+    def __init__(self, log_level : int = logging.INFO):
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=log_level)
         self.logger = logging.getLogger("sparse")
-        self.config_manager = config_manager
+        self.config_manager = ConfigManager()
         self.config_manager.load_config()
 
     def check_asyncio_use_legacy(self):

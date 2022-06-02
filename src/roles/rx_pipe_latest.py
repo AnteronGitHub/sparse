@@ -15,13 +15,13 @@ class RXPipeLatest(RXPipe):
         result_data = self.task_executor.execute_task(input_data)
 
         if self.task_deployer:
-            self.logger.debug("Deploying to the next worker further")
+            self.logger.info("Deploying to the next worker further")
             result_data = self.task_deployer.deploy_task(result_data)
 
         writer.write(result_data)
         await writer.drain()
         writer.close()
-        self.logger.debug("Processed task")
+        self.logger.info("Processed task")
 
     async def serve(self):
         server = await asyncio.start_server(self.receive_task, self.listen_address, self.listen_port)
