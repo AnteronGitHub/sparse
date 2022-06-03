@@ -1,6 +1,6 @@
 import logging
 
-from .task_executor import TaskExecutor
+from ..task_executor import TaskExecutor
 
 class RXPipe:
     """Class that handles the queuing of offloaded tasks data, and passes them to the application-specific task

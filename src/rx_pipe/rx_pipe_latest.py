@@ -1,6 +1,6 @@
 import asyncio
 
-from .rx_pipe import RXPipe
+from . import RXPipe
 
 class RXPipeLatest(RXPipe):
     """RX pipe implementation using the current asyncio interface.
@@ -16,7 +16,7 @@ class RXPipeLatest(RXPipe):
 
         if self.task_deployer:
             self.logger.info("Deploying to the next worker further")
-            result_data = self.task_deployer.deploy_task(result_data)
+            # result_data = self.task_deployer.deploy_task(result_data)
 
         writer.write(result_data)
         await writer.drain()

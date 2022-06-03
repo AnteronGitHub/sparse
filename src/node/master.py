@@ -1,5 +1,5 @@
-from ..node import Node
-from .task_deployer import TaskDeployer, get_supported_task_deployer
+from . import Node
+from ..task_deployer import TaskDeployer, get_supported_task_deployer
 
 class Master(Node):
     def __init__(self,

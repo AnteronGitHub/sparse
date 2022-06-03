@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from sparse.roles.master import Master
+from sparse.node.master import Master
 from sparse.dl.serialization import encode_offload_request, decode_offload_response
 
 class SplitTrainingDataSource(Master):

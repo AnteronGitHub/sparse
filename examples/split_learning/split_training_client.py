@@ -1,11 +1,9 @@
 import torch
 from torch import nn
 
-from sparse.roles.master import Master
-from sparse.roles.worker import Worker
+from sparse.node.master import Master
+from sparse.node.worker import Worker
 from sparse.dl.gradient_calculator import GradientCalculator
-from sparse.dl.serialization import encode_offload_request, decode_offload_response
-from sparse.dl.utils import get_device
 
 from models.index import FIRST_SPLIT
 

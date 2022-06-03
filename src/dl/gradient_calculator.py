@@ -1,10 +1,9 @@
 from torch.autograd import Variable
 
-from ..roles.task_executor import TaskExecutor
-
-from .utils import get_device
+from ..task_executor import TaskExecutor
 
 from .serialization import decode_offload_request, encode_offload_response
+from .utils import get_device
 
 class GradientCalculator(TaskExecutor):
     def __init__(self, model, loss_fn, optimizer):

@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from sparse.roles.worker import Worker
+from sparse.node.worker import Worker
 from sparse.dl.gradient_calculator import GradientCalculator
 
 from models.index import SECOND_SPLIT

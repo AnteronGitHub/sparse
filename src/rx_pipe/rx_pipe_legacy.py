@@ -1,16 +1,10 @@
 import asyncio
 
-from .rx_pipe import RXPipe
-from .task_executor import TaskExecutor
+from . import RXPipe
 
 class RXPipeLegacy(RXPipe):
     """Legacy asyncio implementation for older Python compiler versions.
     """
-
-    def __init__(self, task_executor : TaskExecutor, listen_address : str, listen_port : int):
-        self.listen_address = listen_address
-        self.listen_port = listen_port
-        self.task_executor = task_executor
 
     @asyncio.coroutine
     def receive_task(self, reader : asyncio.StreamReader, writer : asyncio.StreamWriter) -> None:

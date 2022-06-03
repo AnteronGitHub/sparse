@@ -1,6 +1,6 @@
 import asyncio
 
-from .master import TaskDeployer
+from ..task_deployer import TaskDeployer
 
 class TaskDeployerLegacy(TaskDeployer):
     """Legacy asyncio implementation for older Python compiler versions.
