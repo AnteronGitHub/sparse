@@ -7,6 +7,9 @@ class TaskExecutor:
     User is expected to implement the computation logic by defining a custom execute_task() function. Additionally it
     is possible to implement custom initialization code by overriding optional start() hook.
     """
+    def __init__(self):
+        self.task_deployer = None
+
     def start(self):
         self.logger.debug("Starting task executor")
 

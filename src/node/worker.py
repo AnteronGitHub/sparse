@@ -15,7 +15,7 @@ class Worker(Node):
                                              legacy_asyncio = self.check_asyncio_use_legacy())
         self.rx_pipe.set_logger(self.logger)
         if isinstance(self, Master):
-            self.rx_pipe.task_deployer = self.task_deployer
+            self.task_executor.task_deployer = self.task_deployer
 
     def start(self):
         self.task_executor.start()

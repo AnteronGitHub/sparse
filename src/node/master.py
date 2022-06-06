@@ -14,4 +14,5 @@ class Master(Node):
                                                              upstream_port=self.config_manager.upstream_port,
                                                              legacy_asyncio=self.check_asyncio_use_legacy())
 
+        self.task_deployer.logger = self.logger
         self.logger.info(f"Task deployer using upstream {self.task_deployer.upstream_host}:{self.task_deployer.upstream_port}")

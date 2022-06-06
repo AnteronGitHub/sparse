@@ -17,7 +17,6 @@ class RXPipe:
         self.listen_address = listen_address
         self.listen_port = listen_port
         self.task_executor = task_executor
-        self.task_deployer = None
 
     def set_logger(self, logger : logging.Logger):
         self.logger = logger

@@ -12,11 +12,7 @@ class RXPipeLatest(RXPipe):
         """
         input_data = await reader.read()
 
-        result_data = self.task_executor.execute_task(input_data)
-
-        if self.task_deployer:
-            self.logger.info("Deploying to the next worker further")
-            # result_data = self.task_deployer.deploy_task(result_data)
+        result_data = await self.task_executor.execute_task(input_data)
 
         writer.write(result_data)
         await writer.drain()

@@ -18,5 +18,7 @@ class TaskDeployerLatest(TaskDeployer):
 
         return result_data
 
-    def deploy_task(self, input_data : bytes):
-        return asyncio.run(self.stream_task_synchronous(input_data))
+    async def deploy_task(self, input_data : bytes):
+        task = asyncio.create_task(self.stream_task_synchronous(input_data))
+        await task
+        return task.result()

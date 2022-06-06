@@ -4,6 +4,8 @@ from torch import nn
 from sparse.node.master import Master
 from sparse.dl.serialization import encode_offload_request, decode_offload_response
 
+import asyncio
+
 class SplitTrainingDataSource(Master):
     def __init__(self, train_dataloader, classes):
         Master.__init__(self)
@@ -11,7 +13,7 @@ class SplitTrainingDataSource(Master):
         self.train_dataloader = train_dataloader
         self.classes = classes
 
-    def train(self, epochs: int = 5):
+    async def train(self, epochs: int = 5):
         self.logger.info(f"Starting streaming input data for training")
 
         for t in range(epochs):
@@ -20,7 +22,7 @@ class SplitTrainingDataSource(Master):
 
             for batch, (X, y) in enumerate(self.train_dataloader):
                 input_data = encode_offload_request(X, y)
-                result_data = self.task_deployer.deploy_task(input_data)
+                result_data = await self.task_deployer.deploy_task(input_data)
                 split_grad, loss = decode_offload_response(result_data)
 
                 if batch % 100 == 0:
@@ -45,8 +47,8 @@ if __name__ == "__main__":
             test_dataloader,
             classes,
         ) = load_mnist_fashion_dataset()
-
-    SplitTrainingDataSource(train_dataloader=train_dataloader,
-                            classes=classes).train()
+    data_source = SplitTrainingDataSource(train_dataloader=train_dataloader,
+                                          classes=classes)
+    asyncio.run(data_source.train())
 
     # TODO: evaluate
