@@ -6,19 +6,6 @@ class RXPipeLegacy(RXPipe):
     """Legacy asyncio implementation for older Python compiler versions.
     """
 
-    async def receive_task(self, reader : asyncio.StreamReader, writer : asyncio.StreamWriter) -> None:
-        """Generic callback function which passes offloaded task directly to the task executor.
-
-        """
-        input_data = await reader.read()
-
-        result_data = await self.task_executor.execute_task(input_data)
-
-        writer.write(result_data)
-        await writer.drain()
-        writer.close()
-        self.logger.debug("Processed task")
-
     def start(self):
         self.logger.debug("Starting RX pipe")
         loop = asyncio.get_event_loop()
