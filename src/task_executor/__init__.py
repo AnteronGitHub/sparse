@@ -16,5 +16,5 @@ class TaskExecutor:
     def set_logger(self, logger : logging.Logger = logging.getLogger("asyncio")):
         self.logger = logger
 
-    def execute_task(self, input_data : bytes) -> bytes:
+    async def execute_task(self, input_data : bytes) -> bytes:
         raise "Task executor not implemented! See documentation on how to implement your own executor"

@@ -9,8 +9,7 @@ class RXPipeLatest(RXPipe):
     async def serve(self):
         server = await asyncio.start_server(self.receive_task, self.listen_address, self.listen_port)
         self.logger.info(f"RX pipe listening on {self.listen_address}:{self.listen_port}")
-        async with server:
-            await server.serve_forever()
+        await server.serve_forever()
 
     def start(self):
         self.logger.debug("Starting RX pipe")

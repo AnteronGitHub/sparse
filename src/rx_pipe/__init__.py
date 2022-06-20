@@ -23,14 +23,17 @@ class RXPipe:
         """Generic callback function which passes offloaded task directly to the task executor.
 
         """
+        self.logger.debug("Reading task input data...")
         input_data = await reader.read()
 
+        self.logger.debug("Executing task...")
         result_data = await self.task_executor.execute_task(input_data)
 
+        self.logger.debug("Responding with task output data...")
         writer.write(result_data)
         await writer.drain()
         writer.close()
-        self.logger.info("Processed task")
+        self.logger.info("Finished streaming task result.")
 
     def set_logger(self, logger : logging.Logger):
         self.logger = logger

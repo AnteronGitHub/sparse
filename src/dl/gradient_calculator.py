@@ -33,7 +33,7 @@ class GradientCalculator(TaskExecutor):
         pred = self.model(split_layer)
 
         if self.task_deployer:
-            self.logger.info("Deploying to the next worker further")
+            self.logger.debug("Deploying to the next worker further")
 
             # Offloaded layers
             input_data = encode_offload_request(pred.to("cpu").detach(), labels.to("cpu"))
@@ -46,13 +46,19 @@ class GradientCalculator(TaskExecutor):
             pred.backward(split_grad)
             self.optimizer.step()
         else:
+            self.logger.debug("Not deploying task any further")
             # Start back propagation
             loss = self.loss_fn(pred, labels)
+            self.logger.debug("Computed loss")
             self.optimizer.zero_grad()
             loss.backward()
+            self.logger.debug("Updated parameters")
             self.optimizer.step()
+            self.logger.debug("Updated optimizer")
             loss = loss.item()
 
         # Result serialization
-        return encode_offload_response(split_layer.grad.to("cpu").detach(), loss)
+        result_data = encode_offload_response(split_layer.grad.to("cpu").detach(), loss)
+        self.logger.debug("Executed task")
+        return result_data
 
