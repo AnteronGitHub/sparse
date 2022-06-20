@@ -13,7 +13,7 @@ class SplitTrainingDataSource(Master):
         self.train_dataloader = train_dataloader
         self.classes = classes
 
-    async def train(self, epochs: int = 5):
+    async def train(self, epochs: int = 1):
         self.logger.info(f"Starting streaming input data for training")
 
         for t in range(epochs):
