@@ -13,7 +13,7 @@ class SplitTrainingClient(Master, Worker):
         Worker.__init__(self, task_executor = task_executor)
 
 if __name__ == "__main__":
-    model_kind = "basic"
+    model_kind = "vgg"
     model = FIRST_SPLIT[model_kind]()
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)

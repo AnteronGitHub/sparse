@@ -32,7 +32,7 @@ class SplitTrainingDataSource(Master):
         self.logger.info("Done!")
 
 if __name__ == "__main__":
-    model_kind = "basic"
+    model_kind = "vgg"
     if model_kind == "vgg":
         from datasets.cifar10 import load_CIFAR10_dataset
         (
