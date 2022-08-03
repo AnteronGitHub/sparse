@@ -7,12 +7,11 @@ from models import NeuralNetwork_local
 from serialization import encode_offload_request, decode_offload_response
 from utils import get_device, ImageLoading, non_max_suppression, save_detection
 
-
-class SplitTrainingClient(Master, imagePath, img_size, config_path_local, weight_local):
-    def __init__(self, model_kind: str = "basic"):
+class SplitTrainingClient(Master):
+    def __init__(self, imagePath, img_size, config_path_local, compressionProps, weight_local):
         super().__init__()
         self.device = get_device()
-        self.model = NeuralNetwork_local(config_path_local)
+        self.model = NeuralNetwork_local(config_path_local, compressionProps)
         self.model.load_state_dict(torch.load(weight_local))
 
         self.imagePath = imagePath
@@ -57,7 +56,11 @@ class SplitTrainingClient(Master, imagePath, img_size, config_path_local, weight
 
 if __name__ == "__main__":
     config_path_local = "config/yolov3_local.cfg"
+    compressionProps = {} ###
+    compressionProps['feature_compression_factor'] = 4 ### resolution compression factor, compress by how many times
+    compressionProps['resolution_compression_factor'] = 1 ###layer compression factor, reduce by how many times TBD
+
     weight_local = "weights/yolov3_local.paths"
     img_size = 416
-    imagePath = "samples/dog.jpg" 
-    SplitTrainingClient(imagePath, img_size, config_path_local, weight_local).infer()
+    imagePath = "samples/dog.jpg"
+    SplitTrainingClient(imagePath, img_size, config_path_local, compressionProps, weight_local).infer()
