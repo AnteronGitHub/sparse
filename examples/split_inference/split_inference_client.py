@@ -35,13 +35,13 @@ class SplitTrainingClient(Master):
             self.logger.info(f"--------- inferring ----------")
 
             # Transfer training data to device memory
-            X = X.to(self.device)
+            X = self.img.to(self.device)
 
             # Local forward propagation
             split_vals = model(X)
 
             # Offloaded layers
-            input_data = encode_offload_request(split_vals.to("cpu").detach(), y)
+            input_data = encode_offload_request(split_vals.to("cpu").detach())
             result_data = self.task_deployer.deploy_task(input_data)
 
             #post process layers

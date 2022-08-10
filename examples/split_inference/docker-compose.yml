@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  split_inference_server:
+    image: 'split_inference:server.amd64'
+    environment:
+      WORKER_LISTEN_ADDRESS: '0.0.0.0'
+    volumes:
+      - .:/app
+
+  split_inference_client:
+    image: 'split_inference:client.amd64'
+    environment:
+      MASTER_UPSTREAM_HOST: 'split_inference_server'
+    volumes:
+      - .:/app
