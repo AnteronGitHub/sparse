@@ -27,7 +27,7 @@ class InferenceCalculator(TaskExecutor):
 
     async def execute_task(self, input_data: bytes) -> bytes:
         """Execute a single forward computation for the offloaded layers."""
-        split_layer = decode_offload_request(input_data)
+        split_layer = decode_offload_request(input_data).to(self.device)
         pred = self.model(split_layer)
 
         # Result serialization
