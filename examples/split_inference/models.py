@@ -277,8 +277,8 @@ class NeuralNetwork(nn.Module):
 
         for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
   
-            print(x.size())
-            print(module_def["type"])
+            # print(x.size())
+            # print(module_def["type"])
             if module_def["type"] in ["convolutional", "upsample", "maxpool"]:
                 x = module(x)
             elif module_def["type"] == "route":
@@ -321,9 +321,9 @@ class NeuralNetwork_local(nn.Module):
         
         for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
             
-            print(i)             
-            print(x.size())
-            print(module_def["type"])
+            # print(i)             
+            # print(x.size())
+            # print(module_def["type"])
             if module_def["type"] in ["convolutional", "upsample", "maxpool"]:
                 x = module(x)
             elif module_def["type"] == "route":
@@ -362,9 +362,9 @@ class NeuralNetwork_server(nn.Module):
         
         for i, (module_def, module) in enumerate(zip(self.module_defs, self.module_list)):
             
-            print(i)      
-            print(x.size())
-            print(module_def["type"])
+            # print(i)      
+            # print(x.size())
+            # print(module_def["type"])
             if module_def["type"] in ["convolutional", "upsample", "maxpool"]:
                 x = module(x)
             elif module_def["type"] == "route":

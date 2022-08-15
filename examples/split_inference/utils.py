@@ -33,7 +33,7 @@ def save_detection(img, imagePath, detections, img_size = 416):
     cmap = plt.get_cmap("tab20b")
     colors = [cmap(i) for i in np.linspace(0, 1, 20)]
 
-    print("\nSaving images:")
+    # print("\nSaving images:")
     # Iterate through images and save plot of detections
     count = 0
     img_i = 0
@@ -41,7 +41,7 @@ def save_detection(img, imagePath, detections, img_size = 416):
     detections = detections[0]
     #for img_i, (path, detections) in enumerate(zip(imgs, img_detections)):
 
-    print("(%d) Image: '%s'" % (img_i, path))
+    # print("(%d) Image: '%s'" % (img_i, path))
 
     # Create plot
     img = np.array(Image.open(path))
@@ -60,7 +60,7 @@ def save_detection(img, imagePath, detections, img_size = 416):
         bbox_colors = random.sample(colors, n_cls_preds)
         for x1, y1, x2, y2, conf, cls_conf, cls_pred in detections:
 
-            print("\t+ Label: %s, Conf: %.5f" % (classes[int(cls_pred)], cls_conf.item()))
+            # print("\t+ Label: %s, Conf: %.5f" % (classes[int(cls_pred)], cls_conf.item()))
 
             box_w = x2 - x1
             box_h = y2 - y1
