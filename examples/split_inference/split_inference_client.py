@@ -1,7 +1,9 @@
+import asyncio
+
 import torch
 from torch import nn
 
-from sparse.roles.master import Master
+from sparse.node.master import Master
 
 from models import NeuralNetwork_local
 from serialization import encode_offload_request, decode_offload_response
@@ -22,7 +24,7 @@ class SplitTrainingClient(Master):
 
 
 
-    def infer(self, epochs: int = 5):
+    async def infer(self, epochs: int = 5):
         self.logger.info(
             f"Starting training using {self.device} for local computations"
         )
@@ -42,7 +44,7 @@ class SplitTrainingClient(Master):
 
             # Offloaded layers
             input_data = encode_offload_request(split_vals.to("cpu").detach())
-            result_data = self.task_deployer.deploy_task(input_data)
+            result_data = await self.task_deployer.deploy_task(input_data)
 
             #post process layers
             pred = decode_offload_response(result_data)
@@ -65,4 +67,5 @@ if __name__ == "__main__":
     weight_local = "weights/yolov3_local.paths"
     img_size = 416
     imagePath = "data/dog.jpg"
-    SplitTrainingClient(imagePath, img_size, config_path_local, compressionProps, weight_local).infer()
+    split_inference_client = SplitTrainingClient(imagePath, img_size, config_path_local, compressionProps, weight_local)
+    asyncio.run(split_inference_client.infer())

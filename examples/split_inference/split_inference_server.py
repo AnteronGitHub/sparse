@@ -2,8 +2,8 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 
-from sparse.roles.worker import Worker
-from sparse.roles.task_executor import TaskExecutor
+from sparse.node.worker import Worker
+from sparse.task_executor import TaskExecutor
 
 from serialization import decode_offload_request, encode_offload_response
 
@@ -25,7 +25,7 @@ class InferenceCalculator(TaskExecutor):
         self.logger.info(f"Task executor using {self.device} for processing")
         self.model.to(self.device)
 
-    def execute_task(self, input_data: bytes) -> bytes:
+    async def execute_task(self, input_data: bytes) -> bytes:
         """Execute a single forward computation for the offloaded layers."""
         split_layer = decode_offload_request(input_data)
         pred = self.model(split_layer)
