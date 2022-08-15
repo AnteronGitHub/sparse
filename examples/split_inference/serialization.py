@@ -14,7 +14,7 @@ def decode_offload_request(request : bytes):
 
 def encode_offload_response(prediction : torch.tensor):
     return pickle.dumps({
-        'prediction': gradient
+        'prediction': prediction
     })
 
 def decode_offload_response(data : bytes):

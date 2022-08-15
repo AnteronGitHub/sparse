@@ -85,7 +85,7 @@ def save_detection(img, imagePath, detections, img_size = 416):
     plt.gca().xaxis.set_major_locator(NullLocator())
     plt.gca().yaxis.set_major_locator(NullLocator())
     filename = path.split("/")[-1].split(".")[0]
-    plt.savefig(f"samples/outputs/{filename}.png", bbox_inches="tight", pad_inches=0.0)
+    plt.savefig(f"data/{filename}_detected.png", bbox_inches="tight", pad_inches=0.0)
     plt.close()
 
     #save csv
