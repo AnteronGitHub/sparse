@@ -311,6 +311,9 @@ class NeuralNetwork_local(nn.Module):
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
         
 
+    def prevfiltersGet(self):
+        return self.prev_filters
+
     def forward(self, x, targets=None, local=True):
         img_dim = x.shape[2]
         loss = 0

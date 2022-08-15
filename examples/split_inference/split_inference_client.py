@@ -14,6 +14,8 @@ class SplitTrainingClient(Master):
         self.model = NeuralNetwork_local(config_path_local, compressionProps)
         self.model.load_state_dict(torch.load(weight_local))
 
+        self.prev_filters = self.model.prevfiltersGet()
+
         self.imagePath = imagePath
         self.img_size = img_size
         self.img = ImageLoading(self.imagePath, self.img_size)
@@ -62,5 +64,5 @@ if __name__ == "__main__":
 
     weight_local = "weights/yolov3_local.paths"
     img_size = 416
-    imagePath = "samples/dog.jpg"
+    imagePath = "data/dog.jpg"
     SplitTrainingClient(imagePath, img_size, config_path_local, compressionProps, weight_local).infer()
