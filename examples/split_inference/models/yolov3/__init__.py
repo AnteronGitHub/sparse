@@ -1,5 +1,7 @@
 from __future__ import division
 
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -9,6 +11,8 @@ import numpy as np
 import time as time
 import sys as sys
 import copy
+
+MODEL_PATH = "models/yolov3"
 
 
 def parse_model_config(path):
@@ -257,17 +261,18 @@ class YOLOLayer(nn.Module):
             return output, total_loss
 
 
-class NeuralNetwork(nn.Module):
+class YOLOv3(nn.Module):
     """YOLOv3 object detection model"""
 
     def __init__(self, config_path, img_size=416, compressionProp = [-1]):
-        super(NeuralNetwork, self).__init__()
-        self.module_defs = parse_model_config(config_path)
-        self.hyperparams, self.module_list = create_modules(self.module_defs)
+        super(YOLOv3, self).__init__()
+        self.module_defs = parse_model_config(os.path.join(MODEL_PATH, "yolov3.cfg"))
+        self.hyperparams, self.module_list, self.prev_filters = create_modules(self.module_defs)
         self.yolo_layers = [layer[0] for layer in self.module_list if hasattr(layer[0], "metrics")]
         self.img_size = img_size
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
+        self.load_state_dict(torch.load(os.path.join(MODEL_PATH, "yolov3.weights")))
 
 
     def forward(self, x, targets=None):
@@ -298,17 +303,18 @@ class NeuralNetwork(nn.Module):
         return (yolo_outputs) if targets is None else (loss, yolo_outputs)
 
 
-class NeuralNetwork_local(nn.Module):
+class YOLOv3_local(nn.Module):
     """YOLOv3 object detection model"""
 
-    def __init__(self, config_path, compressionProps, img_size=416):
-        super(NeuralNetwork_local, self).__init__()
-        self.module_defs = parse_model_config(config_path)
+    def __init__(self, compressionProps, img_size=416):
+        super(YOLOv3_local, self).__init__()
+        self.module_defs = parse_model_config(os.path.join(MODEL_PATH, "yolov3_local.cfg"))
         self.hyperparams, self.module_list, self.prev_filters = create_modules(self.module_defs)
         self.yolo_layers = [layer[0] for layer in self.module_list if hasattr(layer[0], "metrics")]
         self.img_size = img_size
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
+        self.load_state_dict(torch.load(os.path.join(MODEL_PATH, "yolov3_local.weights")))
         
 
     def prevfiltersGet(self):
@@ -341,19 +347,24 @@ class NeuralNetwork_local(nn.Module):
     
     
 
-class NeuralNetwork_server(nn.Module):
+class YOLOv3_server(nn.Module):
     """YOLOv3 object detection model"""
 
-    def __init__(self, config_path, compressionProps, prev_filters, img_size=416):
-        super(NeuralNetwork_server, self).__init__()
-        self.module_defs = parse_model_config(config_path)
-        self.prev_filters = prev_filters
+    def __init__(self, compressionProps, prev_filters=None, img_size=416):
+        super(YOLOv3_server, self).__init__()
+        self.module_defs = parse_model_config(os.path.join(MODEL_PATH, "yolov3_server.cfg"))
+        if prev_filters is not None:
+            self.prev_filters = prev_filters
+        else:
+            self.prev_filters = YOLOv3_local(compressionProps).prevfiltersGet()
         self.hyperparams, self.module_list, _ = create_modules(self.module_defs, self.prev_filters)
         #self.module_list = self.module_list[6:]
         self.yolo_layers = [layer[0] for layer in self.module_list if hasattr(layer[0], "metrics")]
         self.img_size = img_size
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
+        self.load_state_dict(torch.load(os.path.join(MODEL_PATH, "yolov3_server.weights")))
+
 
     def forward(self, x, targets=None, local=False):
         img_dim = self.img_size #x.shape[2]

@@ -6,18 +6,15 @@ from torch import nn
 
 from sparse.node.master import Master
 
-from models import NeuralNetwork_local
+from models.yolov3 import YOLOv3_local
 from serialization import encode_offload_request, decode_offload_response
 from utils import get_device, ImageLoading, non_max_suppression, save_detection
 
 class SplitInferenceClient(Master):
-    def __init__(self, img_size, config_path_local, compressionProps, weight_local):
+    def __init__(self, model):
         super().__init__()
         self.device = get_device()
-        self.model = NeuralNetwork_local(config_path_local, compressionProps)
-        self.model.load_state_dict(torch.load(weight_local))
-        self.img_size = img_size
-
+        self.model = model
 
     async def infer(self, epochs: int = 5):
         self.logger.info(
@@ -35,7 +32,7 @@ class SplitInferenceClient(Master):
                 start_time = time.time()
 
                 # Load image to processor memory
-                img = ImageLoading(imagePath, self.img_size)
+                img = ImageLoading(imagePath, self.model.img_size)
                 X = img.to(self.device)
                 load_time = time.time() - start_time
 
@@ -67,12 +64,9 @@ class SplitInferenceClient(Master):
 
 
 if __name__ == "__main__":
-    config_path_local = "config/yolov3_local.cfg"
     compressionProps = {} ###
     compressionProps['feature_compression_factor'] = 4 ### resolution compression factor, compress by how many times
     compressionProps['resolution_compression_factor'] = 1 ###layer compression factor, reduce by how many times TBD
 
-    weight_local = "weights/yolov3_local.paths"
-    img_size = 416
-    split_inference_client = SplitInferenceClient(img_size, config_path_local, compressionProps, weight_local)
+    split_inference_client = SplitInferenceClient(YOLOv3_local(compressionProps))
     asyncio.run(split_inference_client.infer())
