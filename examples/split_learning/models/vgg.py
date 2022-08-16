@@ -9,7 +9,7 @@ from models.compression_utils import decodingUnit
 
 
 class VGG(nn.Module):
-    def __init__(self, local, features, num_classes=1000, init_weights=True):
+    def __init__(self, features, local = False, num_classes=1000, init_weights=True):
         super(VGG, self).__init__()
         self.local = local
         self.features = features
@@ -164,13 +164,11 @@ cfg_server = {
 
 
 def NeuralNetwork(**kwargs):
-    local = True,
-    model = VGG(local, make_layers(cfg["A"]), **kwargs)  # E is 19, A is 11
+    model = VGG(make_layers(cfg["A"]), **kwargs)  # E is 19, A is 11
     return model
 
 
 def NeuralNetwork_local(
-    local = True,
     feature_compression_factor: int = 1,
     resolution_compression_factor: int = 1,
     **kwargs
@@ -180,13 +178,12 @@ def NeuralNetwork_local(
         "resolution_compression_factor": resolution_compression_factor,
     }
     model = VGG(
-        local, make_layers(cfg_local["A"], compression_props), **kwargs
+        make_layers(cfg_local["A"], compression_props), local = True, **kwargs
     )  # E is 19, A is 11, D is 16
     return model
 
 
 def NeuralNetwork_server(
-    local = False,
     feature_compression_factor: int = 1,
     resolution_compression_factor: int = 1,
     **kwargs
@@ -196,6 +193,6 @@ def NeuralNetwork_server(
         "resolution_compression_factor": resolution_compression_factor,
     }
     model = VGG(
-        local, make_layers(cfg_server["A"], compression_props, Prev_in_channels=128), **kwargs
+        make_layers(cfg_server["A"], compression_props, Prev_in_channels=128), local = False, **kwargs
     )  # for prev_channel, it is the last conv layer out channels in local
     return model
