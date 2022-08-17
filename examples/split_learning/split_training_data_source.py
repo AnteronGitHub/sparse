@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+from tqdm import tqdm
 
 from sparse.node.master import Master
 from sparse.dl.serialization import encode_offload_request, decode_offload_response
@@ -16,6 +17,7 @@ class SplitTrainingDataSource(Master):
     async def train(self, epochs: int = 1):
         self.logger.info(f"Starting streaming input data for training")
 
+        print(f"Training {epochs} epochs with {len(train_dataloader.dataset)} samples")
         for t in range(epochs):
             self.logger.info(f"--------- Epoch {t+1:>2d} ----------")
             size = len(self.train_dataloader.dataset)
@@ -35,11 +37,7 @@ if __name__ == "__main__":
     model_kind = "vgg"
     if model_kind == "vgg":
         from datasets.cifar10 import load_CIFAR10_dataset
-        (
-            train_dataloader,
-            test_dataloader,
-            classes,
-        ) = load_CIFAR10_dataset()
+        train_dataloader, classes = load_CIFAR10_dataset()
     else:
         from datasets.mnist_fashion import load_mnist_fashion_dataset
         (

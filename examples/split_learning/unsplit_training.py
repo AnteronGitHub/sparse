@@ -3,10 +3,10 @@ from torch import nn
 from tqdm import tqdm
 
 from datasets.cifar10 import load_CIFAR10_dataset
-from models.vgg import NeuralNetwork
+from models.vgg import VGG_full
 
 if __name__ == "__main__":
-    model = NeuralNetwork()
+    model = VGG_full()
     device = "cuda" if torch.cuda.is_available() else "cpu"
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)

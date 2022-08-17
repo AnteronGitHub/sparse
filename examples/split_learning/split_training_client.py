@@ -5,7 +5,7 @@ from sparse.node.master import Master
 from sparse.node.worker import Worker
 from sparse.dl.gradient_calculator import GradientCalculator
 
-from models.index import FIRST_SPLIT
+from models.vgg import VGG_client
 
 class SplitTrainingClient(Master, Worker):
     def __init__(self, task_executor):
@@ -13,8 +13,7 @@ class SplitTrainingClient(Master, Worker):
         Worker.__init__(self, task_executor = task_executor)
 
 if __name__ == "__main__":
-    model_kind = "vgg"
-    model = FIRST_SPLIT[model_kind]()
+    model = VGG_client()
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
 

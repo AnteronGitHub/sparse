@@ -163,36 +163,29 @@ cfg_server = {
 }  #CS, CL active
 
 
-def NeuralNetwork(**kwargs):
-    model = VGG(make_layers(cfg["A"]), **kwargs)  # E is 19, A is 11
-    return model
+class VGG_unsplit(VGG):
+    def __init__(self, **kwargs):
+        super().__init__(make_layers(cfg["A"]), **kwargs)
 
+class VGG_server(VGG):
+    def __init__(self,
+                 feature_compression_factor: int = 1,
+                 resolution_compression_factor: int = 1,
+                 **kwargs):
+        compression_props = {
+            "feature_compression_factor": feature_compression_factor,
+            "resolution_compression_factor": resolution_compression_factor,
+        }
+        super().__init__(make_layers(cfg_server["A"], compression_props, Prev_in_channels=128), local = False, **kwargs)
 
-def NeuralNetwork_local(
-    feature_compression_factor: int = 1,
-    resolution_compression_factor: int = 1,
-    **kwargs
-):
-    compression_props = {
-        "feature_compression_factor": feature_compression_factor,
-        "resolution_compression_factor": resolution_compression_factor,
-    }
-    model = VGG(
-        make_layers(cfg_local["A"], compression_props), local = True, **kwargs
-    )  # E is 19, A is 11, D is 16
-    return model
+class VGG_client(VGG):
+    def __init__(self,
+                 feature_compression_factor: int = 1,
+                 resolution_compression_factor: int = 1,
+                 **kwargs):
+        compression_props = {
+            "feature_compression_factor": feature_compression_factor,
+            "resolution_compression_factor": resolution_compression_factor,
+        }
+        super().__init__(make_layers(cfg_local["A"], compression_props), local = True, **kwargs)
 
-
-def NeuralNetwork_server(
-    feature_compression_factor: int = 1,
-    resolution_compression_factor: int = 1,
-    **kwargs
-):
-    compression_props = {
-        "feature_compression_factor": feature_compression_factor,
-        "resolution_compression_factor": resolution_compression_factor,
-    }
-    model = VGG(
-        make_layers(cfg_server["A"], compression_props, Prev_in_channels=128), local = False, **kwargs
-    )  # for prev_channel, it is the last conv layer out channels in local
-    return model
