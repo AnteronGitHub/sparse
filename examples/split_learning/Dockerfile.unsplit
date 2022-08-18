@@ -5,6 +5,8 @@
 ARG ARCH_TAG=amd64
 FROM sparse/pytorch:$ARCH_TAG
 
+RUN pip install tqdm
+
 WORKDIR /app
 
 COPY . .
