@@ -11,10 +11,15 @@ class NetworkMonitor(Monitor):
     def get_metrics(self):
         return super().get_metrics() + ',bytes_sent,bytes_recv'
 
+    def start(self):
+        super().start()
+        [bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout] = psutil.net_io_counters(pernic=True)[self.if_name]
+        self.initial_bytes_sent = bytes_sent
+        self.initial_bytes_recv = bytes_recv
+
     def read_stats(self):
-        time = super().get_stats()
-        nic_stats = psutil.net_io_counters(pernic=True)
-        [bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout] = nic_stats[self.if_name]
+        time = super().read_stats()
+        [bytes_sent, bytes_recv, packets_sent, packets_recv, errin, errout, dropin, dropout] = psutil.net_io_counters(pernic=True)[self.if_name]
         if self.initial_bytes_sent is None:
             self.initial_bytes_sent = bytes_sent
         if self.initial_bytes_recv is None:
