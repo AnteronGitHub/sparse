@@ -2,9 +2,9 @@ from torch import nn
 from torch.autograd import Variable
 
 
-class NeuralNetwork(nn.Module):
+class Small_unsplit(nn.Module):
     def __init__(self):
-        super(NeuralNetwork, self).__init__()
+        super().__init__()
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(28 * 28, 512),
@@ -20,9 +20,9 @@ class NeuralNetwork(nn.Module):
         return logits
 
 
-class NeuralNetwork_local(nn.Module):
+class Small_client(nn.Module):
     def __init__(self):
-        super(NeuralNetwork_local, self).__init__()
+        super().__init__()
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(nn.Linear(28 * 28, 512), nn.ReLU())
 
@@ -32,9 +32,9 @@ class NeuralNetwork_local(nn.Module):
         return logits
 
 
-class NeuralNetwork_server(nn.Module):
+class Small_server(nn.Module):
     def __init__(self):
-        super(NeuralNetwork_server, self).__init__()
+        super().__init__()
         self.flatten = nn.Flatten()
         self.linear_relu_stack = nn.Sequential(
             nn.Linear(512, 256), nn.ReLU(), nn.Linear(256, 10)

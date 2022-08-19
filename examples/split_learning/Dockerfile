@@ -9,4 +9,4 @@ WORKDIR /app
 
 COPY . .
 
-CMD ["python3", "unsplit_training_server.py"]
+CMD ["python3", "benchmark.py"]

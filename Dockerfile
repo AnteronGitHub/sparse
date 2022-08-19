@@ -10,6 +10,8 @@ ARG BASE_IMAGE=pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime
 
 FROM $BASE_IMAGE
 
+RUN pip install tqdm psutil jetson_stats
+
 # Install the library code
 ARG INSTALL_LOCATION=/usr/lib
 
