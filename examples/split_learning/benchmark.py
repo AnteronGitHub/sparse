@@ -54,6 +54,7 @@ def run_offload_final_benchmark(args):
     print('Offload final node benchmark suite')
     print('----------------------------------')
 
+    from models import ModelTrainingRepository
     from nodes.split_training_final import SplitTrainingFinal
 
     model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name)
