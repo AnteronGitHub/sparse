@@ -61,6 +61,10 @@ def run_offload_final_benchmark(args):
 
     SplitTrainingFinal(model=model, loss_fn=loss_fn, optimizer=optimizer).start()
 
+def run_monitor(args):
+    from sparse.stats.monitor_server import MonitorServer
+    MonitorServer().start()
+
 if __name__ == '__main__':
     args = parse_arguments()
 
@@ -70,5 +74,7 @@ if __name__ == '__main__':
         run_offload_intermediate_benchmark(args)
     elif args.suite == 'offload-final':
         run_offload_final_benchmark(args)
+    elif args.suite == 'monitor':
+        run_monitor(args)
     else:
         run_aio_benchmark(args)

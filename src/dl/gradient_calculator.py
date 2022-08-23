@@ -1,17 +1,20 @@
 from torch.autograd import Variable
 
+from ..stats.monitor_server import MonitorClient
 from ..task_executor import TaskExecutor
 
 from .serialization import decode_offload_request, encode_offload_request, decode_offload_response, encode_offload_response
 from .utils import get_device
 
 class GradientCalculator(TaskExecutor):
-    def __init__(self, model, loss_fn, optimizer):
+    def __init__(self, model, loss_fn, optimizer, benchmark = True):
         super().__init__()
         self.device = get_device()
         self.loss_fn = loss_fn
         self.model = model
         self.optimizer = optimizer
+        self.benchmark = benchmark
+        self.monitor_client = False
 
     def start(self):
         """Initialize executor by transferring the model to the processor memory."""
@@ -22,6 +25,10 @@ class GradientCalculator(TaskExecutor):
 
     async def execute_task(self, input_data: bytes) -> bytes:
         """Execute a single gradient computation for the offloaded layers."""
+        if self.benchmark and not self.monitor_client:
+            self.monitor_client = MonitorClient()
+            await self.monitor_client.start_benchmark()
+
         # Input de-serialization
         split_layer, labels = decode_offload_request(input_data)
         split_layer, labels = Variable(split_layer, requires_grad=True).to(
@@ -59,6 +66,10 @@ class GradientCalculator(TaskExecutor):
 
         # Result serialization
         result_data = encode_offload_response(split_layer.grad.to("cpu").detach(), loss)
+
+        if self.benchmark and self.monitor_client:
+            await self.monitor_client.task_processed()
+
         self.logger.debug("Executed task")
         return result_data
 

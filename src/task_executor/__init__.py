@@ -13,7 +13,10 @@ class TaskExecutor:
     def start(self):
         self.logger.debug("Starting task executor")
 
-    def set_logger(self, logger : logging.Logger = logging.getLogger("asyncio")):
+    def set_benchmark(self, benchmark):
+        self.benchmark = benchmark
+
+    def set_logger(self, logger : logging.Logger = logging.getLogger("sparse")):
         self.logger = logger
 
     async def execute_task(self, input_data : bytes) -> bytes:

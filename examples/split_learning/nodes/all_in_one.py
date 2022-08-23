@@ -1,9 +1,10 @@
+import asyncio
+
 import torch
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
-from sparse.stats.training_benchmark import TrainingBenchmark
-
-from models.vgg import VGG_unsplit
+from sparse.stats.monitor_server import MonitorClient
 
 class AllInOne():
     def __init__(self, dataset, classes, model, loss_fn, optimizer):
@@ -15,16 +16,16 @@ class AllInOne():
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
     def train(self, batches, batch_size, epochs, log_file_prefix):
-        benchmark = TrainingBenchmark(model_name=type(self.model).__name__,
-                                      batches=batches,
-                                      batch_size=batch_size,
-                                      epochs=epochs,
-                                      log_file_prefix=log_file_prefix)
+        monitor_client = MonitorClient()
 
         print(f"Using {self.device} for processing")
 
         self.model.to(self.device)
-        benchmark.start()
+
+        asyncio.run(monitor_client.start_benchmark())
+        progress_bar = tqdm(total=self.epochs*self.batches*self.batch_size,
+                            unit='samples',
+                            unit_scale=True)
         for t in range(epochs):
             for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
                 X, y = X.to(self.device), y.to(self.device)
@@ -35,8 +36,10 @@ class AllInOne():
                 loss.backward()
                 self.optimizer.step()
 
-                benchmark.add_point(len(X))
+                progress_bar.update(processed_samples)
+                asyncio.run(monitor_client.batch_processed(len(X)))
                 if batch + 1 >= batches:
                     break
 
-        benchmark.end()
+        progress_bar.close()
+        asyncio.run(monitor_client.stop_benchmark())
