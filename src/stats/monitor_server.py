@@ -3,10 +3,12 @@ import json
 import logging
 import socket
 
+from importlib.util import find_spec
 import time
 
 from ..logging.file_logger import FileLogger
 
+from .monitor.jetson_monitor import JetsonMonitor
 from .monitor.network_monitor import NetworkMonitor
 from .monitor.time_monitor import TimeMonitor
 from .monitor.training_monitor import TrainingMonitor
@@ -34,6 +36,8 @@ class MonitorServer():
         monitors.append(TimeMonitor())
         monitors.append(NetworkMonitor())
         monitors.append(TrainingMonitor())
+        if self._jtop_available():
+            monitors.append(JetsonMonitor())
         return monitors
 
     def _get_metrics(self):
@@ -47,6 +51,9 @@ class MonitorServer():
         for monitor in self.monitors:
             stats += monitor.get_stats()
         return stats
+
+    def _jtop_available(self):
+        return find_spec('jtop') is not None
 
     def log_stats(self):
         if self.stats_logger is not None:
@@ -82,6 +89,15 @@ class MonitorServer():
                 self.logger.info("Stopping benchmark due to timeout")
                 self.stop_benchmark()
             await asyncio.sleep(1.0/self.update_frequency_ps - time_elapsed)
+
+    async def run_jetson_monitor(self):
+        self.logger.info("Starting jetson monitor")
+        with jtop() as jetson:
+            while jetson.ok():
+                self.log_stats()
+                if self.previous_message is not None and start_time - self.previous_message >= self.timeout:
+                    self.logger.info("Stopping benchmark due to timeout")
+                    self.stop_benchmark()
 
     async def receive_message(self, reader : asyncio.StreamReader, writer : asyncio.StreamWriter) -> None:
         """Generic callback function which passes offloaded task directly to the task executor.
