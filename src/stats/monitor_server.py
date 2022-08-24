@@ -16,7 +16,7 @@ from .monitor.training_monitor import TrainingMonitor
 class MonitorServer():
     def __init__(self,
                  update_frequency_ps = 2,
-                 timeout = 10,
+                 timeout = 30,
                  socket_path = 'sparse-benchmark.socket',
                  log_file_prefix = 'executor-benchmark'):
 
