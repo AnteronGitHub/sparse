@@ -1,4 +1,5 @@
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 from sparse.dl.serialization import encode_offload_request, decode_offload_response
 from sparse.node.master import Master
@@ -17,17 +18,22 @@ class TrainingDataSource(Master):
             monitor_client = MonitorClient()
             await monitor_client.start()
 
+        progress_bar = tqdm(total=batch_size*batches*epochs,
+                            unit='samples',
+                            unit_scale=True)
         for t in range(epochs):
             for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
                 input_data = encode_offload_request(X, y)
                 result_data = await self.task_deployer.deploy_task(input_data)
                 split_grad, loss = decode_offload_response(result_data)
 
+                progress_bar.update(len(X))
                 if self.benchmark:
                     await monitor_client.batch_processed(len(X))
 
                 if batch + 1 >= batches:
                     break
 
+        progress_bar.close()
         if self.benchmark:
             await monitor_client.stop()
