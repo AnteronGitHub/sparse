@@ -5,6 +5,7 @@ class MonitorClient():
     def __init__(self,
                  socket_path = 'sparse-benchmark.socket'):
         self.socket_path = socket_path
+        self.active_tasks = set()
 
     async def _send_message(self, message):
         reader, writer = await asyncio.open_unix_connection(self.socket_path)
@@ -14,14 +15,22 @@ class MonitorClient():
         writer.close()
 
     def start_benchmark(self, log_file_prefix = 'benchmark_sparse'):
-        asyncio.create_task(self._send_message(json.dumps({"event": "start", "log_file_prefix": log_file_prefix}).encode()))
+        task = asyncio.create_task(self._send_message(json.dumps({"event": "start", "log_file_prefix": log_file_prefix}).encode()))
+        self.active_tasks.add(task)
+        task.add_done_callback(self.active_tasks.discard)
 
     def stop_benchmark(self):
-        asyncio.create_task(self._send_message(json.dumps({"event": "stop"}).encode()))
+        task = asyncio.create_task(self._send_message(json.dumps({"event": "stop"}).encode()))
+        self.active_tasks.add(task)
+        task.add_done_callback(self.active_tasks.discard)
 
     def batch_processed(self, batch_size : int):
-        asyncio.create_task(self._send_message(json.dumps({"event": "batch_processed", "batch_size": batch_size}).encode()))
+        task = asyncio.create_task(self._send_message(json.dumps({"event": "batch_processed", "batch_size": batch_size}).encode()))
+        self.active_tasks.add(task)
+        task.add_done_callback(self.active_tasks.discard)
 
     def task_processed(self):
-        asyncio.create_task(self._send_message(json.dumps({"event": "task_processed"}).encode()))
+        task = asyncio.create_task(self._send_message(json.dumps({"event": "task_processed"}).encode()))
+        self.active_tasks.add(task)
+        task.add_done_callback(self.active_tasks.discard)
 
