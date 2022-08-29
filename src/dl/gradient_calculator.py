@@ -1,3 +1,4 @@
+import asyncio
 from torch.autograd import Variable
 
 from ..stats.monitor_server import MonitorClient
@@ -27,7 +28,7 @@ class GradientCalculator(TaskExecutor):
         """Execute a single gradient computation for the offloaded layers."""
         if self.benchmark and not self.monitor_client:
             self.monitor_client = MonitorClient()
-            await self.monitor_client.start_benchmark()
+            asyncio.create_task(self.monitor_client.start_benchmark())
 
         # Input de-serialization
         split_layer, labels = decode_offload_request(input_data)
@@ -68,7 +69,7 @@ class GradientCalculator(TaskExecutor):
         result_data = encode_offload_response(split_layer.grad.to("cpu").detach(), loss)
 
         if self.benchmark and self.monitor_client:
-            await self.monitor_client.task_processed()
+            asyncio.create_task(self.monitor_client.task_processed())
 
         self.logger.debug("Executed task")
         return result_data

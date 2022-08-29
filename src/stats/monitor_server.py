@@ -105,6 +105,9 @@ class MonitorServer():
         """
         self.previous_message = time.time()
         input_data = await reader.read()
+        writer.write("ACK".encode())
+        writer.write_eof()
+        writer.close()
         payload = json.loads(input_data.decode())
         if payload['event'] == 'start':
             self.start_benchmark()
@@ -114,10 +117,6 @@ class MonitorServer():
             self.batch_processed(payload['batch_size'])
         elif payload['event'] == 'task_processed':
             self.task_processed()
-
-        writer.write(input_data)
-        writer.write_eof()
-        writer.close()
 
     async def run_server(self):
         self.logger.info(f"Starting the monitoring server on '{self.socket_path}'")
