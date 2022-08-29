@@ -1,6 +1,7 @@
 import asyncio
 import logging
 
+from ..stats.monitor_client import MonitorClient
 from ..task_executor import TaskExecutor
 
 class RXPipe:
@@ -14,15 +15,22 @@ class RXPipe:
     def __init__(self,
                  task_executor : TaskExecutor,
                  listen_address : str,
-                 listen_port : int):
+                 listen_port : int,
+                 benchmark = True):
         self.listen_address = listen_address
         self.listen_port = listen_port
         self.task_executor = task_executor
+        self.benchmark = benchmark
+        self.monitor_client = False
 
     async def receive_task(self, reader : asyncio.StreamReader, writer : asyncio.StreamWriter) -> None:
         """Generic callback function which passes offloaded task directly to the task executor.
 
         """
+        if self.benchmark and not self.monitor_client:
+            self.monitor_client = MonitorClient()
+            asyncio.create_task(self.monitor_client.start_benchmark())
+
         self.logger.debug("Reading task input data...")
         input_data = await reader.read()
 
@@ -33,6 +41,9 @@ class RXPipe:
         writer.write(result_data)
         await writer.drain()
         writer.close()
+
+        if self.benchmark and self.monitor_client:
+            asyncio.create_task(self.monitor_client.task_processed())
         self.logger.info("Finished streaming task result.")
 
     def set_logger(self, logger : logging.Logger):

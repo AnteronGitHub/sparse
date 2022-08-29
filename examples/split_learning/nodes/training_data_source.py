@@ -3,7 +3,7 @@ from tqdm import tqdm
 
 from sparse.dl.serialization import encode_offload_request, decode_offload_response
 from sparse.node.master import Master
-from sparse.stats.monitor_server import MonitorClient
+from sparse.stats.monitor_client import MonitorClient
 
 class TrainingDataSource(Master):
     def __init__(self, dataset, classes, model_name, benchmark = False):
