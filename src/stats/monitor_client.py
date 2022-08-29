@@ -13,15 +13,15 @@ class MonitorClient():
         data = await reader.read(100)
         writer.close()
 
-    async def start_benchmark(self):
-        await self._send_message(json.dumps({"event": "start"}).encode())
+    def start_benchmark(self, log_file_prefix = 'benchmark_sparse'):
+        asyncio.create_task(self._send_message(json.dumps({"event": "start", "log_file_prefix": log_file_prefix}).encode()))
 
-    async def stop_benchmark(self):
-        await self._send_message(json.dumps({"event": "stop"}).encode())
+    def stop_benchmark(self):
+        asyncio.create_task(self._send_message(json.dumps({"event": "stop"}).encode()))
 
-    async def batch_processed(self, batch_size : int):
-        await self._send_message(json.dumps({"event": "batch_processed", "batch_size": batch_size}).encode())
+    def batch_processed(self, batch_size : int):
+        asyncio.create_task(self._send_message(json.dumps({"event": "batch_processed", "batch_size": batch_size}).encode()))
 
-    async def task_processed(self):
-        await self._send_message(json.dumps({"event": "task_processed"}).encode())
+    def task_processed(self):
+        asyncio.create_task(self._send_message(json.dumps({"event": "task_processed"}).encode()))
 

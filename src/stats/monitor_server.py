@@ -17,15 +17,13 @@ class MonitorServer():
     def __init__(self,
                  update_frequency_ps = 2,
                  timeout = 30,
-                 socket_path = 'sparse-benchmark.socket',
-                 log_file_prefix = 'executor-benchmark'):
+                 socket_path = 'sparse-benchmark.socket'):
 
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=logging.INFO)
         self.logger = logging.getLogger("sparse")
         self.update_frequency_ps = update_frequency_ps
         self.timeout = timeout
         self.socket_path = socket_path
-        self.log_file_prefix = log_file_prefix
         self.monitors = self._init_monitors()
 
         self.stats_logger = None
@@ -59,9 +57,9 @@ class MonitorServer():
         if self.stats_logger is not None:
             self.stats_logger.log_row(self._get_stats())
 
-    def start_benchmark(self):
+    def start_benchmark(self, log_file_prefix = 'benchmark_sparse'):
         self.logger.info("Starting a new benchmark")
-        self.stats_logger = FileLogger(file_prefix=f"{self.log_file_prefix}")
+        self.stats_logger = FileLogger(file_prefix=f"{log_file_prefix}")
         self.stats_logger.log_row(self._get_metrics())
 
     def stop_benchmark(self):
@@ -110,7 +108,7 @@ class MonitorServer():
         writer.close()
         payload = json.loads(input_data.decode())
         if payload['event'] == 'start':
-            self.start_benchmark()
+            self.start_benchmark(payload['log_file_prefix'])
         elif payload['event'] == 'stop':
             self.stop_benchmark()
         elif payload['event'] == 'batch_processed':

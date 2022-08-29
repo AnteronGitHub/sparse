@@ -16,11 +16,14 @@ class RXPipe:
                  task_executor : TaskExecutor,
                  listen_address : str,
                  listen_port : int,
-                 benchmark = True):
+                 benchmark = True,
+                 benchmark_log_file_prefix = 'benchmark_sparse'):
         self.listen_address = listen_address
         self.listen_port = listen_port
         self.task_executor = task_executor
         self.benchmark = benchmark
+        self.benchmark_log_file_prefix = benchmark_log_file_prefix
+
         self.monitor_client = False
 
     async def receive_task(self, reader : asyncio.StreamReader, writer : asyncio.StreamWriter) -> None:
@@ -29,7 +32,7 @@ class RXPipe:
         """
         if self.benchmark and not self.monitor_client:
             self.monitor_client = MonitorClient()
-            asyncio.create_task(self.monitor_client.start_benchmark())
+            self.monitor_client.start_benchmark(self.benchmark_log_file_prefix)
 
         self.logger.debug("Reading task input data...")
         input_data = await reader.read()
@@ -43,7 +46,7 @@ class RXPipe:
         writer.close()
 
         if self.benchmark and self.monitor_client:
-            asyncio.create_task(self.monitor_client.task_processed())
+            self.monitor_client.task_processed()
         self.logger.info("Finished streaming task result.")
 
     def set_logger(self, logger : logging.Logger):
@@ -52,10 +55,14 @@ class RXPipe:
     def start(self):
         pass
 
-def get_supported_rx_pipe(task_executor : TaskExecutor, listen_address : str, listen_port : int, legacy_asyncio : bool = False):
+def get_supported_rx_pipe(task_executor : TaskExecutor,
+                          listen_address : str,
+                          listen_port : int,
+                          legacy_asyncio : bool = False,
+                          benchmark_log_file_prefix = 'benchmark_sparse'):
     if legacy_asyncio:
         from .rx_pipe_legacy import RXPipeLegacy
-        return RXPipeLegacy(task_executor, listen_address, listen_port)
+        return RXPipeLegacy(task_executor, listen_address, listen_port, benchmark_log_file_prefix = benchmark_log_file_prefix)
     else:
         from .rx_pipe_latest import RXPipeLatest
-        return RXPipeLatest(task_executor, listen_address, listen_port)
+        return RXPipeLatest(task_executor, listen_address, listen_port, benchmark_log_file_prefix = benchmark_log_file_prefix)

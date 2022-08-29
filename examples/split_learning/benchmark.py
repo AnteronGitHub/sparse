@@ -7,8 +7,11 @@ def parse_arguments():
     parser.add_argument('--batches', default=64, type=int)
     parser.add_argument('--batch-size', default=64, type=int)
     parser.add_argument('--epochs', default=1, type=int)
-    parser.add_argument('--log-file-prefix', default='training-benchmark', type=str)
+    parser.add_argument('--benchmark-node-name', default='amd64', type=str)
     return parser.parse_args()
+
+def _get_benchmark_log_file_prefix(args):
+    return f"benchmark_split_learning_{args.suite}-node-{args.model_name}-{args.epochs}-{args.batch_size}"
 
 def run_aio_benchmark(args):
     print('All-in-one benchmark suite')
@@ -24,7 +27,7 @@ def run_aio_benchmark(args):
     AllInOne(dataset, classes, model, loss_fn, optimizer).train(args.batches,
                                                                 args.batch_size,
                                                                 args.epochs,
-                                                                args.log_file_prefix)
+                                                                _get_benchmark_log_file_prefix(args))
 
 def run_offload_datasource_benchmark(args):
     print('Offload data source benchmark suite')
@@ -38,7 +41,7 @@ def run_offload_datasource_benchmark(args):
     asyncio.run(TrainingDataSource(dataset, classes, 'VGG_unsplit').train(args.batch_size,
                                                                           args.batches,
                                                                           args.epochs,
-                                                                          args.log_file_prefix))
+                                                                          log_file_prefix = _get_benchmark_log_file_prefix(args)))
 def run_offload_intermediate_benchmark(args):
     print('Offload intermediate node benchmark suite')
     print('-----------------------------------------')
@@ -59,7 +62,10 @@ def run_offload_final_benchmark(args):
 
     model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name)
 
-    SplitTrainingFinal(model=model, loss_fn=loss_fn, optimizer=optimizer).start()
+    SplitTrainingFinal(model=model,
+                       loss_fn=loss_fn,
+                       optimizer=optimizer,
+                       benchmark_log_file_prefix = _get_benchmark_log_file_prefix(args)).start()
 
 def run_monitor(args):
     from sparse.stats.monitor_server import MonitorServer
@@ -68,11 +74,11 @@ def run_monitor(args):
 if __name__ == '__main__':
     args = parse_arguments()
 
-    if args.suite == 'offload-source':
+    if args.suite == 'offload_source':
         run_offload_datasource_benchmark(args)
-    elif args.suite == 'offload-intermediate':
+    elif args.suite == 'offload_intermediate':
         run_offload_intermediate_benchmark(args)
-    elif args.suite == 'offload-final':
+    elif args.suite == 'offload_final':
         run_offload_final_benchmark(args)
     elif args.suite == 'monitor':
         run_monitor(args)
