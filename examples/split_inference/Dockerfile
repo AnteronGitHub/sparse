@@ -11,4 +11,4 @@ WORKDIR /app
 
 COPY . .
 
-CMD ["python3", "split_inference_server.py"]
+CMD ["python3", "benchmark.py"]

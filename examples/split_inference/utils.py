@@ -11,7 +11,7 @@ from PIL import Image
 def get_device():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     #device = "cpu"
-    print(f"Using {device} device")
+    #print(f"Using {device} device")
     return device
 
 def ImageLoading(imagePath,img_size):

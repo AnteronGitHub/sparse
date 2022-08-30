@@ -13,8 +13,8 @@ from utils import get_device
 class InferenceCalculator(TaskExecutor):
     def __init__(self, model):
         super().__init__()
-        self.device = get_device()
         self.model = model
+        self.device = get_device()
 
     def start(self):
         """Initialize executor by transferring the model to the processor memory."""
@@ -30,10 +30,11 @@ class InferenceCalculator(TaskExecutor):
         # Result serialization
         return encode_offload_response(pred.to("cpu").detach())
 
-if __name__ == "__main__":
-    compressionProps = {} ###
-    compressionProps['feature_compression_factor'] = 4 ### resolution compression factor, compress by how many times
-    compressionProps['resolution_compression_factor'] = 1 ###layer compression factor, reduce by how many times TBD
+class SplitInferenceFinal(Worker):
+    def __init__(self):
+        compressionProps = {}
+        compressionProps['feature_compression_factor'] = 4
+        compressionProps['resolution_compression_factor'] = 1
 
-    split_training_server = Worker(task_executor=InferenceCalculator(YOLOv3_server(compressionProps)))
-    split_training_server.start()
+        Worker.__init__(self,
+                        task_executor = InferenceCalculator(YOLOv3_server(compressionProps)))

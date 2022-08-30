@@ -32,7 +32,11 @@ class RXPipe:
         """
         if self.benchmark and not self.monitor_client:
             self.monitor_client = MonitorClient()
-            self.monitor_client.start_benchmark(self.benchmark_log_file_prefix)
+            try:
+                self.monitor_client.start_benchmark(self.benchmark_log_file_prefix)
+            except FileNotFoundError:
+                self.logger.info("Unable to connect to monitor server. Not benchmarking")
+                self.benchmark = False
 
         self.logger.debug("Reading task input data...")
         input_data = await reader.read()

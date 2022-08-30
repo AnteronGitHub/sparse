@@ -264,15 +264,15 @@ class YOLOLayer(nn.Module):
 class YOLOv3(nn.Module):
     """YOLOv3 object detection model"""
 
-    def __init__(self, config_path, img_size=416, compressionProp = [-1]):
+    def __init__(self, config_path = "yolov3.cfg", img_size=416, compressionProps = [-1]):
         super(YOLOv3, self).__init__()
-        self.module_defs = parse_model_config(os.path.join(MODEL_PATH, "yolov3.cfg"))
+        self.module_defs = parse_model_config(os.path.join(MODEL_PATH, config_path))
         self.hyperparams, self.module_list, self.prev_filters = create_modules(self.module_defs)
         self.yolo_layers = [layer[0] for layer in self.module_list if hasattr(layer[0], "metrics")]
         self.img_size = img_size
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
-        self.load_state_dict(torch.load(os.path.join(MODEL_PATH, "yolov3.weights")))
+        self.load_state_dict(torch.load(os.path.join(MODEL_PATH, "yolov3_all.paths")))
 
 
     def forward(self, x, targets=None):
@@ -403,10 +403,10 @@ def to_cpu(tensor):
 class Darknet(nn.Module):
     """YOLOv3 object detection model"""
 
-    def __init__(self, config_path, img_size=416):
+    def __init__(self, config_path = "yolov3.cfg", img_size=416):
         super(Darknet, self).__init__()
-        self.module_defs = parse_model_config(config_path)
-        self.hyperparams, self.module_list = create_modules(self.module_defs)
+        self.module_defs = parse_model_config(os.path.join(MODEL_PATH, config_path))
+        self.hyperparams, self.module_list, _ = create_modules(self.module_defs)
         self.yolo_layers = [layer[0] for layer in self.module_list if hasattr(layer[0], "metrics")]
         self.img_size = img_size
         self.seen = 0
