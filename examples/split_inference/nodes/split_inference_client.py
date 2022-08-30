@@ -58,7 +58,6 @@ class SplitInferenceClient(Master):
 
         self.logger.info("Done!")
 
-
 if __name__ == "__main__":
     compressionProps = {}
     compressionProps['feature_compression_factor'] = 4

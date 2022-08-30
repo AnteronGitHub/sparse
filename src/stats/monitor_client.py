@@ -20,10 +20,15 @@ class MonitorClient():
         except FileNotFoundError:
             raise MonitorServerUnavailableError
 
+    def _task_done(self, task):
+        if task.exception() is not None:
+            print(f"Monitor could not be updated.")
+        self.active_tasks.discard(task)
+
     def submit_event(self, task_payload):
         task = asyncio.create_task(self._send_message(json.dumps(task_payload).encode()))
         self.active_tasks.add(task)
-        task.add_done_callback(self.active_tasks.discard)
+        task.add_done_callback(self._task_done)
 
     def start_benchmark(self, log_file_prefix = 'benchmark_sparse'):
         self.submit_event({"event": "start", "log_file_prefix": log_file_prefix})

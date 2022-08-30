@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from sparse.stats.monitor_server import MonitorClient
+from sparse.stats.monitor_client import MonitorClient
 
 class AllInOne():
     def __init__(self, dataset, classes, model, loss_fn, optimizer):
@@ -15,15 +15,15 @@ class AllInOne():
         self.optimizer = optimizer
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    def train(self, batches, batch_size, epochs, log_file_prefix):
+    async def train(self, batches, batch_size, epochs, log_file_prefix):
         monitor_client = MonitorClient()
 
         print(f"Using {self.device} for processing")
 
         self.model.to(self.device)
 
-        asyncio.run(monitor_client.start_benchmark())
-        progress_bar = tqdm(total=self.epochs*self.batches*self.batch_size,
+        monitor_client.start_benchmark()
+        progress_bar = tqdm(total=epochs*batches*batch_size,
                             unit='samples',
                             unit_scale=True)
         for t in range(epochs):
@@ -36,10 +36,10 @@ class AllInOne():
                 loss.backward()
                 self.optimizer.step()
 
-                progress_bar.update(processed_samples)
-                asyncio.run(monitor_client.batch_processed(len(X)))
+                progress_bar.update(len(X))
+                monitor_client.batch_processed(len(X))
                 if batch + 1 >= batches:
                     break
 
         progress_bar.close()
-        asyncio.run(monitor_client.stop_benchmark())
+        monitor_client.stop_benchmark()

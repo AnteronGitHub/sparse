@@ -17,6 +17,7 @@ def run_aio_benchmark(args):
     print('All-in-one benchmark suite')
     print('--------------------------')
 
+    import asyncio
     from datasets import DatasetRepository
     from models import ModelTrainingRepository
     from nodes.all_in_one import AllInOne
@@ -24,10 +25,10 @@ def run_aio_benchmark(args):
     dataset, classes = DatasetRepository().get_dataset(args.model_name)
     model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name)
 
-    AllInOne(dataset, classes, model, loss_fn, optimizer).train(args.batches,
-                                                                args.batch_size,
-                                                                args.epochs,
-                                                                _get_benchmark_log_file_prefix(args))
+    asyncio.run(AllInOne(dataset, classes, model, loss_fn, optimizer).train(args.batches,
+                                                                            args.batch_size,
+                                                                            args.epochs,
+                                                                            _get_benchmark_log_file_prefix(args)))
 
 def run_offload_datasource_benchmark(args):
     print('Offload data source benchmark suite')

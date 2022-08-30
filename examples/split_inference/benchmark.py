@@ -24,6 +24,13 @@ def run_offload_client_benchmark(args):
 
     asyncio.run(SplitInferenceClient().infer())
 
+def run_offload_intermediate_benchmark(args):
+    print('Offload intermediate node benchmark suite')
+    print('-----------------------------------------')
+
+    from nodes.split_inference_intermediate import SplitInferenceIntermediate
+    SplitInferenceIntermediate().start()
+
 def run_offload_final_benchmark(args):
     print('Offload final node benchmark suite')
     print('----------------------------------')
@@ -40,10 +47,12 @@ if __name__ == "__main__":
     args = parse_arguments()
     if args.suite == 'aio':
         run_aio_benchmark(args)
-    elif args.suite == 'offload_final':
-        run_offload_final_benchmark(args)
     elif args.suite == 'offload_client':
         run_offload_client_benchmark(args)
+    elif args.suite == 'offload_intermediate':
+        run_offload_intermediate_benchmark(args)
+    elif args.suite == 'offload_final':
+        run_offload_final_benchmark(args)
     elif args.suite == 'monitor':
         run_monitor(args)
     else:
