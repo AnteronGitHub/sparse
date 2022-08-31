@@ -70,7 +70,7 @@ To test that the program was installed correctly, run the infernce suite with an
 command:
 
 ```
-make run-infernce-aio
+make run-inference-aio
 ```
 
 ### Unsplit offloaded
