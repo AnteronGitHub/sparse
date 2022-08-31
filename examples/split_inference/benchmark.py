@@ -5,6 +5,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--suite', default='aio', type=str)
     parser.add_argument('--benchmark-node-name', default='amd64', type=str)
+    parser.add_argument('--model', default='YOLOv3_server', type=str)
     parser.add_argument('--inferences-to-be-run', default=100, type=int)
     return parser.parse_args()
 
@@ -24,6 +25,15 @@ def run_offload_client_benchmark(args):
 
     asyncio.run(SplitInferenceClient().infer())
 
+def run_offload_datasource_benchmark(args):
+    print('Offload data source benchmark suite')
+    print('-----------------------------------')
+
+    import asyncio
+    from nodes.inference_data_source import InferenceDataSource
+
+    asyncio.run(InferenceDataSource().start())
+
 def run_offload_intermediate_benchmark(args):
     print('Offload intermediate node benchmark suite')
     print('-----------------------------------------')
@@ -37,7 +47,22 @@ def run_offload_final_benchmark(args):
 
     from nodes.split_inference_final import SplitInferenceFinal
 
-    SplitInferenceFinal().start()
+
+    compressionProps = {}
+    compressionProps['feature_compression_factor'] = 4
+    compressionProps['resolution_compression_factor'] = 1
+
+    if args.model == "YOLOv3_server":
+        from models.yolov3 import YOLOv3_server
+        model = YOLOv3_server(compressionProps = compressionProps)
+    elif args.model == "YOLOv3":
+        from models.yolov3 import YOLOv3
+        model = YOLOv3(compressionProps = compressionProps)
+    else:
+        print("Available models: 'YOLOv3_server', 'YOLOv3'")
+
+
+    SplitInferenceFinal(model).start()
 
 def run_monitor(args):
     from sparse.stats.monitor_server import MonitorServer
@@ -47,6 +72,8 @@ if __name__ == "__main__":
     args = parse_arguments()
     if args.suite == 'aio':
         run_aio_benchmark(args)
+    elif args.suite == 'offload_source':
+        run_offload_datasource_benchmark(args)
     elif args.suite == 'offload_client':
         run_offload_client_benchmark(args)
     elif args.suite == 'offload_intermediate':

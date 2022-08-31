@@ -1,8 +1,8 @@
-uid := $(shell id -u)
+uid             := $(shell id -u)
 base_image_file := $(abspath ../../.DOCKER)
-py_sources := $(shell find . -iname *.py)
+py_sources      := $(shell find . -iname *.py)
 
-docker_image := split_learning
+docker_image      := split_inference
 docker_build_file := .DOCKER
 
 .PHONY: all
@@ -18,7 +18,7 @@ run-aio: | $(docker_build_file)
 
 .PHONY: run-monitor
 run-monitor: | $(docker_build_file)
-	docker run --name learning_monitor \
+	docker run --name inference_monitor \
                -u $(uid) \
 			   -v $(abspath ../../src):/usr/lib/sparse \
 			   -v $(abspath .):/app \
@@ -27,7 +27,7 @@ run-monitor: | $(docker_build_file)
 
 .PHONY: run-data-source
 run-data-source: | $(docker_build_file)
-	docker run --name split_learning_source \
+	docker run --name split_inference_source \
                --network host \
 			   -u $(uid) \
 			   -v $(abspath ../../src):/usr/lib/sparse \
@@ -37,39 +37,39 @@ run-data-source: | $(docker_build_file)
 
 .PHONY: run-unsplit-final
 run-unsplit-final: | $(docker_build_file)
-	docker run --name split_learning_final \
+	docker run --name split_inference_final \
                --network host \
 			   -u $(uid) \
 			   -v $(abspath ../../src):/usr/lib/sparse \
 			   -v $(abspath .):/app \
 			   -d $(docker_image) \
-			   python benchmark.py --suite offload_final
+			   python benchmark.py --suite offload_final --model YOLOv3
 
 .PHONY: run-split-final
 run-split-final: | $(docker_build_file)
-	docker run --name split_learning_final \
+	docker run --name split_inference_final \
                --network host \
 			   -u $(uid) \
 			   -e WORKER_LISTEN_PORT=50008 \
 			   -v $(abspath ../../src):/usr/lib/sparse \
 			   -v $(abspath .):/app \
 			   -d $(docker_image) \
-			   python benchmark.py --suite offload_final --model VGG_server
+			   python benchmark.py --suite offload_final --model YOLOv3_server
 
 .PHONY: run-split-intermediate
 run-split-intermediate: | $(docker_build_file)
-	docker run --name split_learning_intermediate \
+	docker run --name split_inference_intermediate \
                --network host \
 			   -u $(uid) \
 			   -e MASTER_UPSTREAM_PORT=50008 \
 			   -v $(abspath ../../src):/usr/lib/sparse \
 			   -v $(abspath .):/app \
 			   -d $(docker_image) \
-			   python benchmark.py --suite offload_intermediate --model VGG_client
+			   python benchmark.py --suite offload_intermediate --model YOLOv3_client
 
 .PHONY: clean
 clean:
-	docker kill learning_monitor split_learning_source split_learning_final split_learning_intermediate
+	docker kill inference_monitor split_inference_source split_inference_final split_inference_intermediate
 	rm -f $(docker_build_file)
 
 $(docker_build_file): $(py_sources) $(base_image_file)

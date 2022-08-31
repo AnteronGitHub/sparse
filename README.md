@@ -38,7 +38,7 @@ command:
 make run-learning-aio
 ```
 
-### Unsplit offloaded training
+### Unsplit offloaded
 
 First start the unsplit training server with the following command:
 ```
@@ -50,7 +50,7 @@ Then start the data source with the following command:
 make run-learning-data-source
 ```
 
-### Split offloaded training
+### Split offloaded
 
 First start the split training nodes with the following command:
 ```
@@ -60,6 +60,51 @@ make run-learning-split
 Then start the data source with the following command:
 ```
 make run-learning-data-source
+```
+
+## Run Inference
+
+### All-In-One
+
+To test that the program was installed correctly, run the infernce suite with an unsplit model with the following
+command:
+
+```
+make run-infernce-aio
+```
+
+### Unsplit offloaded
+
+First start the unsplit inference server with the following command:
+```
+make run-inference-unsplit
+```
+
+Then start the data source with the following command:
+```
+make run-inference-data-source
+```
+
+### Split offloaded
+
+First start the split inference nodes with the following command:
+```
+make run-inference-split
+```
+
+
+## Collect statistics
+
+In order to collect benchmark statistics for training, before running the suite with the above instructions, start the
+monitor server by running the following command:
+
+```
+make run-learning-monitor
+```
+
+The statistics for inference can be collected with the following command:
+```
+make run-inference-monitor
 ```
 
 ## Configure
@@ -74,23 +119,6 @@ are used.
 | Master upstream port    | MASTER_UPSTREAM_PORT  | 50007         |
 | Worker listen address   | WORKER_LISTEN_ADDRESS | 127.0.0.1     |
 | Worker listen port      | WORKER_LISTEN_PORT    | 50007         |
-
-## Collect statistics
-
-On Jetson devices, it is possible to collect hardware usage statistics. This is implemented by using
-[jetson_stats](https://github.com/rbonghi/jetson_stats) toolkit.
-
-The Python requirements can be installed with the following command:
-```
-pip3 install -r requirements.txt
-```
-
-Once installed, statistics collection can be started by running:
-```
-make collect-stats
-```
-
-The collection program can be stopped with `Ctrl+C`.
 
 ## Uninstall
 
