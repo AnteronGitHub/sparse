@@ -1,2 +1,6 @@
-**/__pycache__
-**/data
+./data
+./run
+./examples/**
+./**/__pycache__
+./**/data
+./**/*.socket

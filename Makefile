@@ -1,80 +1,58 @@
-py_dir              := ./src
-py_jetson_demo      := $(py_dir)/jetson_demo.py
-py_segnet           := $(py_dir)/segnet.py
-py_client           := $(py_dir)/split_training_client.py
-py_client_requirements  := requirements-client.txt
-py_server           := $(py_dir)/split_training_server.py
-py_stats            := ./collect_statistics.py
-py_cache            := $(shell find . -iname __pycache__)
-py_venv             := venv
+uid := $(shell id -u)
 
-data_dir            := data
+pycache := $(shell find . -iname __pycache__)
 
-samples_dir            := $(data_dir)/samples
-samples_init_script    := ./scripts/init-test-data.sh
-sample_classification  := orange_0.jpg
-sample_segmentation    := city_0.jpg
+sparse_src := src
+sparse_py  := $(shell find $(sparse_src) -iname *.py)
 
-stats_dir           := $(data_dir)/stats
+docker_image      := sparse/pytorch
+dockerfile        := Dockerfile
+docker_build_file := .DOCKER
 
-build_dir := build
-
-jetson_install_pytorch_script        := ./scripts/jetson-install-pytorch.sh
-jetson_install_torchvision_script    := ./scripts/jetson-install-torchvision.sh
-
-$(samples_dir)/$(sample_classification):
-	$(samples_init_script) $(samples_dir) $(sample_classification)
-
-$(samples_dir)/$(sample_segmentation):
-	$(samples_init_script) $(samples_dir) $(sample_segmentation)
-
-$(stats_dir):
-	mkdir -p $(stats_dir)
-
-$(py_venv): $(py_venv)/touchfile
-
-$(py_venv)/touchfile: $(py_client_requirements)
-	python3 -m venv $(py_venv)
-	$(py_venv)/bin/pip install -r $(py_client_requirements)
-	touch $(py_venv)/touchfile
-
-.PHONY: jetson-dependencies
-jetson-dependencies:
-	$(jetson_install_pytorch_script)
-	$(jetson_install_torchvision_script)
-
-.PHONY: run-jetson-demo
-run-jetson-demo: $(samples_dir)/$(sample_classification)
-	python3 $(py_jetson_demo) $(samples_dir)/$(sample_classification)
-
-.PHONY: run-segnet
-run-segnet: $(samples_dir)/$(sample_segmentation)
-	python3 $(py_segnet) $(samples_dir)/$(sample_segmentation)
-
-.PHONY: run-server
-run-server:
-	python3 $(py_server)
-
-.PHONY: run-client
-run-client:
-	python3 $(py_client)
-
-.PHONY: run-client-venv
-run-client-venv: $(py_venv) $(py_client_requirements)
-	$(py_venv)/bin/python $(py_client)
+.PHONY: all
+all: $(docker_build_file)
+	make -C examples/split_learning all
 
 .PHONY: run
-run:
-	make run-client
+run: | $(docker_build_file)
+	make run-learning-aio
 
-.PHONY: run-venv
-run-venv:
-	make run-client-venv
+.PHONY: run-monitor
+run-monitor: | $(docker_build_file)
+	make -C examples/split_learning run-monitor
 
-.PHONY: collect-stats
-collect-stats:
-	python3 $(py_stats)
+.PHONY: run-learning-aio
+run-learning-aio: | $(docker_build_file)
+	make -C examples/split_learning run-aio
+
+.PHONY: run-learning-data-source
+run-learning-data-source: | $(docker_build_file)
+	make -C examples/split_learning run-data-source
+
+.PHONY: run-learning-unsplit
+run-learning-unsplit: | $(docker_build_file)
+	make -C examples/split_learning run-unsplit-final
+
+.PHONY: run-learning-split
+run-learning-split: | $(docker_build_file)
+	make -C examples/split_learning run-split-final
+	make -C examples/split_learning run-split-intermediate
+
+.PHONY: run-learning-split-final
+run-learning-split-final: | $(docker_build_file)
+	make -C examples/split_learning run-split-final
+
+.PHONY: run-learning-split-intermediate
+run-learning-split-intermediate: | $(docker_build_file)
+	make -C examples/split_learning run-split-intermediate
 
 .PHONY: clean
 clean:
-	rm -rf $(data_dir) $(py_cache) $(py_venv) $(build_dir)
+	make -iC examples/split_learning clean
+	docker container prune -f
+	docker image prune -f
+	rm -rf $(pycache) $(docker_build_file)
+
+$(docker_build_file): $(sparse_py) $(dockerfile)
+	docker build . -t $(docker_image)
+	touch $(docker_build_file)

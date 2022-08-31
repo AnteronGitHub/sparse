@@ -17,7 +17,7 @@ class MonitorServer():
     def __init__(self,
                  update_frequency_ps = 2,
                  timeout = 30,
-                 socket_path = 'sparse-benchmark.socket'):
+                 socket_path = 'sparse-benchmark.sock'):
 
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=logging.INFO)
         self.logger = logging.getLogger("sparse")
@@ -103,10 +103,15 @@ class MonitorServer():
         """
         self.previous_message = time.time()
         input_data = await reader.read()
+        if len(input_data) == 0:
+            self.logger.info("Received empty message")
+            return
+
         writer.write("ACK".encode())
         writer.write_eof()
         writer.close()
         payload = json.loads(input_data.decode())
+
         if payload['event'] == 'start':
             self.start_benchmark(payload['log_file_prefix'])
         elif payload['event'] == 'stop':

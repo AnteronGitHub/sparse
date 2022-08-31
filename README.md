@@ -20,70 +20,46 @@ software:
 The repository uses PyTorch as the primary Deep Learning framework. Software dependencies can be installed with pip or
 by using Docker.
 
-### Python
+### Make
 
-For running on common amd64 processor architecture, public PyPi distributions can be used. Install PyTorch by running:
-
+Software can be installed with make utility, by running the following command:
 ```
-pip install torch
-```
-
-On client nodes install torchvision, by running:
-
-```
-pip install torchvision
+make all
 ```
 
-*NB! On Jetson devices, PyTorch has to be installed by using pip wheels provided by NVIDIA. See
-[NVIDIA forum](https://forums.developer.nvidia.com/t/pytorch-for-jetson-version-1-11-now-available/72048) for more
-details.*
+## Run training
 
-### Docker
+### All-In-One
 
-#### Base image
-
-Software dependencies are included in Docker images which can be built locally. Run the following command in order to
-build the base image for Deep Learning applications using the stream processing framework:
-```
-docker build . -t sparse:amd64
-```
-
-When building image for Jetson devices, specify the appropriate base image with build argument. See compatibility table
-above for the appropriate images, as well as tags that one should use. For example, in order to build the base image
-for JetPack 5.0, one should run the following command:
+To test that the program was installed correctly, run the training suite with an unsplit model with the following
+command:
 
 ```
-docker build . --build-arg BASE_IMAGE=nvcr.io/nvidia/l4t-pytorch:r34.1.0-pth1.12-py3 -t sparse:jp50
+make run-learning-aio
 ```
 
-#### Application image
+### Unsplit offloaded training
 
-Use the previously built base image as the base image for applications using the framework. For instance, in order to
-build image for split learning client, using the example provided in the repository, run:
-
+First start the unsplit training server with the following command:
 ```
-cd examples/split_learning
-docker build . -f Dockerfile.client -t split_learning:client.amd64
+make run-learning-aio
 ```
 
-## Run program
-
-### Python
-
-With dependencies installed locally, agents can be started with the following command, by replacing \<node\> with the
-corresponding node (client/server):
-
+Then start the data source with the following command:
 ```
-python3 src/split_training_<node>.py
+make run-learning-data-source
 ```
 
-### Docker
+### Split offloaded training
 
-Use the previously built docker files to create new application containers. For instance, run the following command to
-start a split learning server on amd64 supported devices:
-
+First start the split training nodes with the following command:
 ```
-docker run --rm -it split_learning:server.amd64
+make run-learning-split
+```
+
+Then start the data source with the following command:
+```
+make run-learning-data-source
 ```
 
 ## Configure

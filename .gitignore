@@ -11,3 +11,5 @@ venv
 
 # Build directory
 build
+
+.DOCKER

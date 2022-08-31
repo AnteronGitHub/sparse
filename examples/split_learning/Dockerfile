@@ -3,7 +3,7 @@
 # | JetPack 5.0    | jp50     |
 # | JetPack 4.6.1  | jp461    |
 ARG ARCH_TAG=amd64
-FROM sparse/pytorch:$ARCH_TAG
+FROM sparse/pytorch
 
 WORKDIR /app
 
