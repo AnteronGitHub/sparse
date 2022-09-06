@@ -9,7 +9,7 @@ docker_image      := sparse/pytorch
 dockerfile        := Dockerfile
 docker_build_file := .DOCKER
 
-ifneq (,$(uname -a | grep tegra))
+ifneq (,$(shell uname -a | grep tegra))
 	docker_base_image=nvcr.io/nvidia/l4t-pytorch:r34.1.0-pth1.12-py3
 else
 	docker_base_image=pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime
@@ -89,7 +89,7 @@ clean:
 	make -iC examples/split_inference clean
 	docker container prune -f
 	docker image prune -f
-	rm -rf $(pycache) $(docker_build_file)
+	sudo rm -rf $(pycache) $(docker_build_file)
 
 $(docker_build_file): $(sparse_py) $(dockerfile)
 	docker build . --build-arg BASE_IMAGE=$(docker_base_image) -t $(docker_image)

@@ -32,7 +32,7 @@ class SplitInferenceClient(Master):
             self.logger.info(f"--------- inferring ----------")
 
             while True:
-                imagePath = "data/dog.jpg"
+                imagePath = "data/samples/dog.jpg"
 
                 # Load image to processor memory
                 img = ImageLoading(imagePath, self.model.img_size)

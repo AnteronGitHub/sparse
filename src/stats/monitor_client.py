@@ -22,10 +22,9 @@ class MonitorClient():
             pass
 
     def submit_event(self, task_payload):
-        print("Creating a new task")
-        asyncio.create_task(self._send_message(json.dumps(task_payload).encode()))
-        #self.active_tasks.add(task)
-        #task.add_done_callback(self.active_tasks.discard)
+        task = asyncio.create_task(self._send_message(json.dumps(task_payload).encode()))
+        self.active_tasks.add(task)
+        task.add_done_callback(self.active_tasks.discard)
 
     def start_benchmark(self, log_file_prefix = 'benchmark_sparse'):
         self.submit_event({"event": "start", "log_file_prefix": log_file_prefix})

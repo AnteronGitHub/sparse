@@ -11,8 +11,14 @@ class InferenceDataSource(Master):
         super().__init__()
 
     async def start(self, inferences_to_be_run = 100, img_size=416):
+        progress_bar = tqdm(total=inferences_to_be_run,
+                            unit='inferences',
+                            unit_scale=True)
         for t in range(inferences_to_be_run):
-            imagePath = "data/dog.jpg"
+            imagePath = "data/samples/dog.jpg"
             X = ImageLoading(imagePath, img_size).to('cpu')
 
             result_data = await self.task_deployer.deploy_task(encode_offload_inference_request(X))
+            progress_bar.update(1)
+
+        progress_bar.close()

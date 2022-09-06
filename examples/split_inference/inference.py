@@ -55,7 +55,7 @@ model2 = NeuralNetwork_server(config_path_server, compressionProps, prev_filters
 print(model2)
 model2.load_state_dict(torch.load(weight_server))
 model2 = model2.to('cuda')
-imagePath = "samples/dog.jpg" 
+imagePath = "data/samples/dog.jpg" 
 img = ImageLoading(imagePath,img_size)
 
 inference(imagePath, img, model1, model2)

@@ -3,6 +3,7 @@ from tqdm import tqdm
 
 from models.yolov3 import YOLOv3
 from utils import get_device, ImageLoading, non_max_suppression, save_detection
+from datasets.yolov3 import YOLOv3Dataset
 
 class AllInOne():
     def __init__(self):
@@ -11,6 +12,7 @@ class AllInOne():
         compressionProps['resolution_compression_factor'] = 1
 
         self.model = YOLOv3(compressionProps = compressionProps)
+        self.dataset = YOLOv3Dataset()
         self.device = get_device()
 
     def benchmark(self, inferences_to_be_run = 100, save_results = False):
@@ -23,10 +25,8 @@ class AllInOne():
         with torch.no_grad():
             inferences_ran = 0
             while inferences_ran < inferences_to_be_run:
-                imagePath = "data/dog.jpg"
-
                 # Load image to processor memory
-                X = ImageLoading(imagePath, self.model.img_size).to(self.device)
+                X = self.dataset.get_sample(self.model.img_size).to(self.device)
 
                 # Local forward propagation
                 pred = self.model(X)

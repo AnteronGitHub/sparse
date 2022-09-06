@@ -13,5 +13,5 @@ class JetsonMonitor(Monitor):
                 if jetson.ok():
                     stats = jetson.stats
                     return [jetson.stats['GPU'], jetson.stats['RAM'], jetson.stats['SWAP'], jetson.stats['power cur']]
-        except JtopException:
+        except JtopException as e:
             return [0, 0, 0, 0]

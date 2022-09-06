@@ -24,6 +24,14 @@ class InferenceCalculator(TaskExecutor):
         split_layer = decode_offload_inference_request(input_data).to(self.device)
         pred = self.model(split_layer)
 
-        # Result serialization
-        return encode_offload_inference_response(pred.to("cpu").detach())
+        if self.task_deployer:
+            self.logger.debug("Deploying to the next worker further")
+
+            offload_input_data = encode_offload_inference_request(pred.to("cpu").detach())
+            result_data = await self.task_deployer.deploy_task(offload_input_data)
+        else:
+            self.logger.debug("Not deploying task any further")
+            result_data = encode_offload_inference_response(pred.to("cpu").detach())
+
+        return result_data
 

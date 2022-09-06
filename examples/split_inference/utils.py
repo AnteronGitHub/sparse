@@ -8,6 +8,26 @@ import random
 import os
 from PIL import Image
 
+def download_weights():
+    data_dir = "./data"
+    weights_url = "https://yolov3-split.s3.amazonaws.com/weights.tar.gz"
+    local_file = os.path.join(data_dir, 'weights.tar.gz')
+
+    if os.path.exists(local_file):
+        print("Model weights already downloaded")
+    else:
+        from urllib import request
+        print("Downloading the model weights")
+        request.urlretrieve(weights_url, local_file)
+
+    if os.path.exists(os.path.join(data_dir, "weights")):
+        print("Weights already extracted")
+    else:
+        import tarfile
+        print("Extracting the model weights")
+        with tarfile.open(local_file) as tar:
+            tar.extractall(path=data_dir)
+
 def get_device():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     #device = "cpu"
@@ -191,3 +211,4 @@ def rescale_boxes(boxes, current_dim, original_shape):
     boxes[:, 2] = ((boxes[:, 2] - pad_x // 2) / unpad_w) * orig_w
     boxes[:, 3] = ((boxes[:, 3] - pad_y // 2) / unpad_h) * orig_h
     return boxes
+

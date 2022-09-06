@@ -12,7 +12,9 @@ import time as time
 import sys as sys
 import copy
 
-MODEL_PATH = "models/yolov3"
+from utils import download_weights
+
+WEIGHTS_PATH = "./data/weights"
 
 
 def parse_model_config(path):
@@ -266,13 +268,14 @@ class YOLOv3(nn.Module):
 
     def __init__(self, config_path = "yolov3.cfg", img_size=416, compressionProps = [-1]):
         super(YOLOv3, self).__init__()
-        self.module_defs = parse_model_config(os.path.join(MODEL_PATH, config_path))
+        download_weights()
+        self.module_defs = parse_model_config(os.path.join(WEIGHTS_PATH, config_path))
         self.hyperparams, self.module_list, self.prev_filters = create_modules(self.module_defs)
         self.yolo_layers = [layer[0] for layer in self.module_list if hasattr(layer[0], "metrics")]
         self.img_size = img_size
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
-        self.load_state_dict(torch.load(os.path.join(MODEL_PATH, "yolov3_all.paths")))
+        self.load_state_dict(torch.load(os.path.join(WEIGHTS_PATH, "yolov3_all.paths")))
 
 
     def forward(self, x, targets=None):
@@ -308,13 +311,14 @@ class YOLOv3_local(nn.Module):
 
     def __init__(self, compressionProps, img_size=416):
         super(YOLOv3_local, self).__init__()
-        self.module_defs = parse_model_config(os.path.join(MODEL_PATH, "yolov3_local.cfg"))
+        download_weights()
+        self.module_defs = parse_model_config(os.path.join(WEIGHTS_PATH, "yolov3_local.cfg"))
         self.hyperparams, self.module_list, self.prev_filters = create_modules(self.module_defs)
         self.yolo_layers = [layer[0] for layer in self.module_list if hasattr(layer[0], "metrics")]
         self.img_size = img_size
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
-        self.load_state_dict(torch.load(os.path.join(MODEL_PATH, "yolov3_local.weights")))
+        self.load_state_dict(torch.load(os.path.join(WEIGHTS_PATH, "yolov3_local.weights")))
         
 
     def prevfiltersGet(self):
@@ -352,7 +356,8 @@ class YOLOv3_server(nn.Module):
 
     def __init__(self, compressionProps, prev_filters=None, img_size=416):
         super(YOLOv3_server, self).__init__()
-        self.module_defs = parse_model_config(os.path.join(MODEL_PATH, "yolov3_server.cfg"))
+        download_weights()
+        self.module_defs = parse_model_config(os.path.join(WEIGHTS_PATH, "yolov3_server.cfg"))
         if prev_filters is not None:
             self.prev_filters = prev_filters
         else:
@@ -363,7 +368,7 @@ class YOLOv3_server(nn.Module):
         self.img_size = img_size
         self.seen = 0
         self.header_info = np.array([0, 0, 0, self.seen, 0], dtype=np.int32)
-        self.load_state_dict(torch.load(os.path.join(MODEL_PATH, "yolov3_server.weights")))
+        self.load_state_dict(torch.load(os.path.join(WEIGHTS_PATH, "yolov3_server.weights")))
 
 
     def forward(self, x, targets=None, local=False):
@@ -405,7 +410,8 @@ class Darknet(nn.Module):
 
     def __init__(self, config_path = "yolov3.cfg", img_size=416):
         super(Darknet, self).__init__()
-        self.module_defs = parse_model_config(os.path.join(MODEL_PATH, config_path))
+        download_weights()
+        self.module_defs = parse_model_config(os.path.join(WEIGHTS_PATH, config_path))
         self.hyperparams, self.module_list, _ = create_modules(self.module_defs)
         self.yolo_layers = [layer[0] for layer in self.module_list if hasattr(layer[0], "metrics")]
         self.img_size = img_size
