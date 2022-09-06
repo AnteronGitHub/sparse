@@ -2,7 +2,7 @@ import torch
 from tqdm import tqdm
 
 from models.yolov3 import YOLOv3
-from utils import get_device, ImageLoading, non_max_suppression, save_detection
+from utils import get_device, non_max_suppression, save_detection
 from datasets.yolov3 import YOLOv3Dataset
 
 class AllInOne():

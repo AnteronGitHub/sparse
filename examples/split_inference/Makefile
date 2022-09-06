@@ -55,6 +55,17 @@ run-split-final: | $(docker_build_file)
 			   -d $(docker_image) \
 			   python3 benchmark.py --suite offload_final --model YOLOv3_server
 
+.PHONY: run-split-client
+run-split-client: | $(docker_build_file)
+	docker run --name split_inference_client \
+               --network host \
+			   -e WORKER_LISTEN_ADDRESS=0.0.0.0 \
+			   -e MASTER_UPSTREAM_PORT=50008 \
+			   -v $(abspath ../../src):/usr/lib/sparse \
+			   -v $(abspath .):/app \
+			   --rm -it $(docker_image) \
+			   python3 benchmark.py --suite offload_client --model YOLOv3_local
+
 .PHONY: run-split-intermediate
 run-split-intermediate: | $(docker_build_file)
 	docker run --name split_inference_intermediate \

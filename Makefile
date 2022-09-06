@@ -79,6 +79,10 @@ run-inference-split: | $(docker_build_file)
 run-inference-split-final: | $(docker_build_file)
 	make -C examples/split_inference run-split-final
 
+.PHONY: run-inference-split-client
+run-inference-split-client: | $(docker_build_file)
+	make -C examples/split_inference run-split-client
+
 .PHONY: run-inference-split-intermediate
 run-inference-split-intermediate: | $(docker_build_file)
 	make -C examples/split_inference run-split-intermediate
