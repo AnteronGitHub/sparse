@@ -8,13 +8,14 @@ from tqdm import tqdm
 from sparse.node.master import Master
 from sparse.dl.serialization import encode_offload_inference_request, \
                                     decode_offload_inference_response
+from sparse.stats.monitor_client import MonitorClient
 
 from datasets.yolov3 import YOLOv3Dataset
 from models.yolov3 import YOLOv3_local
 from utils import get_device, ImageLoading, non_max_suppression, save_detection
 
 class SplitInferenceClient(Master):
-    def __init__(self):
+    def __init__(self, benchmark = True):
         super().__init__()
         compressionProps = {}
         compressionProps['feature_compression_factor'] = 4
@@ -23,8 +24,15 @@ class SplitInferenceClient(Master):
         self.model = YOLOv3_local(compressionProps)
         self.dataset = YOLOv3Dataset()
         self.device = get_device()
+        if benchmark:
+            self.monitor_client = MonitorClient()
+        else:
+            self.monitor_client = None
 
     async def infer(self, inferences_to_be_run = 100, save_result = False):
+        if self.monitor_client is not None:
+            self.monitor_client.start_benchmark()
+
         self.logger.info(
             f"Starting inference using {self.device} for local computations"
         )
@@ -57,10 +65,16 @@ class SplitInferenceClient(Master):
                     nms_thres = 0.3
                     detection = non_max_suppression(pred, conf_thres, nms_thres)
                     save_detection(X, imagePath, detection)
+
+                if self.monitor_client is not None:
+                    self.monitor_client.task_processed()
                 progress_bar.update(1)
 
         progress_bar.close()
         self.logger.info("Done!")
+        if self.monitor_client is not None:
+            self.logger.info("Waiting for the benchmark client to finish sending messages")
+            await asyncio.sleep(1)
 
 if __name__ == "__main__":
     compressionProps = {}
