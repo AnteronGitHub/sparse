@@ -18,6 +18,7 @@ run-aio: | $(docker_build_file)
 run-monitor: | $(docker_build_file)
 	docker run --name learning_monitor \
                    --network host \
+		    -v /run/jtop.sock:/run/jtop.sock \
 		   -v $(abspath ../../src):/usr/lib/sparse \
 		   -v $(abspath .):/app \
 		   -d $(docker_image) \
@@ -36,6 +37,7 @@ run-data-source: | $(docker_build_file)
 run-unsplit-final: | $(docker_build_file)
 	docker run --name split_learning_final \
                    --network host \
+		   -e WORKER_LISTEN_ADDRESS=0.0.0.0 \
 		   -v $(abspath ../../src):/usr/lib/sparse \
 		   -v $(abspath .):/app \
 		   -d $(docker_image) \
