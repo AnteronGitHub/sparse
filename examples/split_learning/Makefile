@@ -47,6 +47,7 @@ run-unsplit-final: | $(docker_build_file)
 run-split-final: | $(docker_build_file)
 	docker run --name split_learning_final \
                    --network host \
+		   -e WORKER_LISTEN_ADDRESS=0.0.0.0 \
 		   -e WORKER_LISTEN_PORT=50008 \
 		   -v $(abspath ../../src):/usr/lib/sparse \
 		   -v $(abspath .):/app \
@@ -58,6 +59,7 @@ run-split-intermediate: | $(docker_build_file)
 	docker run --name split_learning_intermediate \
                    --network host \
 		   -e MASTER_UPSTREAM_PORT=50008 \
+		   -e WORKER_LISTEN_ADDRESS=0.0.0.0 \
 		   -v $(abspath ../../src):/usr/lib/sparse \
 		   -v $(abspath .):/app \
 		   -d $(docker_image) \
