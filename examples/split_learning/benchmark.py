@@ -43,6 +43,25 @@ def run_offload_datasource_benchmark(args):
                                                                           args.batches,
                                                                           args.epochs,
                                                                           log_file_prefix = _get_benchmark_log_file_prefix(args)))
+def run_offload_client_benchmark(args):
+    print('Offload client node benchmark suite')
+    print('-----------------------------------')
+
+    import asyncio
+    from datasets import DatasetRepository
+    from models import ModelTrainingRepository
+    from nodes.split_training_client import SplitTrainingClient
+
+    dataset, classes = DatasetRepository().get_dataset(args.model_name)
+    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name)
+
+    asyncio.run(SplitTrainingClient(dataset=dataset,
+                                    model=model,
+                                    loss_fn=loss_fn,
+                                    optimizer=optimizer).start(args.batch_size,
+                                                               args.batches,
+                                                               args.epochs))
+
 def run_offload_intermediate_benchmark(args):
     print('Offload intermediate node benchmark suite')
     print('-----------------------------------------')
@@ -77,6 +96,8 @@ if __name__ == '__main__':
 
     if args.suite == 'offload_source':
         run_offload_datasource_benchmark(args)
+    elif args.suite == 'offload_client':
+        run_offload_client_benchmark(args)
     elif args.suite == 'offload_intermediate':
         run_offload_intermediate_benchmark(args)
     elif args.suite == 'offload_final':

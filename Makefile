@@ -49,6 +49,10 @@ run-learning-split: | $(docker_build_file)
 run-learning-split-final: | $(docker_build_file)
 	make -C examples/split_learning run-split-final
 
+.PHONY: run-learning-split-client
+run-learning-split-client: | $(docker_build_file)
+	make -C examples/split_learning run-split-client
+
 .PHONY: run-learning-split-intermediate
 run-learning-split-intermediate: | $(docker_build_file)
 	make -C examples/split_learning run-split-intermediate

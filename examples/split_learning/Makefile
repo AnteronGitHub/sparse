@@ -30,8 +30,8 @@ run-data-source: | $(docker_build_file)
                    --network host \
 		   -v $(abspath ../../src):/usr/lib/sparse \
 		   -v $(abspath .):/app \
-		   -d $(docker_image) \
-		   python3 benchmark.py --suite offload_source
+		   --rm -it $(docker_image) \
+		   python3 benchmark.py --suite offload_source --batches 64 --batch-size 64
 
 .PHONY: run-unsplit-final
 run-unsplit-final: | $(docker_build_file)
@@ -53,6 +53,16 @@ run-split-final: | $(docker_build_file)
 		   -v $(abspath .):/app \
 		   -d $(docker_image) \
 		   python3 benchmark.py --suite offload_final --model VGG_server
+
+.PHONY: run-split-client
+run-split-client: | $(docker_build_file)
+	docker run --name split_learning_client \
+                   --network host \
+		   -e MASTER_UPSTREAM_PORT=50008 \
+		   -v $(abspath ../../src):/usr/lib/sparse \
+		   -v $(abspath .):/app \
+		   --rm -it $(docker_image) \
+		   python3 benchmark.py --suite offload_client --model VGG_client --batch-size 64 --batches 64
 
 .PHONY: run-split-intermediate
 run-split-intermediate: | $(docker_build_file)

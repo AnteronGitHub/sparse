@@ -59,7 +59,6 @@ run-split-final: | $(docker_build_file)
 run-split-client: | $(docker_build_file)
 	docker run --name split_inference_client \
                --network host \
-			   -e WORKER_LISTEN_ADDRESS=0.0.0.0 \
 			   -e MASTER_UPSTREAM_PORT=50008 \
 			   -v $(abspath ../../src):/usr/lib/sparse \
 			   -v $(abspath .):/app \

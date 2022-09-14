@@ -67,7 +67,7 @@ class SplitInferenceClient(Master):
                     save_detection(X, imagePath, detection)
 
                 if self.monitor_client is not None:
-                    self.monitor_client.task_processed()
+                    self.monitor_client.batch_processed(len(X))
                 progress_bar.update(1)
 
         progress_bar.close()
