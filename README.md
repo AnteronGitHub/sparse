@@ -12,7 +12,6 @@ software:
 | Device            | JetPack version | Python version | PyTorch version | Docker version | Base image                                     | Docker tag suffix |
 | ----------------- | --------------- | -------------- | --------------- | -------------- | ---------------------------------------------- | ------------------ |
 | Jetson AGX Xavier | 5.0 preview     | 3.8.10         | 1.12.0a0        | 20.10.12       | nvcr.io/nvidia/l4t-pytorch:r34.1.0-pth1.12-py3 | jp50               |
-| Jetson Nano 2GB   | 4.6.1           | 3.6.9          | 1.9.0           | 20.10.7        | nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.9-py3  | jp461              |
 | Lenovo ThinkPad   | -               | 3.8.12         | 1.11.0          | 20.10.15       | pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime | amd64              |
 
 ## Install
