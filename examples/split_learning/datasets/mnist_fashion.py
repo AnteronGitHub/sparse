@@ -1,18 +1,10 @@
-from torch.utils.data import DataLoader
 from torchvision import datasets
 from torchvision.transforms import ToTensor
 
-def load_mnist_fashion_dataset(batch_size = 64):
-    training_data = datasets.FashionMNIST(
+def FashionMNIST():
+    dataset = datasets.FashionMNIST(
         root="data",
         train=True,
-        download=True,
-        transform=ToTensor(),
-    )
-
-    test_data = datasets.FashionMNIST(
-        root="data",
-        train=False,
         download=True,
         transform=ToTensor(),
     )
@@ -31,4 +23,4 @@ def load_mnist_fashion_dataset(batch_size = 64):
     ]
 
 
-    return DataLoader(training_data, batch_size=batch_size), DataLoader(test_data, batch_size=batch_size), classes
+    return dataset, classes
