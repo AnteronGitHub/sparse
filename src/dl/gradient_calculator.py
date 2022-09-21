@@ -1,5 +1,6 @@
 import asyncio
 from torch.autograd import Variable
+from torch.nn import Module
 
 from ..task_executor import TaskExecutor
 
@@ -7,7 +8,7 @@ from .serialization import decode_offload_request, encode_offload_request, decod
 from .utils import get_device
 
 class GradientCalculator(TaskExecutor):
-    def __init__(self, model, loss_fn, optimizer):
+    def __init__(self, model : Module, loss_fn, optimizer):
         super().__init__()
         self.device = get_device()
         self.loss_fn = loss_fn
@@ -17,7 +18,10 @@ class GradientCalculator(TaskExecutor):
     def start(self):
         """Initialize executor by transferring the model to the processor memory."""
         super().start()
-        self.logger.info(f"Training {type(self.model).__name__} model using {self.device} for processing")
+        num_parameters = 0
+        for param in self.model.parameters():
+            num_parameters += param.nelement()
+        self.logger.info(f"Training {type(self.model).__name__} model with {num_parameters} parameters using {self.device} for processing")
         self.model.to(self.device)
         self.model.train()
 
