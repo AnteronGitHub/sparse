@@ -12,7 +12,7 @@ class MonitorServer():
     def __init__(self,
                  update_frequency_ps = 2,
                  timeout = 30,
-                 socket_path = 'sparse-benchmark.sock'):
+                 socket_path = '/data/sparse-benchmark.sock'):
 
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=logging.INFO)
         self.logger = logging.getLogger("sparse")

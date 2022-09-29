@@ -3,7 +3,7 @@ from torchvision.transforms import ToTensor
 
 def FashionMNIST():
     dataset = datasets.FashionMNIST(
-        root="data",
+        root="/data",
         train=True,
         download=True,
         transform=ToTensor(),

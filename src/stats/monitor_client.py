@@ -3,7 +3,7 @@ import json
 
 class MonitorClient():
     def __init__(self,
-                 socket_path = 'sparse-benchmark.sock'):
+                 socket_path = '/data/sparse-benchmark.sock'):
         self.socket_path = socket_path
         self.active_tasks = set()
 

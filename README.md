@@ -94,16 +94,11 @@ make run-inference-split
 
 ## Collect statistics
 
-In order to collect benchmark statistics for training, before running the suite with the above instructions, start the
-monitor server by running the following command:
+In order to collect benchmark statistics for training or inference, before running a suite with the above instructions,
+first start the monitor server by running the following command:
 
 ```
-make run-learning-monitor
-```
-
-The statistics for inference can be collected with the following command:
-```
-make run-inference-monitor
+make run-sparse-monitor
 ```
 
 ## Configure

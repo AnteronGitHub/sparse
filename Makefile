@@ -9,6 +9,13 @@ docker_image      := sparse/pytorch
 dockerfile        := Dockerfile
 docker_build_file := .DOCKER
 
+docker_run := docker run \
+               --network host \
+               -v /run/jtop.sock:/run/jtop.sock \
+		       -v $(abspath ./src):/usr/lib/sparse \
+		       -v $(abspath ./data):/data \
+		       -v $(abspath .):/app
+
 ifneq (,$(shell uname -a | grep tegra))
 	docker_base_image=nvcr.io/nvidia/l4t-pytorch:r34.1.0-pth1.12-py3
 else
@@ -24,9 +31,11 @@ run: | $(docker_build_file)
 	make run-learning-aio
 
 # Learning
-.PHONY: run-learning-monitor
-run-learning-monitor: | $(docker_build_file)
-	make -C examples/split_learning run-monitor
+.PHONY: run-sparse-monitor
+run-sparse-monitor: | $(docker_build_file)
+	$(docker_run) \
+		--name sparse_monitor_server \
+		-d $(docker_image)
 
 .PHONY: run-learning-aio
 run-learning-aio: | $(docker_build_file)
@@ -58,10 +67,6 @@ run-learning-split-intermediate: | $(docker_build_file)
 	make -C examples/split_learning run-split-intermediate
 
 # Inference
-.PHONY: run-inference-monitor
-run-inference-monitor: | $(docker_build_file)
-	make -C examples/split_inference run-monitor
-
 .PHONY: run-inference-aio
 run-inference-aio: | $(docker_build_file)
 	make -C examples/split_inference run-aio

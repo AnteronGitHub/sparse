@@ -9,7 +9,7 @@ import os
 from PIL import Image
 
 def download_weights():
-    data_dir = "./data"
+    data_dir = "/data"
     weights_url = "https://yolov3-split.s3.amazonaws.com/weights.tar.gz"
     local_file = os.path.join(data_dir, 'weights.tar.gz')
 

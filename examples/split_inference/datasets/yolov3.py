@@ -6,7 +6,7 @@ from utils import get_device, ImageLoading, non_max_suppression, save_detection
 samples_url = "https://raw.githubusercontent.com/westerndigitalcorporation/YOLOv3-in-PyTorch/release/data/samples"
 
 class YOLOv3Dataset:
-    def __init__(self, data_dir = "./data"):
+    def __init__(self, data_dir = "/data"):
         self.samples_dir = os.path.join(data_dir, "samples")
         self.sample_files = [
                 "dog.jpg",
