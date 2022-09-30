@@ -7,7 +7,7 @@ def parse_arguments():
     parser.add_argument('--batches', default=64, type=int)
     parser.add_argument('--batch-size', default=64, type=int)
     parser.add_argument('--epochs', default=1, type=int)
-    parser.add_argument('--benchmark-node-name', default='amd64', type=str)
+    parser.add_argument('--benchmark-node-name', default='client', type=str)
     return parser.parse_args()
 
 def _get_benchmark_log_file_prefix(args):

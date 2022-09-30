@@ -1,11 +1,12 @@
 import asyncio
 import json
+import uuid
 
 class MonitorClient():
-    def __init__(self,
-                 socket_path = '/data/sparse-benchmark.sock'):
+    def __init__(self, socket_path = '/data/sparse-benchmark.sock'):
         self.socket_path = socket_path
         self.active_tasks = set()
+        self.benchmark_id = str(uuid.uuid4())
 
     async def _send_message(self, message):
         try:
@@ -25,14 +26,16 @@ class MonitorClient():
         return task
 
     def start_benchmark(self, log_file_prefix = 'benchmark_sparse'):
-        return self.submit_event({"event": "start", "log_file_prefix": log_file_prefix})
-
-    def stop_benchmark(self):
-        return self.submit_event({"event": "stop"})
+        return self.submit_event({ "benchmark_id": self.benchmark_id,
+                                   "event": "start",
+                                   "log_file_prefix": log_file_prefix })
 
     def batch_processed(self, batch_size : int):
-        return self.submit_event({"event": "batch_processed", "batch_size": batch_size})
+        return self.submit_event({ "benchmark_id": self.benchmark_id,
+                                   "event": "batch_processed",
+                                   "batch_size": batch_size })
 
     def task_processed(self):
-        return self.submit_event({"event": "task_processed"})
+        return self.submit_event({ "benchmark_id": self.benchmark_id,
+                                   "event": "task_processed" })
 
