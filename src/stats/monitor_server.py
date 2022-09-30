@@ -29,7 +29,7 @@ class MonitorServer():
             self.stats_logger.log_row(self.monitor_container.get_stats())
 
     def start_benchmark(self, log_file_prefix = 'benchmark_sparse'):
-        self.logger.info("Starting a new benchmark")
+        self.logger.info(f"Starting a new benchmark '{log_file_prefix}'")
         self.stats_logger = FileLogger(file_prefix=f"{log_file_prefix}")
         self.stats_logger.log_row(self.monitor_container.get_metrics())
 
