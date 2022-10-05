@@ -6,7 +6,6 @@ class MonitorClient():
     def __init__(self, socket_path = '/data/sparse-benchmark.sock'):
         self.socket_path = socket_path
         self.active_tasks = set()
-        self.benchmark_id = str(uuid.uuid4())
 
     async def _send_message(self, message):
         try:
@@ -26,6 +25,7 @@ class MonitorClient():
         return task
 
     def start_benchmark(self, log_file_prefix = 'benchmark_sparse'):
+        self.benchmark_id = str(uuid.uuid4())
         return self.submit_event({ "benchmark_id": self.benchmark_id,
                                    "event": "start",
                                    "log_file_prefix": log_file_prefix })
