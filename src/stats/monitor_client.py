@@ -14,7 +14,6 @@ class MonitorClient():
             writer.write_eof()
             writer.close()
         except Exception as e:
-            print(e)
             pass
 
     def submit_event(self, task_payload):
