@@ -41,7 +41,7 @@ make run-learning-aio
 
 First start the unsplit training server with the following command:
 ```
-make run-learning-aio
+make run-learning-unsplit
 ```
 
 Then start the data source with the following command:
