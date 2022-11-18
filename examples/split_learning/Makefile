@@ -10,6 +10,7 @@ docker_run := docker run \
                -v /run/jtop.sock:/run/jtop.sock \
 		       -v $(abspath ../../src):/usr/lib/sparse \
 		       -v $(abspath ../../data):/data \
+		       -v $(abspath ../../run):/run/sparse \
 		       -v $(abspath .):/app
 
 .PHONY: all

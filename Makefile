@@ -4,6 +4,7 @@ pycache := $(shell find $(abspath .) -iname __pycache__)
 
 sparse_src_dir  := $(abspath ./src)
 sparse_data_dir := $(abspath ./data)
+sparse_run_dir  := $(abspath ./run)
 sparse_py       := $(shell find $(sparse_src_dir) -iname *.py)
 
 docker_image      := sparse/pytorch
@@ -15,6 +16,7 @@ docker_run := docker run \
                -v /run/jtop.sock:/run/jtop.sock \
 		       -v $(sparse_src_dir):/usr/lib/sparse \
 		       -v $(sparse_data_dir):/data \
+		       -v $(sparse_run_dir):/run/sparse \
 		       -v $(abspath .):/app
 
 ifneq (,$(shell uname -a | grep tegra))

@@ -9,7 +9,7 @@ from .benchmark import Benchmark
 class MonitorServer():
     def __init__(self,
                  update_frequency_ps = 2,
-                 socket_path = '/data/sparse-benchmark.sock'):
+                 socket_path = '/run/sparse/sparse-benchmark.sock'):
 
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=logging.INFO)
         self.logger = logging.getLogger("sparse")
