@@ -2,37 +2,39 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: split-learning-worker
+  name: learning-unsplit-worker
+  namespace: sparse
   labels:
-    app: split-learning-worker
+    app: learning-unsplit-worker
 spec:
   ports:
   - port: 50007
     protocol: TCP
   selector:
-    app: split-learning-worker
+    app: learning-unsplit-worker
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: split-learning-worker
+  name: learning-unsplit-worker
+  namespace: sparse
   labels:
-    app: split-learning-worker
+    app: learning-unsplit-worker
 spec:
   replicas: 1
   strategy:
     type: RollingUpdate
   selector:
     matchLabels:
-      app: split-learning-worker
+      app: learning-unsplit-worker
   template:
     metadata:
       labels:
-        app: split-learning-worker
+        app: learning-unsplit-worker
     spec:
       containers:
-      - name: split-learning-worker
+      - name: learning-unsplit-worker
         image: split_learning
         imagePullPolicy: IfNotPresent
         env:

@@ -2,20 +2,21 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: sparse-monitor
+  name: monitor-server
+  namespace: sparse
   labels:
-    app: sparse-monitor
+    app: monitor-server
 spec:
   selector:
     matchLabels:
-      app: sparse-monitor
+      app: monitor-server
   template:
     metadata:
       labels:
-        app: sparse-monitor
+        app: monitor-server
     spec:
       containers:
-      - name: sparse-monitor
+      - name: monitor-server
         image: sparse/pytorch
         imagePullPolicy: IfNotPresent
         volumeMounts:

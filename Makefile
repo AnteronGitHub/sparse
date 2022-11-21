@@ -36,6 +36,11 @@ $(docker_build_file): $(sparse_py) $(dockerfile)
 all: $(sparse_data_dir) $(docker_build_file)
 	make -C examples/split_learning all
 
+.PHONY: docker
+docker: $(docker_build_file)
+	make -C examples/split_learning docker
+	make -C examples/split_inference docker
+
 .PHONY: run
 run: | $(sparse_data_dir) $(docker_build_file)
 	make run-learning-aio

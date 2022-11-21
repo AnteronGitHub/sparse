@@ -13,8 +13,15 @@ docker_run := docker run \
 		       -v $(abspath ../../run):/run/sparse \
 		       -v $(abspath .):/app
 
+$(docker_build_file): $(py_sources) $(base_image_file)
+	docker build . -t $(docker_image)
+	touch $(docker_build_file)
+
 .PHONY: all
 all: $(docker_build_file)
+
+.PHONY: docker
+docker: $(docker_build_file)
 
 .PHONY: run-aio
 run-aio: | $(docker_build_file)
@@ -67,8 +74,4 @@ run-split-intermediate: | $(docker_build_file)
 clean:
 	docker kill learning_data_source learning_unsplit_final learning_split_final learning_split_client learning_split_intermediate
 	sudo rm -f $(docker_build_file)
-
-$(docker_build_file): $(py_sources) $(base_image_file)
-	docker build . -t $(docker_image)
-	touch $(docker_build_file)
 
