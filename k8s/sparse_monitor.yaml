@@ -1,0 +1,32 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: sparse-monitor
+  labels:
+    app: sparse-monitor
+spec:
+  selector:
+    matchLabels:
+      app: sparse-monitor
+  template:
+    metadata:
+      labels:
+        app: sparse-monitor
+    spec:
+      containers:
+      - name: sparse-monitor
+        image: sparse/pytorch
+        imagePullPolicy: IfNotPresent
+        volumeMounts:
+        - name: sparse-run
+          mountPath: /run/sparse
+        - name: sparse-stats
+          mountPath: /data
+      volumes:
+      - name: sparse-stats
+        hostPath:
+          path: /mnt/sparse/stats
+      - name: sparse-run
+        hostPath:
+          path: /mnt/sparse/run
