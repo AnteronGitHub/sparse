@@ -1,0 +1,107 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: learning-split-ondevice-final
+  namespace: sparse
+  labels:
+    app: learning-split-ondevice-final
+spec:
+  ports:
+  - port: 50007
+    protocol: TCP
+  selector:
+    app: learning-split-ondevice-final
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: learning-split-ondevice-final
+  namespace: sparse
+  labels:
+    app: learning-split-ondevice-final
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: learning-split-ondevice-final
+  template:
+    metadata:
+      labels:
+        app: learning-split-ondevice-final
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: sparse/node
+                operator: In
+                values:
+                - final
+                - aio
+      containers:
+      - name: learning-split-ondevice-final
+        image: split_learning
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: WORKER_LISTEN_ADDRESS
+          value: "0.0.0.0"
+        command: ["python3"]
+        args: ["benchmark.py", "--suite", "offload_final", "--model", "VGG_server"]
+        volumeMounts:
+        - name: sparse-run
+          mountPath: /run/sparse
+      volumes:
+      - name: sparse-run
+        hostPath:
+          path: /mnt/sparse/run
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: learning-split-ondevice-client
+  namespace: sparse
+  labels:
+    app: learning-split-ondevice-client
+spec:
+  template:
+    metadata:
+      labels:
+        app: learning-split-ondevice-client
+    spec:
+      restartPolicy: Never
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: sparse/node
+                operator: In
+                values:
+                - client
+                - aio
+      containers:
+      - name: learning-split-ondevice-client
+        image: split_learning
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MASTER_UPSTREAM_HOST
+          value: "learning-split-ondevice-final"
+        command: ["python3"]
+        args: ["benchmark.py", "--suite", "offload_client", "--model", "VGG_client", "--batches", "64", "--batch-size", "64"]
+        volumeMounts:
+        - name: sparse-data
+          mountPath: /data
+        - name: sparse-run
+          mountPath: /run/sparse
+      volumes:
+      - name: sparse-data
+        hostPath:
+          path: /mnt/sparse/data
+      - name: sparse-run
+        hostPath:
+          path: /mnt/sparse/run
