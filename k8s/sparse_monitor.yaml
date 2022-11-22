@@ -25,6 +25,8 @@ spec:
           mountPath: /run/sparse
         - name: sparse-stats
           mountPath: /data/stats
+        - name: jtop-socket
+          mountPath: /run/jtop.sock
       volumes:
       - name: sparse-stats
         hostPath:
@@ -32,3 +34,6 @@ spec:
       - name: sparse-run
         hostPath:
           path: /mnt/sparse/run
+      - name: jtop-socket
+        hostPath:
+          path: /run/jtop.sock
