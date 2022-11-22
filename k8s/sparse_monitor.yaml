@@ -15,6 +15,7 @@ spec:
       labels:
         app: monitor-server
     spec:
+      hostNetwork: true
       containers:
       - name: monitor-server
         image: sparse/pytorch
