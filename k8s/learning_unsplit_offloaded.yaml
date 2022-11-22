@@ -33,6 +33,16 @@ spec:
       labels:
         app: learning-unsplit-worker
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: sparse/node
+                operator: In
+                values:
+                - worker
+                - aio
       containers:
       - name: learning-unsplit-worker
         image: split_learning
@@ -49,8 +59,6 @@ spec:
       - name: sparse-run
         hostPath:
           path: /mnt/sparse/run
-      nodeSelector:
-        sparse/node: worker
 ---
 apiVersion: batch/v1
 kind: Job
@@ -62,6 +70,16 @@ metadata:
 spec:
   template:
     spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: sparse/node
+                operator: In
+                values:
+                - datasource
+                - aio
       containers:
       - name: learning-source
         image: split_learning
@@ -77,8 +95,6 @@ spec:
         - name: sparse-run
           mountPath: /run/sparse
       restartPolicy: Never
-      nodeSelector:
-        sparse/node: datasource
       volumes:
       - name: sparse-data
         hostPath:
