@@ -1,0 +1,39 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: learning-aio
+  namespace: sparse
+  labels:
+    app: learning-aio
+spec:
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: sparse/node
+                operator: In
+                values:
+                - aio
+      containers:
+      - name: learning-aio
+        image: split_learning
+        imagePullPolicy: IfNotPresent
+        command: ["python3"]
+        args: ["benchmark.py", "--suite", "aio", "--batches", "64", "--batch-size", "64"]
+        volumeMounts:
+        - name: sparse-data
+          mountPath: /data
+        - name: sparse-run
+          mountPath: /run/sparse
+      restartPolicy: Never
+      volumes:
+      - name: sparse-data
+        hostPath:
+          path: /mnt/sparse/data
+      - name: sparse-run
+        hostPath:
+          path: /mnt/sparse/run

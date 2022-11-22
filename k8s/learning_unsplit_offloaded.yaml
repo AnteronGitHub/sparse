@@ -63,10 +63,10 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: learning-source
+  name: learning-unsplit-source
   namespace: sparse
   labels:
-    app: learning-source
+    app: learning-unsplit-source
 spec:
   template:
     spec:
@@ -81,7 +81,7 @@ spec:
                 - datasource
                 - aio
       containers:
-      - name: learning-source
+      - name: learning-unsplit-source
         image: split_learning
         imagePullPolicy: IfNotPresent
         env:
