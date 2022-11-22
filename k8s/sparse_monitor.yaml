@@ -23,7 +23,7 @@ spec:
         - name: sparse-run
           mountPath: /run/sparse
         - name: sparse-stats
-          mountPath: /data
+          mountPath: /data/stats
       volumes:
       - name: sparse-stats
         hostPath:
