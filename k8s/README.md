@@ -41,6 +41,5 @@ kubectl label node <worker-node> sparse/node=worker
 Once the cluster has been initialized, the resources can be created as follows:
 ```
 kubectl create -f k8s/sparse_monitor.yaml
-kubectl create -f k8s/learning_unsplit_worker.yaml
-kubectl create -f k8s/learning_data_source.yaml
+kubectl create -f k8s/learning_unsplit_offloaded.yaml
 ```

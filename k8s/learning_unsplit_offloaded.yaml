@@ -51,3 +51,38 @@ spec:
           path: /mnt/sparse/run
       nodeSelector:
         sparse/node: worker
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: learning-source
+  namespace: sparse
+  labels:
+    app: learning-source
+spec:
+  template:
+    spec:
+      containers:
+      - name: learning-source
+        image: split_learning
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MASTER_UPSTREAM_HOST
+          value: "learning-unsplit-worker"
+        command: ["python3"]
+        args: ["benchmark.py", "--suite", "offload_source", "--batches", "64", "--batch-size", "64"]
+        volumeMounts:
+        - name: sparse-data
+          mountPath: /data
+        - name: sparse-run
+          mountPath: /run/sparse
+      restartPolicy: Never
+      nodeSelector:
+        sparse/node: datasource
+      volumes:
+      - name: sparse-data
+        hostPath:
+          path: /mnt/sparse/data
+      - name: sparse-run
+        hostPath:
+          path: /mnt/sparse/run
