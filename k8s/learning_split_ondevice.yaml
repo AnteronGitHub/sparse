@@ -101,7 +101,7 @@ spec:
       volumes:
       - name: sparse-data
         hostPath:
-          path: /mnt/sparse/data
+          path: /var/lib/sparse/data
       - name: sparse-run
         hostPath:
-          path: /mnt/sparse/run
+          path: /run/sparse

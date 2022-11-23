@@ -20,17 +20,22 @@ make docker
 
 ### Set up host paths
 
-Ensure that each cluster node has the following mount paths available for k8s host path volumes:
+To ease development, the resource templates map source code from host path `/opt/sparse/src` to the containers. If the
+repository was not cloned to `/opt` directory, you can create a symbolic link to your repository:
 ```
-sudo mkdir /mnt/sparse/data
-sudo mkdir /mnt/sparse/run
-sudo mkdir /mnt/sparse/stats
+sudo ln -s <sparse_repo_path> /opt/sparse
 ```
 
 ### Label cluster nodes
 
-The templates place pods to hosts based on node labels. Set the following labels on nodes that you want to use as data
-sources and workers:
+The templates place pods to hosts based on node labels. To enable all pods to be placed on a node (e.g. in development
+environments), you can use label aio:
+
+```
+kubectl label node <dev-node> sparse/node=aio
+```
+
+If you want to separate data sources and worker nodes, set the following labels to the appropriate cluster nodes:
 ```
 kubectl label node <source-node> sparse/node=datasource
 kubectl label node <worker-node> sparse/node=worker

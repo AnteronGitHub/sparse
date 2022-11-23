@@ -21,6 +21,8 @@ spec:
         image: sparse/pytorch
         imagePullPolicy: IfNotPresent
         volumeMounts:
+        - name: sparse-code
+          mountPath: /usr/lib/sparse
         - name: sparse-run
           mountPath: /run/sparse
         - name: sparse-stats
@@ -28,12 +30,15 @@ spec:
         - name: jtop-socket
           mountPath: /run/jtop.sock
       volumes:
+      - name: sparse-code
+        hostPath:
+          path: /opt/sparse/src
       - name: sparse-stats
         hostPath:
-          path: /mnt/sparse/stats
+          path: /var/lib/sparse/stats
       - name: sparse-run
         hostPath:
-          path: /mnt/sparse/run
+          path: /run/sparse
       - name: jtop-socket
         hostPath:
           path: /run/jtop.sock
