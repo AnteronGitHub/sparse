@@ -27,14 +27,15 @@ docker: $(docker_build_file)
 run-aio: | $(docker_build_file)
 	$(docker_run) \
 		--name learning_aio \
-		--rm -it $(docker_image)
+		--rm -it $(docker_image) \
+		python3 benchmark.py --suite aio --epochs 1 --batches 100 --batch-size 500
 
 .PHONY: run-data-source
 run-data-source: | $(docker_build_file)
 	$(docker_run) \
 		--name learning_data_source \
 		--rm -it $(docker_image) \
-		python3 benchmark.py --suite offload_source --batches 64 --batch-size 64
+		python3 benchmark.py --suite offload_source --epochs 1 --batches 100 --batch-size 500
 
 .PHONY: run-unsplit-final
 run-unsplit-final: | $(docker_build_file)
@@ -59,7 +60,7 @@ run-split-client: | $(docker_build_file)
 		--name learning_split_client \
 		-e MASTER_UPSTREAM_PORT=50008 \
 		--rm -it $(docker_image) \
-		python3 benchmark.py --suite offload_client --model VGG_client --batch-size 64 --batches 64
+		python3 benchmark.py --suite offload_client --model VGG_client --epochs 1 --batches 100 --batch-size 500
 
 .PHONY: run-split-intermediate
 run-split-intermediate: | $(docker_build_file)
