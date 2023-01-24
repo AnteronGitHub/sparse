@@ -9,7 +9,6 @@ class Monitor():
 
 class MonitorContainer(Monitor):
     def __init__(self):
-        from .jetson_monitor import JetsonMonitor
         from .network_monitor import NetworkMonitor
         from .time_monitor import TimeMonitor
         from .training_monitor import TrainingMonitor
@@ -18,8 +17,6 @@ class MonitorContainer(Monitor):
         self.monitors.append(TimeMonitor())
         self.monitors.append(NetworkMonitor())
         self.monitors.append(TrainingMonitor())
-        if self._jtop_available():
-            self.monitors.append(JetsonMonitor())
 
     def get_metrics(self):
         metrics = []
@@ -32,9 +29,6 @@ class MonitorContainer(Monitor):
         for monitor in self.monitors:
             stats += monitor.get_stats()
         return stats
-
-    def _jtop_available(self):
-        return find_spec('jtop') is not None
 
     def batch_processed(self, batch_size):
         for monitor in self.monitors:
