@@ -2,7 +2,7 @@ uid := $(shell id -u)
 
 pycache := $(shell find $(abspath .) -iname __pycache__)
 
-sparse_src_dir  := $(abspath ./src)
+sparse_src_dir  := $(abspath ./sparse-framework)
 sparse_data_dir := $(abspath ./data)
 sparse_run_dir  := $(abspath ./run)
 sparse_py       := $(shell find $(sparse_src_dir) -iname *.py)
@@ -29,7 +29,7 @@ $(sparse_data_dir):
 	mkdir $(sparse_data_dir)
 
 $(docker_build_file): $(sparse_py) $(dockerfile)
-	docker build . --build-arg BASE_IMAGE=$(docker_base_image) -t $(docker_image)
+	docker build . --no-cache --build-arg BASE_IMAGE=$(docker_base_image) -t $(docker_image)
 	touch $(docker_build_file)
 
 .PHONY: all
