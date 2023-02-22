@@ -43,7 +43,12 @@ kubectl label node <worker-node> sparse/node=worker
 
 ## Resource creation
 
-Once the cluster has been initialized, the resources can be created as follows:
+Once the cluster has been initialized, create a namespace for sparse:
+```
+kubectl create namespace sparse
+```
+
+Then, the sparse pipeline resources can be created as follows (with monitoring included):
 ```
 kubectl create -f k8s/sparse_monitor.yaml
 kubectl create -f k8s/learning_unsplit_offloaded.yaml
