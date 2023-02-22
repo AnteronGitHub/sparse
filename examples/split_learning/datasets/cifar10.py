@@ -3,7 +3,7 @@ from torchvision import transforms
 
 def CIFAR10_dataset():
     dataset = datasets.CIFAR10(
-            root="data",
+            root="/data",
             train=True,
             download=True,
             transform= transforms.Compose([

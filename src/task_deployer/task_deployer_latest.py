@@ -15,6 +15,8 @@ class TaskDeployerLatest(TaskDeployer):
             except ConnectionRefusedError:
                 self.logger.error("Unable to connect to upstream host. Trying again in 5 seconds...")
                 time.sleep(5)
+            except TimeoutError:
+                self.logger.error("Connection to upstream host timed out. Retrying...")
 
         writer.write(input_data)
         writer.write_eof()

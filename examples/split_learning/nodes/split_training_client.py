@@ -2,11 +2,9 @@ import asyncio
 from tqdm import tqdm
 
 import torch
-from torch import nn
 from torch.utils.data import DataLoader
 
 from sparse.node.master import Master
-from sparse.node.worker import Worker
 from sparse.dl.gradient_calculator import GradientCalculator
 from sparse.dl.utils import get_device
 from sparse.dl.serialization import encode_offload_request, decode_offload_response

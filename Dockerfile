@@ -10,7 +10,7 @@ ARG BASE_IMAGE=pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime
 
 FROM $BASE_IMAGE
 
-RUN pip3 install tqdm psutil jetson_stats
+RUN pip3 install tqdm psutil python-dotenv
 
 # Install the library code
 ARG INSTALL_LOCATION=/usr/lib

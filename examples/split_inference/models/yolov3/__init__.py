@@ -14,7 +14,7 @@ import copy
 
 from utils import download_weights
 
-WEIGHTS_PATH = "./data/weights"
+WEIGHTS_PATH = "/data/weights"
 
 
 def parse_model_config(path):
