@@ -9,7 +9,7 @@ class ConfigManager:
         self.listen_port = None
 
     def load_config(self):
-        load_dotenv(dotenv_path=os.path.join("/data", ".env"))
+        load_dotenv(dotenv_path=".env")
 
         self.upstream_host = os.environ.get('MASTER_UPSTREAM_HOST') or '127.0.0.1'
         self.upstream_port = os.environ.get('MASTER_UPSTREAM_PORT') or 50007
