@@ -88,7 +88,7 @@ def run_offload_final_benchmark(args):
                        benchmark_log_file_prefix = _get_benchmark_log_file_prefix(args)).start()
 
 def run_monitor(args):
-    from sparse.stats.monitor_server import MonitorServer
+    from sparse_framework.stats.monitor_server import MonitorServer
     MonitorServer().start()
 
 if __name__ == '__main__':

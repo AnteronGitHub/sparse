@@ -1,5 +1,5 @@
 def run_monitor():
-    from sparse.stats.monitor_server import MonitorServer
+    from sparse_framework.stats.monitor_server import MonitorServer
     MonitorServer().start()
 
 if __name__ == '__main__':

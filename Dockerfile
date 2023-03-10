@@ -17,9 +17,9 @@ ARG INSTALL_LOCATION=/usr/lib
 
 RUN mkdir -p $INSTALL_LOCATION
 ENV PYTHONPATH=$PYTHONPATH:$INSTALL_LOCATION
-COPY sparse-framework $INSTALL_LOCATION/sparse
+COPY sparse_framework $INSTALL_LOCATION/sparse_framework
 
-WORKDIR $INSTALL_LOCATION/sparse
+WORKDIR $INSTALL_LOCATION/sparse_framework
 
 
 CMD ["python3", "run_monitor_server.py"]

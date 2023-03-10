@@ -2,7 +2,7 @@ uid := $(shell id -u)
 
 pycache := $(shell find $(abspath .) -iname __pycache__)
 
-sparse_src_dir  := $(abspath ./sparse-framework)
+sparse_src_dir  := $(abspath ./sparse_framework)
 sparse_data_dir := $(abspath ./data)
 sparse_run_dir  := $(abspath ./run)
 sparse_py       := $(shell find $(sparse_src_dir) -iname *.py)
@@ -14,7 +14,7 @@ docker_build_file := .DOCKER
 docker_run := docker run \
                --network host \
                -v /run/jtop.sock:/run/jtop.sock \
-		       -v $(sparse_src_dir):/usr/lib/sparse \
+		       -v $(sparse_src_dir):/usr/lib/sparse_framework \
 		       -v $(sparse_data_dir):/data \
 		       -v $(sparse_run_dir):/run/sparse \
 		       -v $(abspath .):/app

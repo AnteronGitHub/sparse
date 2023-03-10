@@ -4,11 +4,11 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from sparse.node.master import Master
-from sparse.dl.gradient_calculator import GradientCalculator
-from sparse.dl.utils import get_device
-from sparse.dl.serialization import encode_offload_request, decode_offload_response
-from sparse.stats.monitor_client import MonitorClient
+from sparse_framework.node.master import Master
+from sparse_framework.dl.gradient_calculator import GradientCalculator
+from sparse_framework.dl.utils import get_device
+from sparse_framework.dl.serialization import encode_offload_request, decode_offload_response
+from sparse_framework.stats.monitor_client import MonitorClient
 
 class SplitTrainingClient(Master):
     def __init__(self, dataset, model, loss_fn, optimizer, benchmark = True):

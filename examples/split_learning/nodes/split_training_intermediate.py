@@ -1,9 +1,9 @@
 import torch
 from torch import nn
 
-from sparse.node.master import Master
-from sparse.node.worker import Worker
-from sparse.dl.gradient_calculator import GradientCalculator
+from sparse_framework.node.master import Master
+from sparse_framework.node.worker import Worker
+from sparse_framework.dl.gradient_calculator import GradientCalculator
 
 class SplitTrainingIntermediate(Master, Worker):
     def __init__(self, model, loss_fn, optimizer):

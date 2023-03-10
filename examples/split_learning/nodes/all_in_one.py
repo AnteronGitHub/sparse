@@ -4,8 +4,8 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from sparse.dl.utils import get_device
-from sparse.stats.monitor_client import MonitorClient
+from sparse_framework.dl.utils import get_device
+from sparse_framework.stats.monitor_client import MonitorClient
 
 class AllInOne():
     def __init__(self, dataset, classes, model, loss_fn, optimizer, benchmark = True):

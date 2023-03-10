@@ -2,9 +2,9 @@ import asyncio
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from sparse.dl.serialization import encode_offload_request, decode_offload_response
-from sparse.node.master import Master
-from sparse.stats.monitor_client import MonitorClient
+from sparse_framework.dl.serialization import encode_offload_request, decode_offload_response
+from sparse_framework.node.master import Master
+from sparse_framework.stats.monitor_client import MonitorClient
 
 class TrainingDataSource(Master):
     def __init__(self, dataset, classes, model_name, benchmark = True):
