@@ -13,7 +13,6 @@ docker_build_file := .DOCKER
 
 docker_run := docker run \
                --network host \
-               -v /run/jtop.sock:/run/jtop.sock \
 		       -v $(sparse_src_dir):/usr/lib/sparse_framework \
 		       -v $(sparse_data_dir):/data \
 		       -v $(sparse_run_dir):/run/sparse \

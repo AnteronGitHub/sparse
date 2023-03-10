@@ -7,7 +7,6 @@ docker_build_file := .DOCKER
 
 docker_run := docker run \
                --network host \
-               -v /run/jtop.sock:/run/jtop.sock \
 		       -v $(abspath ../../src):/usr/lib/sparse \
 		       -v $(abspath ../../data):/data \
 		       -v $(abspath ../../run):/run/sparse \
