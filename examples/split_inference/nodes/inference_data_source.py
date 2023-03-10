@@ -1,9 +1,9 @@
 import asyncio
 from tqdm import tqdm
 
-from sparse.dl.serialization import encode_offload_inference_request
-from sparse.node.master import Master
-from sparse.stats.monitor_client import MonitorClient
+from sparse_framework.dl.serialization import encode_offload_inference_request
+from sparse_framework.node.master import Master
+from sparse_framework.stats.monitor_client import MonitorClient
 
 from datasets.yolov3 import YOLOv3Dataset
 

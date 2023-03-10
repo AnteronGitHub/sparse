@@ -7,7 +7,7 @@ docker_build_file := .DOCKER
 
 docker_run := docker run \
                --network host \
-		       -v $(abspath ../../src):/usr/lib/sparse \
+		       -v $(abspath ../../sparse_framework):/usr/lib/sparse_framework \
 		       -v $(abspath ../../data):/data \
 		       -v $(abspath .):/app
 

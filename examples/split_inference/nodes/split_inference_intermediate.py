@@ -1,6 +1,6 @@
-from sparse.node.master import Master
-from sparse.node.worker import Worker
-from sparse.dl.inference_calculator import InferenceCalculator
+from sparse_framework.node.master import Master
+from sparse_framework.node.worker import Worker
+from sparse_framework.dl.inference_calculator import InferenceCalculator
 
 from models.yolov3 import YOLOv3_local
 

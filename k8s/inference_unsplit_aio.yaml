@@ -2,10 +2,10 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: learning-aio
+  name: inference-aio
   namespace: sparse
   labels:
-    app: learning-aio
+    app: inference-aio
 spec:
   template:
     spec:
@@ -19,11 +19,11 @@ spec:
                 values:
                 - aio
       containers:
-      - name: learning-aio
-        image: split_learning
+      - name: inference-aio
+        image: split_inference
         imagePullPolicy: IfNotPresent
         command: ["python3"]
-        args: ["benchmark.py", "--suite", "aio", "--batches", "64", "--batch-size", "64"]
+        args: ["benchmark.py", "--suite", "aio"]
         volumeMounts:
         - name: app-code
           mountPath: /app
@@ -37,7 +37,7 @@ spec:
       volumes:
       - name: app-code
         hostPath:
-          path: /opt/sparse/examples/split_learning
+          path: /opt/sparse/examples/split_inference
       - name: sparse-code
         hostPath:
           path: /opt/sparse/sparse_framework

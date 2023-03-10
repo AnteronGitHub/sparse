@@ -65,7 +65,7 @@ def run_offload_final_benchmark(args):
     SplitInferenceFinal(model).start()
 
 def run_monitor(args):
-    from sparse.stats.monitor_server import MonitorServer
+    from sparse_framework.stats.monitor_server import MonitorServer
     MonitorServer().start()
 
 if __name__ == "__main__":

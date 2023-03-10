@@ -5,10 +5,10 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
-from sparse.node.master import Master
-from sparse.dl.serialization import encode_offload_inference_request, \
+from sparse_framework.node.master import Master
+from sparse_framework.dl.serialization import encode_offload_inference_request, \
                                     decode_offload_inference_response
-from sparse.stats.monitor_client import MonitorClient
+from sparse_framework.stats.monitor_client import MonitorClient
 
 from datasets.yolov3 import YOLOv3Dataset
 from models.yolov3 import YOLOv3_local
