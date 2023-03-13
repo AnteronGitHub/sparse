@@ -53,9 +53,19 @@ spec:
         command: ["python3"]
         args: ["benchmark.py", "--suite", "offload_final", "--model", "VGG_server"]
         volumeMounts:
+        - name: app-code
+          mountPath: /app
+        - name: sparse-code
+          mountPath: /usr/lib/sparse_framework
         - name: sparse-run
           mountPath: /run/sparse
       volumes:
+      - name: app-code
+        hostPath:
+          path: /opt/sparse/examples/split_learning
+      - name: sparse-code
+        hostPath:
+          path: /opt/sparse/sparse_framework
       - name: sparse-run
         hostPath:
           path: /mnt/sparse/run
@@ -94,11 +104,21 @@ spec:
         command: ["python3"]
         args: ["benchmark.py", "--suite", "offload_client", "--model", "VGG_client", "--batches", "64", "--batch-size", "64"]
         volumeMounts:
+        - name: app-code
+          mountPath: /app
+        - name: sparse-code
+          mountPath: /usr/lib/sparse_framework
         - name: sparse-data
           mountPath: /data
         - name: sparse-run
           mountPath: /run/sparse
       volumes:
+      - name: app-code
+        hostPath:
+          path: /opt/sparse/examples/split_learning
+      - name: sparse-code
+        hostPath:
+          path: /opt/sparse/sparse_framework
       - name: sparse-data
         hostPath:
           path: /var/lib/sparse/data

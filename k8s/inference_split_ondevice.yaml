@@ -53,11 +53,21 @@ spec:
         command: ["python3"]
         args: ["benchmark.py", "--suite", "offload_final", "--model", "YOLOv3_server"]
         volumeMounts:
+        - name: app-code
+          mountPath: /app
+        - name: sparse-code
+          mountPath: /usr/lib/sparse_framework
         - name: sparse-data
           mountPath: /data
         - name: sparse-run
           mountPath: /run/sparse
       volumes:
+      - name: app-code
+        hostPath:
+          path: /opt/sparse/examples/split_inference
+      - name: sparse-code
+        hostPath:
+          path: /opt/sparse/sparse_framework
       - name: sparse-data
         hostPath:
           path: /var/lib/sparse/data
@@ -99,11 +109,21 @@ spec:
         command: ["python3"]
         args: ["benchmark.py", "--suite", "offload_client", "--model", "YOLOv3_local"]
         volumeMounts:
+        - name: app-code
+          mountPath: /app
+        - name: sparse-code
+          mountPath: /usr/lib/sparse_framework
         - name: sparse-data
           mountPath: /data
         - name: sparse-run
           mountPath: /run/sparse
       volumes:
+      - name: app-code
+        hostPath:
+          path: /opt/sparse/examples/split_inference
+      - name: sparse-code
+        hostPath:
+          path: /opt/sparse/sparse_framework
       - name: sparse-data
         hostPath:
           path: /var/lib/sparse/data
