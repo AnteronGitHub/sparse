@@ -28,6 +28,7 @@ class VGG(nn.Module):
         if init_weights:
             self._initialize_weights()
 
+        #self.prune_filter = []
     '''
     def forward(self, x, local = False):
         x = self.features(x)
@@ -70,8 +71,10 @@ class VGG(nn.Module):
         self.encoder.resetdePrune()
         
 
+
 def resetPrune(model):
     model[-1].resetPrune()
+
 
 
 def make_layers(cfg, compressionProps=None, in_channels=3, batch_norm=True):
@@ -105,6 +108,7 @@ def make_layers(cfg, compressionProps=None, in_channels=3, batch_norm=True):
 
 
 
+
 cfg = {
     'A': [64, 'M', 128, 'M', 256, 256, 'M', 512, 512, 'M', 512, 512, 'M'],
     'D': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
@@ -124,6 +128,8 @@ cfg_server = {
     'D': ['CS', 64, 'M', 128, 128, 'M', 256, 256, 256, 'M', 512, 512, 512, 'M', 512, 512, 512, 'M'],
     'E': ['CS','M', 256, 256, 256, 256, 'M', 512, 512, 512, 512, 'M', 512, 512, 512, 512, 'M'],
 }
+
+
 
 
 class VGG_unsplit(VGG):

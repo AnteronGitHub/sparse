@@ -7,6 +7,10 @@ def parse_arguments():
     parser.add_argument('--benchmark-node-name', default='amd64', type=str)
     parser.add_argument('--model', default='YOLOv3_server', type=str)
     parser.add_argument('--inferences-to-be-run', default=100, type=int)
+    
+    parser.add_argument('--feature_compression_factor', default=1, type=int)
+    parser.add_argument('--resolution_compression_factor', default=1, type=int)
+    
     return parser.parse_args()
 
 def run_aio_benchmark(args):
@@ -46,7 +50,7 @@ def run_offload_final_benchmark(args):
     print('----------------------------------')
 
     from nodes.split_inference_final import SplitInferenceFinal
-
+    from models import ModelTrainingRepository
 
     compressionProps = {}
     compressionProps['feature_compression_factor'] = 4
@@ -58,9 +62,9 @@ def run_offload_final_benchmark(args):
     elif args.model == "YOLOv3":
         from models.yolov3 import YOLOv3
         model = YOLOv3(compressionProps = compressionProps)
-    else:
-        print("Available models: 'YOLOv3_server', 'YOLOv3'")
-
+        
+    if args.model == "VGG":
+        model, _, _ = ModelTrainingRepository().get_model(args.model_name, compressionProps)    
 
     SplitInferenceFinal(model).start()
 
