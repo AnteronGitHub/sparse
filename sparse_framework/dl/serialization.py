@@ -39,8 +39,18 @@ def encode_offload_inference_request(activation_layer : torch.tensor):
     return pickle.dumps({
         'activation': activation_layer
     })
+    
+def encode_offload_inference_request_pruned(activation_layer : torch.tensor, prune_filter: torch.tensor):
+    return pickle.dumps({
+        'activation': activation_layer,
+        'prune_filter': prune_filter
+    })
 
 def decode_offload_inference_request(request : bytes):
+    payload = pickle.loads(request)
+    return payload['activation']
+
+def decode_offload_inference_request_pruned(request : bytes):
     payload = pickle.loads(request)
     return payload['activation']
 
@@ -52,3 +62,4 @@ def encode_offload_inference_response(prediction : torch.tensor):
 def decode_offload_inference_response(data : bytes):
     payload = pickle.loads(data)
     return payload['prediction']
+

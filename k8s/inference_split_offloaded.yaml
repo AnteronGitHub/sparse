@@ -53,7 +53,7 @@ spec:
         - name: WORKER_LISTEN_PORT
           value: "50008"
         command: ["python3"]
-        args: ["benchmark.py", "--suite", "offload_final", "--model", "YOLOv3_server"]
+        args: ["benchmark.py", "--suite", "offload_final", "--model", "VGG_server"]
         volumeMounts:
         - name: app-code
           mountPath: /app
@@ -133,7 +133,7 @@ spec:
         - name: WORKER_LISTEN_ADDRESS
           value: "0.0.0.0"
         command: ["python3"]
-        args: ["benchmark.py", "--suite", "offload_intermediate", "--model", "YOLOv3_client"]
+        args: ["benchmark.py", "--suite", "offload_intermediate", "--model", "VGG_client"]
         volumeMounts:
         - name: app-code
           mountPath: /app
