@@ -98,25 +98,30 @@ class GradientCalculatorPruneStep(TaskExecutor):
         
     def compress_with_pruneFilter(self, pred, prune_filter, budget):
         
-        compressedPred = torch.tensor()
+        compressedPred = torch.tensor([])
         mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
         masknp = mask.detach().numpy()
         partitioned = np.partition(masknp, -budget)[-budget]
         for entry in range(len(mask)):
-            if mask[entry] >= partitioned: 
-                 compressedPred = torch.cat((compressedPred, pred[:,entry,:,:]), 1)
+            if mask[entry] >= partitioned:
+                 predRow = pred[:,entry,:,:].unsqueeze(dim=1) 
+                 compressedPred = torch.cat((compressedPred, predRow), 1)
                 
         return compressedPred, mask    
         
     def decompress_with_pruneFilter(self, pred, mask, budget):
         
-        decompressed_pred = torch.tensor()
-        zeroPad = torch.zeros(torch.shape(pred[:,0,:,:]))
-        masknp = mask.detach().numpy()
+        decompressed_pred = torch.tensor([]).to(self.device)
+        a_row = pred[:,0,:,:].unsqueeze(dim=1)
+        zeroPad = torch.zeros(a_row.shape).to(self.device)
+        masknp = mask.to('cpu').detach().numpy()
         partitioned = np.partition(masknp, -budget)[-budget]
+        count = 0
         for entry in range(len(mask)):
             if mask[entry] >= partitioned: 
-                decompressed_pred = torch.cat((decompressed_pred, pred[:,entry,:,:]), 1)
+                predRow = pred[:,count,:,:].unsqueeze(dim=1)
+                decompressed_pred = torch.cat((decompressed_pred, predRow), 1)
+                count += 1
             else:
                 decompressed_pred = torch.cat((decompressed_pred, zeroPad), 1) 
         
@@ -139,43 +144,48 @@ class GradientCalculatorPruneStep(TaskExecutor):
             self.logger.debug("Deploying to the next worker further")
             
             # Input de-serialization
-            split_layer, labels, budget = decode_offload_request_pruned(input_data)
-            split_layer, labels, budget = Variable(split_layer, requires_grad=True).to(
+            split_layer, labels, prune_filter, budget = decode_offload_request_pruned(input_data)
+            split_layer, labels = Variable(split_layer, requires_grad=True).to(
                 self.device
             ), labels.to(self.device)
             split_layer.retain_grad()
-            
+
             # Local forward pass
             model_return = self.model(split_layer, local=True)
         
             pred = model_return[0].to("cpu").detach()   #partial model output
+            ############################
             #quantization/compression TBD
-            prune_filter = pred[1].to("cpu").detach()   #the prune filter in training
+            ############################
+            prune_filter = model_return[1].to("cpu").detach()   #the prune filter in training
 
             # Offloaded layers
             upload_data, filter_to_send = self.compress_with_pruneFilter(pred, prune_filter, budget)
-            input_data = encode_offload_request_pruned(upload_data, labels.to("cpu"), filter_to_send, budget.to("cpu"))
+            
+            input_data = encode_offload_request_pruned(upload_data, labels.to("cpu"), filter_to_send, budget)
             result_data = await self.task_deployer.deploy_task(input_data)
 
             # Local back propagation
             split_grad, loss = decode_offload_response(result_data)
             split_grad = split_grad.to(self.device)
+            
             self.optimizer.zero_grad()
-            pred.backward(split_grad)
+            model_return[0].backward(split_grad)
             self.optimizer.step()
         else:
             self.logger.debug("Not deploying task any further")
             
             # Input de-serialization
             split_layer, labels, prune_filter, budget = decode_offload_request_pruned(input_data)
-            split_layer, labels, prune_filter, budget = Variable(split_layer, requires_grad=True).to(
-                self.device
-            ), labels.to(self.device)
+            split_layer, labels  = Variable(split_layer, requires_grad=True).to(self.device), labels.to(self.device)
+            prune_filter = prune_filter.to(self.device)
+
+            split_layer = self.decompress_with_pruneFilter(split_layer, prune_filter, budget)
             split_layer.retain_grad()
             
-            pred = self.decompress_with_pruneFilter(pred, prune_filter, budget)
+            pred = self.model(split_layer)   #partial model output
             
-            loss = self.prune_loss_fn(pred, labels, prune_filter, budget, delta = 0.1, epsilon=1000)
+            loss = self.prune_loss_fn(self.loss_fn, pred, labels, prune_filter, budget, delta = 0.1, epsilon=1000)
             self.logger.debug("Computed loss")
             self.optimizer.zero_grad()
             loss.backward()

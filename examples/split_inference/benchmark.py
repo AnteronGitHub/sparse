@@ -5,7 +5,7 @@ def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--suite', default='aio', type=str)
     parser.add_argument('--benchmark-node-name', default='amd64', type=str)
-    parser.add_argument('--model', default='VGG', type=str)   #YOLOv3_server prev, this needs to be worked on
+    parser.add_argument('--model_name', default='VGG_unsplit', type=str)   #YOLOv3_server prev, this needs to be worked on
     parser.add_argument('--inferences-to-be-run', default=100, type=int)
     parser.add_argument('--batches', default=64, type=int)
     parser.add_argument('--batch-size', default=64, type=int)
@@ -48,11 +48,11 @@ def run_offload_datasource_benchmark(args):
     from models import ModelTrainingRepository
     
     dataset, classes = DatasetRepository().get_dataset(args.model_name)
-    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name)
+    #model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name)
     depruneProps = get_depruneProps()
     asyncio.run(InferenceDataSource(dataset, args.model_name).start(args.batch_size,
-                                                                                    args.batches,
-                                                                                    depruneProps))
+                                                                        args.batches,
+                                                                            depruneProps))
 
 def run_offload_intermediate_benchmark(args):
     print('Offload intermediate node benchmark suite')
@@ -67,9 +67,9 @@ def run_offload_intermediate_benchmark(args):
     compressionProps['feature_compression_factor'] = args.feature_compression_factor ### resolution compression factor, compress by how many times
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor ###layer compression factor, reduce by how many times TBD
     depruneProps = get_depruneProps()
-    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name)
+    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, compressionProps)
     
-    SplitInferenceIntermediate(dataset, model).start(depruneProps)
+    SplitInferenceIntermediate(model).start()
 
 def run_offload_final_benchmark(args):
     print('Offload final node benchmark suite')
@@ -84,19 +84,16 @@ def run_offload_final_benchmark(args):
     compressionProps['feature_compression_factor'] = args.feature_compression_factor ### resolution compression factor, compress by how many times
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor ###layer compression factor, reduce by how many times TBD
     depruneProps = get_depruneProps()
-    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name)
+    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, compressionProps)
 
-    if args.model == "YOLOv3_server":
+    if args.model_name == "YOLOv3_server":
         from models.yolov3 import YOLOv3_server
         model = YOLOv3_server(compressionProps = compressionProps)
-    elif args.model == "YOLOv3":
+    elif args.model_name == "YOLOv3":
         from models.yolov3 import YOLOv3
         model = YOLOv3(compressionProps = compressionProps)
         
-    if args.model == "VGG":
-        model, _, _ = ModelTrainingRepository().get_model(args.model_name, compressionProps)    
-
-    SplitInferenceFinal(dataset, classes, model).start(args.model_name)
+    SplitInferenceFinal(model).start()
 
 def run_monitor(args):
     from sparse_framework.stats.monitor_server import MonitorServer

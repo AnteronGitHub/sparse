@@ -2,8 +2,8 @@ import torch.nn as nn
 import torch
 
 
-from models.compression_utils_vgg import encodingUnit
-from models.compression_utils_vgg import decodingUnit
+from models.vgg.compression_utils_vgg import encodingUnit
+from models.vgg.compression_utils_vgg import decodingUnit
 
 
 class VGG(nn.Module):

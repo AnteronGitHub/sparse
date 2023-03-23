@@ -1,9 +1,9 @@
 from sparse_framework.node.worker import Worker
-from sparse_framework.dl.gradient_calculator import GradientCalculator
+from sparse_framework.dl.gradient_calculator import GradientCalculator, GradientCalculatorPruneStep
 
 class SplitTrainingFinal(Worker):
     def __init__(self, model, loss_fn, optimizer, depruneProps, benchmark_log_file_prefix = 'benchmark_split_training'):
-        task_executor = GradientCalculator(model=model,
+        task_executor = GradientCalculatorPruneStep(model=model,
                                            loss_fn=loss_fn,
                                            optimizer=optimizer,
                                            depruneProps = depruneProps)

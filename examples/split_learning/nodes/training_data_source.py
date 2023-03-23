@@ -37,10 +37,10 @@ class TrainingDataSource(Master):
             for t in range(epochs):
                 for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
                     
-                    if pruneState:
-                        input_data = encode_offload_request_pruned(X, y, budget)
-                    else:
-                        input_data = encode_offload_request(X, y)
+                    #if pruneState:
+                    input_data = encode_offload_request_pruned(X, y, None, budget)
+                    #else:
+                    #    input_data = encode_offload_request(X, y)
                         
                     result_data = await self.task_deployer.deploy_task(input_data)
                     split_grad, loss = decode_offload_response(result_data)

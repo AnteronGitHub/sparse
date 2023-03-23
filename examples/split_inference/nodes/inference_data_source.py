@@ -38,7 +38,7 @@ class InferenceDataSourceYOLO(Master):
 
 
 class InferenceDataSource(Master):
-    def __init__(self, dataset, model_name, model,  benchmark = True):
+    def __init__(self, dataset, model_name, benchmark = True):
         super().__init__()
         self.dataset = dataset
         #self.classes = classes
@@ -62,7 +62,7 @@ class InferenceDataSource(Master):
         for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
 
             if pruneState:
-                input_data = encode_offload_inference_request_pruned(X, budget)
+                input_data = encode_offload_inference_request_pruned(X, None, budget)
             else:
                 input_data = encode_offload_inference_request(X)
 

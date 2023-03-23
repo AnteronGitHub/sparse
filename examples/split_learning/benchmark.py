@@ -18,7 +18,7 @@ def get_depruneProps():
     # depruneProps format is {step, budget, ephochs, pruneState} with all others int and pruneState boolean
     depruneProps = {
                     1: {'budget':16, 'epochs':2, 'pruneState':True}, 
-                    2: {'budget':128, 'epochs':2, 'pruneState':False}
+                    2: {'budget':128, 'epochs':2, 'pruneState':True}
     }
     return depruneProps
 

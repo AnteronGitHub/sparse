@@ -14,7 +14,7 @@ from .serialization import decode_offload_inference_request_pruned
 from .utils import get_device
 
 
-class InferenceCalculatorYOLO(TaskExecutor):
+class InferenceCalculatorOD(TaskExecutor):
     def __init__(self, model):
         super().__init__()
         self.model = model
@@ -44,11 +44,11 @@ class InferenceCalculatorYOLO(TaskExecutor):
 
 
 class InferenceCalculator(TaskExecutor):
-    def __init__(self, model, depruneProps):
+    def __init__(self, model):
         super().__init__()
         self.model = model
         self.device = get_device()
-        self.depruneProps = depruneProps
+
 
     def start(self):
         """Initialize executor by transferring the model to the processor memory."""
@@ -58,25 +58,30 @@ class InferenceCalculator(TaskExecutor):
         
     def compress_with_pruneFilter(self, pred, prune_filter, budget):
         
-        compressedPred = torch.tensor()
+        compressedPred = torch.tensor([])
         mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
         masknp = mask.detach().numpy()
         partitioned = np.partition(masknp, -budget)[-budget]
         for entry in range(len(mask)):
-            if mask[entry] >= partitioned: 
-                 compressedPred = torch.cat((compressedPred, pred[:,entry,:,:]), 1)
+            if mask[entry] >= partitioned:
+                 predRow = pred[:,entry,:,:].unsqueeze(dim=1) 
+                 compressedPred = torch.cat((compressedPred, predRow), 1)
                 
         return compressedPred, mask    
         
     def decompress_with_pruneFilter(self, pred, mask, budget):
         
-        decompressed_pred = torch.tensor()
-        zeroPad = torch.zeros(torch.shape(pred[:,0,:,:]))
-        masknp = mask.detach().numpy()
+        decompressed_pred = torch.tensor([]).to(self.device)
+        a_row = pred[:,0,:,:].unsqueeze(dim=1)
+        zeroPad = torch.zeros(a_row.shape).to(self.device)
+        masknp = mask.to('cpu').detach().numpy()
         partitioned = np.partition(masknp, -budget)[-budget]
+        count = 0
         for entry in range(len(mask)):
             if mask[entry] >= partitioned: 
-                decompressed_pred = torch.cat((decompressed_pred, pred[:,entry,:,:]), 1)
+                predRow = pred[:,count,:,:].unsqueeze(dim=1)
+                decompressed_pred = torch.cat((decompressed_pred, predRow), 1)
+                count += 1
             else:
                 decompressed_pred = torch.cat((decompressed_pred, zeroPad), 1) 
         
@@ -87,14 +92,14 @@ class InferenceCalculator(TaskExecutor):
 
         with torch.no_grad():
             if self.task_deployer:
-                split_layer, budget = decode_offload_inference_request_pruned(input_data).to(self.device)
+                split_layer, prune_filter,  budget = decode_offload_inference_request_pruned(input_data).to(self.device)
                 
                 model_return = self.model(split_layer, local=True)
                 pred = model_return[0].to("cpu").detach()   #partial model output
                 #quantization/compression TBD
-                prune_filter = pred[1].to("cpu").detach()   #the prune filter in training
+                prune_filter = model_return[1].to("cpu").detach()   #the prune filter in training
                 
-                pred = self.decompress_with_pruneFilter(pred, prune_filter, budget)
+                pred = self.compress_with_pruneFilter(pred, prune_filter, budget)
                 
                 self.logger.debug("Deploying to the next worker further")
 
@@ -102,6 +107,7 @@ class InferenceCalculator(TaskExecutor):
                 result_data = await self.task_deployer.deploy_task(offload_input_data)
             else:
                 split_layer, prune_filter, budget = decode_offload_inference_request_pruned(input_data).to(self.device)
+                split_layer = self.decompress_with_pruneFilter(split_layer, prune_filter, budget)
                 
                 pred = self.model(split_layer)
                 

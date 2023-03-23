@@ -9,11 +9,12 @@ def encode_offload_request(activation_layer : torch.tensor, labels : torch.tenso
         'labels': labels
     })
     
-def encode_offload_request_pruned(activation_layer_compressed : torch.tensor, labels : torch.tensor, prune_filter: torch.tensor):
+def encode_offload_request_pruned(activation_layer_compressed : torch.tensor, labels : torch.tensor, prune_filter: torch.tensor, budget: int):
     return pickle.dumps({
         'activation': activation_layer_compressed,
         'labels': labels,
-        'prune_filter': prune_filter
+        'prune_filter': prune_filter,
+        'budget': budget
     })
 
 def decode_offload_request(request : bytes):
@@ -22,7 +23,7 @@ def decode_offload_request(request : bytes):
 
 def decode_offload_request_pruned(request : bytes):
     payload = pickle.loads(request)
-    return payload['activation'], payload['labels'], payload['prune_filters']
+    return payload['activation'], payload['labels'], payload['prune_filter'], payload['budget']
 
 def encode_offload_response(gradient : torch.tensor, loss : float):
     return pickle.dumps({
@@ -40,10 +41,11 @@ def encode_offload_inference_request(activation_layer : torch.tensor):
         'activation': activation_layer
     })
     
-def encode_offload_inference_request_pruned(activation_layer : torch.tensor, prune_filter: torch.tensor):
+def encode_offload_inference_request_pruned(activation_layer : torch.tensor, prune_filter: torch.tensor, budget: int):
     return pickle.dumps({
         'activation': activation_layer,
-        'prune_filter': prune_filter
+        'prune_filter': prune_filter, 
+        'budget': budget
     })
 
 def decode_offload_inference_request(request : bytes):
