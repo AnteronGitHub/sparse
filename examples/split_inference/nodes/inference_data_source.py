@@ -69,7 +69,7 @@ class InferenceDataSource(Master):
             #result_data = await self.task_deployer.deploy_task(encode_offload_inference_request(X))
             if self.monitor_client is not None:
                 self.monitor_client.batch_processed(len(X))
-            progress_bar.update(1)
+            progress_bar.update(len(X))
             
             if batch + 1 >= batches:
                 break
