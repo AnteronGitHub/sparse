@@ -2,34 +2,47 @@ import asyncio
 import time
 
 import torch
+import numpy as np
 from torch import nn
 from tqdm import tqdm
 
 from sparse_framework.node.master import Master
-from sparse_framework.dl.serialization import encode_offload_inference_request, \
-                                    decode_offload_inference_response
 from sparse_framework.stats.monitor_client import MonitorClient
 
 from datasets.yolov3 import YOLOv3Dataset
 from models.yolov3 import YOLOv3_local
 from utils import get_device, ImageLoading, non_max_suppression, save_detection
+from torch.utils.data import DataLoader
+from sparse_framework.dl.serialization import encode_offload_inference_request, encode_offload_inference_request_pruned
 
 class SplitInferenceClient(Master):
-    def __init__(self, benchmark = True):
+    def __init__(self, dataset, model, benchmark = True):
         super().__init__()
         compressionProps = {}
         compressionProps['feature_compression_factor'] = 4
         compressionProps['resolution_compression_factor'] = 1
-
-        self.model = YOLOv3_local(compressionProps)
-        self.dataset = YOLOv3Dataset()
+        self.model = model
+        self.dataset = dataset
         self.device = get_device()
         if benchmark:
             self.monitor_client = MonitorClient()
         else:
             self.monitor_client = None
 
-    async def infer(self, inferences_to_be_run = 100, save_result = False):
+    def compress_with_pruneFilter(self, pred, prune_filter, budget):
+        compressedPred = torch.tensor([])
+        mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
+        masknp = mask.detach().numpy()
+        partitioned = np.partition(masknp, -budget)[-budget]
+        for entry in range(len(mask)):
+            if mask[entry] >= partitioned:
+                predRow = pred[:, entry, :, :].unsqueeze(dim=1)
+                compressedPred = torch.cat((compressedPred, predRow), 1)
+
+        return compressedPred, mask
+
+    async def infer(self, batch_size, batches, depruneProps,
+                    inferences_to_be_run = 100, save_result = False):
         if self.monitor_client is not None:
             self.monitor_client.start_benchmark()
 
@@ -40,35 +53,46 @@ class SplitInferenceClient(Master):
         # Transfer model to device
         model = self.model.to(self.device)
 
+        inferences_to_be_run = batch_size * batches
         progress_bar = tqdm(total=inferences_to_be_run,
                             unit='inferences',
                             unit_scale=True)
+        pruneState = depruneProps['pruneState']
+        budget = depruneProps['budget']
         with torch.no_grad():
             self.logger.info(f"--------- inferring ----------")
 
-            for t in range(inferences_to_be_run):
-                X = self.dataset.get_sample(self.model.img_size).to(self.device).to(self.device)
+            for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
+                X, y = X.to(self.device), y.to(self.device)
 
-                # Local forward propagation
-                split_vals = model(X)
+                model_return = self.model(X, local=True)
+                pred = model_return[0].to(
+                    "cpu").detach()  # partial model output
+                # quantization/compression TBD
+                prune_filter = model_return[1].to(
+                    "cpu").detach()  # the prune filter in training
 
-                # Offloaded layers
-                input_data = encode_offload_inference_request(split_vals.to("cpu").detach())
+                pred, mask = self.compress_with_pruneFilter(
+                    pred, prune_filter, budget)
 
-                result_data = await self.task_deployer.deploy_task(input_data)
+                if pruneState:
+                    input_data = encode_offload_inference_request_pruned(
+                        pred, mask, budget)
+                else:
+                    input_data = encode_offload_inference_request(X)
 
-                pred = decode_offload_inference_response(result_data)
+                self.logger.debug("Deploying to the next worker further")
 
-                if save_result:
-                    #post process layers
-                    conf_thres = 0.95
-                    nms_thres = 0.3
-                    detection = non_max_suppression(pred, conf_thres, nms_thres)
-                    save_detection(X, imagePath, detection)
+                offload_input_data = encode_offload_inference_request_pruned(
+                    pred.to("cpu").detach(), mask, budget)
+                result_data = await self.task_deployer.deploy_task(offload_input_data)
 
                 if self.monitor_client is not None:
                     self.monitor_client.batch_processed(len(X))
-                progress_bar.update(1)
+                progress_bar.update(len(X))
+
+                if batch + 1 >= batches:
+                    break
 
         progress_bar.close()
         self.logger.info("Done!")

@@ -7,6 +7,7 @@ from sparse_framework.node.master import Master
 from sparse_framework.stats.monitor_client import MonitorClient
 
 from datasets.yolov3 import YOLOv3Dataset
+import torch
 
 class InferenceDataSourceYOLO(Master):
     def __init__(self, benchmark = True):
@@ -59,22 +60,22 @@ class InferenceDataSource(Master):
             
         pruneState = depruneProps['pruneState'] 
         budget = depruneProps['budget'] 
-        for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
+        with torch.no_grad():
+            for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
+                if pruneState:
+                    input_data = encode_offload_inference_request_pruned(X, None, budget)
+                else:
+                    input_data = encode_offload_inference_request(X)
 
-            if pruneState:
-                input_data = encode_offload_inference_request_pruned(X, None, budget)
-            else:
-                input_data = encode_offload_inference_request(X)
+                result_data = await self.task_deployer.deploy_task(input_data)
+                if self.monitor_client is not None:
+                    self.monitor_client.batch_processed(len(X))
+                progress_bar.update(len(X))
 
-            #result_data = await self.task_deployer.deploy_task(encode_offload_inference_request(X))
+                if batch + 1 >= batches:
+                    break
+
+            progress_bar.close()
             if self.monitor_client is not None:
-                self.monitor_client.batch_processed(len(X))
-            progress_bar.update(len(X))
-            
-            if batch + 1 >= batches:
-                break
-
-        progress_bar.close()
-        if self.monitor_client is not None:
-            self.logger.info("Waiting for the benchmark client to finish sending messages")
-            await asyncio.sleep(1)
+                self.logger.info("Waiting for the benchmark client to finish sending messages")
+                await asyncio.sleep(1)

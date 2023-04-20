@@ -178,21 +178,32 @@ class GradientCalculatorPruneStep(TaskExecutor):
             # Input de-serialization
             split_layer, labels, prune_filter, budget = decode_offload_request_pruned(input_data)
             split_layer, labels  = Variable(split_layer, requires_grad=True).to(self.device), labels.to(self.device)
-            prune_filter = prune_filter.to(self.device)
-
-            split_layer = self.decompress_with_pruneFilter(split_layer, prune_filter, budget)
-            split_layer.retain_grad()
-            
-            pred = self.model(split_layer)   #partial model output
-            
-            loss = self.prune_loss_fn(self.loss_fn, pred, labels, prune_filter, budget, delta = 0.1, epsilon=1000)
-            self.logger.debug("Computed loss")
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.logger.debug("Updated parameters")
-            self.optimizer.step()
-            self.logger.debug("Updated optimizer")
-            loss = loss.item()
+            if prune_filter == None:
+                # self.logger.info("This version of sparse does not support unsplit training")
+                self.logger.info(f"split_layer is {split_layer}")
+                split_layer.retain_grad()
+                pred = self.model(split_layer)
+                loss = self.loss_fn(pred, labels)
+                self.logger.debug("Computed loss")
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.logger.debug("Updated parameters")
+                self.optimizer.step()
+                self.logger.debug("Updated optimizer")
+                loss = loss.item()
+            else:
+                prune_filter = prune_filter.to(self.device)
+                split_layer = self.decompress_with_pruneFilter(split_layer, prune_filter, budget)
+                split_layer.retain_grad()
+                pred = self.model(split_layer)   #partial model output
+                loss = self.prune_loss_fn(self.loss_fn, pred, labels, prune_filter, budget, delta = 0.1, epsilon=1000)
+                self.logger.debug("Computed loss")
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.logger.debug("Updated parameters")
+                self.optimizer.step()
+                self.logger.debug("Updated optimizer")
+                loss = loss.item()
 
         # Result serialization
         result_data = encode_offload_response(split_layer.grad.to("cpu").detach(), loss)

@@ -35,8 +35,18 @@ def run_offload_client_benchmark(args):
     print('-----------------------------------')
 
     from nodes.split_inference_client import SplitInferenceClient
+    from datasets import DatasetRepository
+    from models import ModelTrainingRepository
 
-    asyncio.run(SplitInferenceClient().infer())
+    dataset, classes = DatasetRepository().get_dataset(args.model_name)
+    compressionProps = {} # resolution compression factor, compress by how many times
+    compressionProps['feature_compression_factor'] = args.feature_compression_factor # layer compression factor, reduce by how many times TBD
+    compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
+    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, compressionProps)
+    depruneProps = get_depruneProps()
+    asyncio.run(SplitInferenceClient(dataset, model).infer(args.batch_size,
+                                                                        args.batches,
+                                                                            depruneProps))
 
 def run_offload_datasource_benchmark(args):
     print('Offload data source benchmark suite')
@@ -48,7 +58,6 @@ def run_offload_datasource_benchmark(args):
     from models import ModelTrainingRepository
     
     dataset, classes = DatasetRepository().get_dataset(args.model_name)
-    #model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name)
     depruneProps = get_depruneProps()
     asyncio.run(InferenceDataSource(dataset, args.model_name).start(args.batch_size,
                                                                         args.batches,
@@ -62,11 +71,9 @@ def run_offload_intermediate_benchmark(args):
     from datasets import DatasetRepository
     from models import ModelTrainingRepository
     
-    dataset, classes = DatasetRepository().get_dataset(args.model_name)
     compressionProps = {}
     compressionProps['feature_compression_factor'] = args.feature_compression_factor ### resolution compression factor, compress by how many times
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor ###layer compression factor, reduce by how many times TBD
-    depruneProps = get_depruneProps()
     model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, compressionProps)
     
     SplitInferenceIntermediate(model).start()
@@ -79,11 +86,9 @@ def run_offload_final_benchmark(args):
     from datasets import DatasetRepository
     from models import ModelTrainingRepository
 
-    dataset, classes = DatasetRepository().get_dataset(args.model_name)
     compressionProps = {}
     compressionProps['feature_compression_factor'] = args.feature_compression_factor ### resolution compression factor, compress by how many times
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor ###layer compression factor, reduce by how many times TBD
-    depruneProps = get_depruneProps()
     model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, compressionProps)
 
     if args.model_name == "YOLOv3_server":

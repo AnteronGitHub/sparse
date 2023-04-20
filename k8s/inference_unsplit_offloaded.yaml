@@ -51,7 +51,7 @@ spec:
         - name: WORKER_LISTEN_ADDRESS
           value: "0.0.0.0"
         command: ["python3"]
-        args: ["benchmark.py", "--suite", "offload_final", "--model", "YOLOv3"]
+        args: ["benchmark.py", "--suite", "offload_final"]
         volumeMounts:
         - name: app-code
           mountPath: /app

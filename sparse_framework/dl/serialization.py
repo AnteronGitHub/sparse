@@ -54,7 +54,7 @@ def decode_offload_inference_request(request : bytes):
 
 def decode_offload_inference_request_pruned(request : bytes):
     payload = pickle.loads(request)
-    return payload['activation']
+    return payload['activation'], payload['prune_filter'], payload['budget']
 
 def encode_offload_inference_response(prediction : torch.tensor):
     return pickle.dumps({
