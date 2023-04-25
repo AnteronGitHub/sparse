@@ -18,12 +18,12 @@ class InferenceDataSourceYOLO(Master):
         else:
             self.monitor_client = None
 
-    async def start(self, inferences_to_be_run = 100, img_size=416):
+    async def start(self, inferences_to_be_run = 100, img_size=416, log_file_prefix=None):
         progress_bar = tqdm(total=inferences_to_be_run,
                             unit='inferences',
                             unit_scale=True)
         if self.monitor_client is not None:
-            self.monitor_client.start_benchmark()
+            self.monitor_client.start_benchmark(log_file_prefix)
         for t in range(inferences_to_be_run):
             X = self.dataset.get_sample(img_size).to('cpu')
 
@@ -49,14 +49,14 @@ class InferenceDataSource(Master):
         else:
             self.monitor_client = None
 
-    async def start(self, batch_size, batches, depruneProps):
+    async def start(self, batch_size, batches, depruneProps, log_file_prefix):
         
         inferences_to_be_run = batch_size * batches
         progress_bar = tqdm(total=inferences_to_be_run,
                             unit='inferences',
                             unit_scale=True)
         if self.monitor_client is not None:
-            self.monitor_client.start_benchmark()
+            self.monitor_client.start_benchmark(log_file_prefix)
             
         pruneState = depruneProps['pruneState'] 
         budget = depruneProps['budget'] 

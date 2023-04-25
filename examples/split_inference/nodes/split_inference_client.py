@@ -42,9 +42,9 @@ class SplitInferenceClient(Master):
         return compressedPred, mask
 
     async def infer(self, batch_size, batches, depruneProps,
-                    inferences_to_be_run = 100, save_result = False):
+                    inferences_to_be_run = 100, save_result = False, log_file_prefix = None):
         if self.monitor_client is not None:
-            self.monitor_client.start_benchmark()
+            self.monitor_client.start_benchmark(log_file_prefix)
 
         self.logger.info(
             f"Starting inference using {self.device} for local computations"

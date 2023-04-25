@@ -26,9 +26,9 @@ class SplitTrainingClient(Master):
         else:
             self.monitor_client = None
 
-    async def start(self, batch_size, batches, depruneProps):
+    async def start(self, batch_size, batches, depruneProps, log_file_prefix):
         if self.monitor_client is not None:
-            self.monitor_client.start_benchmark()
+            self.monitor_client.start_benchmark(log_file_prefix)
 
         total_epochs = 0
         for entry in depruneProps:

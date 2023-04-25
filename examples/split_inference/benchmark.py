@@ -22,6 +22,10 @@ def get_depruneProps():
     }
     return depruneProps
 
+def _get_benchmark_log_file_prefix(args):
+    return f"benchmark_inference-{args.suite}-{args.benchmark_node_name}\
+-{args.model_name}-{args.batch_size}-{args.resolution_compression_factor}"
+
 def run_aio_benchmark(args):
     print('All-in-one benchmark suite')
     print('--------------------------')
@@ -46,7 +50,8 @@ def run_offload_client_benchmark(args):
     depruneProps = get_depruneProps()
     asyncio.run(SplitInferenceClient(dataset, model).infer(args.batch_size,
                                                                         args.batches,
-                                                                            depruneProps))
+                                                                            depruneProps,
+                                                           log_file_prefix=_get_benchmark_log_file_prefix(args)))
 
 def run_offload_datasource_benchmark(args):
     print('Offload data source benchmark suite')
@@ -61,7 +66,8 @@ def run_offload_datasource_benchmark(args):
     depruneProps = get_depruneProps()
     asyncio.run(InferenceDataSource(dataset, args.model_name).start(args.batch_size,
                                                                         args.batches,
-                                                                            depruneProps))
+                                                                            depruneProps,
+                                                                    log_file_prefix=_get_benchmark_log_file_prefix(args)))
 
 def run_offload_intermediate_benchmark(args):
     print('Offload intermediate node benchmark suite')

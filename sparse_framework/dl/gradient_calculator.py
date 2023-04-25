@@ -180,7 +180,6 @@ class GradientCalculatorPruneStep(TaskExecutor):
             split_layer, labels  = Variable(split_layer, requires_grad=True).to(self.device), labels.to(self.device)
             if prune_filter == None:
                 # self.logger.info("This version of sparse does not support unsplit training")
-                self.logger.info(f"split_layer is {split_layer}")
                 split_layer.retain_grad()
                 pred = self.model(split_layer)
                 loss = self.loss_fn(pred, labels)

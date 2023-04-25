@@ -113,9 +113,8 @@ class InferenceCalculator(TaskExecutor):
                 split_layer = Variable(split_layer, requires_grad=False).to(self.device)
 
                 if prune_filter == None:
-                    self.logger.error(
-                        "This version of sparse does not support unsplit inference")
-                    self.logger.info(f"split_layer is {split_layer}")
+                    # self.logger.error(
+                    #     "This version of sparse does not support unsplit inference")
                     pred = self.model(split_layer)
                     result_data = encode_offload_inference_response(
                         pred.to("cpu").detach())
