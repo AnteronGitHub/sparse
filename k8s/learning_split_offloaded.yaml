@@ -53,7 +53,7 @@ spec:
         - name: WORKER_LISTEN_PORT
           value: "50008"
         command: ["python3"]
-        args: ["benchmark.py", "--suite", "offload_final", "--model", "VGG_server"]
+        args: ["benchmark.py", "--suite", "offload_final", "--model", "VGG_server", "--dataset", "CIFAR100"]
         volumeMounts:
         - name: app-code
           mountPath: /app
@@ -128,7 +128,7 @@ spec:
         - name: WORKER_LISTEN_ADDRESS
           value: "0.0.0.0"
         command: ["python3"]
-        args: ["benchmark.py", "--suite", "offload_intermediate", "--model", "VGG_client"]
+        args: ["benchmark.py", "--suite", "offload_intermediate", "--model", "VGG_client", "--dataset", "CIFAR100"]
         volumeMounts:
         - name: app-code
           mountPath: /app
@@ -175,7 +175,7 @@ spec:
         - name: MASTER_UPSTREAM_HOST
           value: "learning-split-intermediate"
         command: ["python3"]
-        args: ["benchmark.py", "--suite", "offload_source", "--batches", "64", "--batch-size", "16"]
+        args: ["benchmark.py", "--suite", "offload_source", "--batches", "64", "--batch-size", "16", "--dataset", "CIFAR100"]
         volumeMounts:
         - name: app-code
           mountPath: /app

@@ -8,7 +8,7 @@ def parse_arguments():
     parser.add_argument('--batch-size', default=64, type=int)
     parser.add_argument('--epochs', default=1, type=int)
     parser.add_argument('--benchmark-node-name', default='client', type=str)
-    
+    parser.add_argument('--dataset', default='CIFAR10', type=str, help="Options: FMNIST, CIFAR10, CIFAR100, Imagenet100")
     parser.add_argument('--feature_compression_factor', default=1, type=int)
     parser.add_argument('--resolution_compression_factor', default=1, type=int)
     
@@ -24,7 +24,7 @@ def get_depruneProps():
 
 def _get_benchmark_log_file_prefix(args):
     return f"benchmark_learning-{args.suite}-{args.benchmark_node_name}\
--{args.model_name}-{args.epochs}-{args.batch_size}-{args.resolution_compression_factor}"
+-{args.model_name}-{args.dataset}-{args.epochs}-{args.batch_size}-{args.resolution_compression_factor}"
 
 def run_aio_benchmark(args):
     print('All-in-one benchmark suite')
@@ -35,7 +35,7 @@ def run_aio_benchmark(args):
     from models import ModelTrainingRepository
     from nodes.all_in_one import AllInOne
 
-    dataset, classes = DatasetRepository().get_dataset(args.model_name)
+    dataset, classes = DatasetRepository().get_dataset(args.model_name, args.dataset)
     model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name)
 
     asyncio.run(AllInOne(dataset, classes, model, loss_fn, optimizer).train(args.batches,
@@ -51,7 +51,7 @@ def run_offload_datasource_benchmark(args):
     from datasets import DatasetRepository
     from nodes.training_data_source import TrainingDataSource
 
-    dataset, classes = DatasetRepository().get_dataset(args.model_name)
+    dataset, classes = DatasetRepository().get_dataset(args.model_name, args.dataset)
     depruneProps = get_depruneProps()
     asyncio.run(TrainingDataSource(dataset, classes, 'VGG_unsplit').train(args.batch_size,
                                                                           args.batches,
@@ -66,7 +66,7 @@ def run_offload_client_benchmark(args):
     from models import ModelTrainingRepository
     from nodes.split_training_client import SplitTrainingClient
 
-    dataset, classes = DatasetRepository().get_dataset(args.model_name)
+    dataset, classes = DatasetRepository().get_dataset(args.model_name, args.dataset)
     compressionProps = {}
     compressionProps['feature_compression_factor'] = args.feature_compression_factor ### resolution compression factor, compress by how many times
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor ###layer compression factor, reduce by how many times TBD

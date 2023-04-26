@@ -1,25 +1,22 @@
 
 class DatasetRepository:
-    def get_dataset(self, model_name):
-        if model_name == 'VGG_unsplit':
-            from .cifar10 import CIFAR10_dataset
-            return CIFAR10_dataset()
-        elif model_name == 'VGG_client':
-            from .cifar10 import CIFAR10_dataset
-            return CIFAR10_dataset()
-        elif model_name == 'VGG_server':
-            from .cifar10 import CIFAR10_dataset
-            return CIFAR10_dataset()
-        elif model_name == 'Small_unsplit':
+    def get_dataset(self, model_name, dataset):
+        if model_name in ['VGG_unsplit', 'VGG_client', 'VGG_server']:
+            if dataset == 'CIFAR10':
+                from .cifar10 import CIFAR10_dataset
+                return CIFAR10_dataset()
+            elif dataset == 'CIFAR100':
+                from .cifar100 import CIFAR100_dataset
+                return CIFAR100_dataset()
+            elif dataset == 'Imagenet100':
+                from .imagenet100 import Imagenet100_dataset
+                return Imagenet100_dataset()
+            else:
+                raise f'No dataset with the name {dataset} was found in the repository'
+        elif model_name in ['Small_unsplit', 'Small_client', 'Small_server']:
             from .mnist_fashion import FashionMNIST
             return FashionMNIST()
-        elif model_name == 'Small_client':
-            from .mnist_fashion import FashionMNIST
-            return FashionMNIST()
-        elif model_name == 'Small_server':
-            from .mnist_fashion import FashionMNIST
-            return FashionMNIST()
-        elif model_name == 'YOLOv3' or  model_name == 'YOLOv3_server':
+        elif model_name in ['YOLOv3', 'YOLOv3_server']:
             from .yolov3 import YOLOv3Dataset
             return YOLOv3Dataset()
         else:

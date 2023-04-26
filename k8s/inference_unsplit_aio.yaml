@@ -23,7 +23,7 @@ spec:
         image: split_inference
         imagePullPolicy: IfNotPresent
         command: ["python3"]
-        args: ["benchmark.py", "--suite", "aio"]
+        args: ["benchmark.py", "--suite", "aio", "--dataset", "Imagenet100"]
         volumeMounts:
         - name: app-code
           mountPath: /app
