@@ -9,7 +9,7 @@ def parse_arguments():
     parser.add_argument('--inferences-to-be-run', default=100, type=int)
     parser.add_argument('--batches', default=64, type=int)
     parser.add_argument('--batch-size', default=64, type=int)
-    
+    parser.add_argument('--dataset', default='CIFAR10', type=str, help="Options: FMNIST, CIFAR10, CIFAR100, Imagenet100")
     parser.add_argument('--feature_compression_factor', default=1, type=int)
     parser.add_argument('--resolution_compression_factor', default=1, type=int)
     
@@ -24,7 +24,7 @@ def get_depruneProps():
 
 def _get_benchmark_log_file_prefix(args):
     return f"benchmark_inference-{args.suite}-{args.benchmark_node_name}\
--{args.model_name}-{args.batch_size}-{args.resolution_compression_factor}"
+-{args.model_name}-{args.dataset}-{args.batch_size}-{args.resolution_compression_factor}"
 
 def run_aio_benchmark(args):
     print('All-in-one benchmark suite')
@@ -42,7 +42,7 @@ def run_offload_client_benchmark(args):
     from datasets import DatasetRepository
     from models import ModelTrainingRepository
 
-    dataset, classes = DatasetRepository().get_dataset(args.model_name)
+    dataset, classes = DatasetRepository().get_dataset(args.model_name, args.dataset)
     compressionProps = {} # resolution compression factor, compress by how many times
     compressionProps['feature_compression_factor'] = args.feature_compression_factor # layer compression factor, reduce by how many times TBD
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
@@ -62,7 +62,7 @@ def run_offload_datasource_benchmark(args):
     from nodes.inference_data_source import InferenceDataSource
     from models import ModelTrainingRepository
     
-    dataset, classes = DatasetRepository().get_dataset(args.model_name)
+    dataset, classes = DatasetRepository().get_dataset(args.model_name, args.dataset)
     depruneProps = get_depruneProps()
     asyncio.run(InferenceDataSource(dataset, args.model_name).start(args.batch_size,
                                                                         args.batches,
