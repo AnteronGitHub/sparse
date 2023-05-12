@@ -2,15 +2,15 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: learning-split-ondevice-client
+  name: learning-client
   namespace: sparse
   labels:
-    app: learning-split-ondevice-client
+    app: learning-client
 spec:
   template:
     metadata:
       labels:
-        app: learning-split-ondevice-client
+        app: learning-client
     spec:
       restartPolicy: Never
       affinity:
@@ -24,15 +24,27 @@ spec:
                 - datasource
                 - aio
       containers:
-      - name: learning-split-ondevice-client
+      - name: learning-client
         image: split_learning
         imagePullPolicy: IfNotPresent
         env:
         - name: MASTER_UPSTREAM_HOST
-          value: "learning-split-ondevice-final"
+          value: "$SPARSE_DATASOURCE_DOWNSTREAM_HOST"
+        - name: MASTER_UPSTREAM_PORT
+          value: "$SPARSE_DATASOURCE_DOWNSTREAM_PORT"
         command: ["python3"]
-        args: ["benchmark.py", "--suite", "offload_client", "--model", "VGG_client", "--batches", "64", "--batch-size", "64",
-              "--dataset", "CIFAR10"]
+        args:
+        - "learning_client.py"
+        - "--suite"
+        - "$SPARSE_SUITE"
+        - "--model"
+        - "$SPARSE_MODEL"
+        - "--dataset"
+        - "$SPARSE_DATASET"
+        - "--batch-size"
+        - "$SPARSE_BATCH_SIZE"
+        - "--batches"
+        - "$SPARSE_BATCHES"
         volumeMounts:
         - name: app-code
           mountPath: /app

@@ -1,13 +1,37 @@
 ---
-apiVersion: batch/v1
-kind: Job
+apiVersion: v1
+kind: Service
 metadata:
-  name: learning-aio
+  name: learning-worker
   namespace: sparse
   labels:
-    app: learning-aio
+    app: learning-worker
 spec:
+  ports:
+  - port: 50007
+    protocol: TCP
+  selector:
+    app: learning-worker
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: learning-worker
+  namespace: sparse
+  labels:
+    app: learning-worker
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: learning-worker
   template:
+    metadata:
+      labels:
+        app: learning-worker
     spec:
       affinity:
         nodeAffinity:
@@ -17,23 +41,35 @@ spec:
               - key: sparse/node
                 operator: In
                 values:
+                - worker
                 - aio
       containers:
-      - name: learning-aio
+      - name: learning-worker
         image: split_learning
         imagePullPolicy: IfNotPresent
+        env:
+        - name: WORKER_LISTEN_ADDRESS
+          value: "0.0.0.0"
         command: ["python3"]
-        args: ["benchmark.py", "--suite", "aio", "--batches", "64", "--batch-size", "64", "--dataset", "CIFAR10"]
+        args:
+        - "learning_worker.py"
+        - "--suite"
+        - "$SPARSE_SUITE"
+        - "--model"
+        - "$SPARSE_MODEL"
+        - "--dataset"
+        - "$SPARSE_DATASET"
+        - "--batch-size"
+        - "$SPARSE_BATCH_SIZE"
+        - "--batches"
+        - "$SPARSE_BATCHES"
         volumeMounts:
         - name: app-code
           mountPath: /app
         - name: sparse-code
           mountPath: /usr/lib/sparse_framework
-        - name: sparse-data
-          mountPath: /data
         - name: sparse-run
           mountPath: /run/sparse
-      restartPolicy: Never
       volumes:
       - name: app-code
         hostPath:
@@ -41,9 +77,6 @@ spec:
       - name: sparse-code
         hostPath:
           path: /opt/sparse/sparse_framework
-      - name: sparse-data
-        hostPath:
-          path: /var/lib/sparse/data
       - name: sparse-run
         hostPath:
           path: /run/sparse

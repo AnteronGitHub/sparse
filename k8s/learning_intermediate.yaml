@@ -2,36 +2,36 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: learning-split-ondevice-final
+  name: learning-intermediate
   namespace: sparse
   labels:
-    app: learning-split-ondevice-final
+    app: learning-intermediate
 spec:
   ports:
-  - port: 50007
+  - port: 50008
     protocol: TCP
   selector:
-    app: learning-split-ondevice-final
+    app: learning-intermediate
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: learning-split-ondevice-final
+  name: learning-intermediate
   namespace: sparse
   labels:
-    app: learning-split-ondevice-final
+    app: learning-intermediate
 spec:
   replicas: 1
   strategy:
     type: RollingUpdate
   selector:
     matchLabels:
-      app: learning-split-ondevice-final
+      app: learning-intermediate
   template:
     metadata:
       labels:
-        app: learning-split-ondevice-final
+        app: learning-intermediate
     spec:
       affinity:
         nodeAffinity:
@@ -41,17 +41,32 @@ spec:
               - key: sparse/node
                 operator: In
                 values:
-                - final
+                - intermediate
                 - aio
       containers:
-      - name: learning-split-ondevice-final
+      - name: learning-intermediate
         image: split_learning
         imagePullPolicy: IfNotPresent
         env:
+        - name: MASTER_UPSTREAM_HOST
+          value: "learning-worker"
         - name: WORKER_LISTEN_ADDRESS
           value: "0.0.0.0"
+        - name: WORKER_LISTEN_PORT
+          value: "50008"
         command: ["python3"]
-        args: ["benchmark.py", "--suite", "offload_final", "--model", "VGG_server", "--dataset", "CIFAR10"]
+        args:
+        - "learning_intermediate.py"
+        - "--suite"
+        - "$SPARSE_SUITE"
+        - "--model"
+        - "$SPARSE_MODEL"
+        - "--dataset"
+        - "$SPARSE_DATASET"
+        - "--batch-size"
+        - "$SPARSE_BATCH_SIZE"
+        - "--batches"
+        - "$SPARSE_BATCHES"
         volumeMounts:
         - name: app-code
           mountPath: /app

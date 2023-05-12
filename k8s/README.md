@@ -50,6 +50,5 @@ kubectl create namespace sparse
 
 Then, the sparse pipeline resources can be created as follows (with monitoring included):
 ```
-kubectl create -f k8s/sparse_monitor.yaml
-kubectl create -f k8s/learning_unsplit_offloaded.yaml
+source scripts/init-experiment.sh
 ```

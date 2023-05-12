@@ -12,7 +12,11 @@ from sparse_framework.stats.monitor_client import MonitorClient
 
 import numpy as np
 
-class SplitTrainingClient(Master):
+from benchmark import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
+from datasets import DatasetRepository
+from models import ModelTrainingRepository
+
+class LearningClient(Master):
     def __init__(self, dataset, model, loss_fn, optimizer, benchmark = True):
         Master.__init__(self)
         self.dataset = dataset
@@ -63,7 +67,9 @@ class SplitTrainingClient(Master):
                     input_data = encode_offload_request_pruned(
                         upload_data, y.to("cpu"), filter_to_send, budget)
 
+                    self.logger.info("offloading processing")
                     result_data = await self.task_deployer.deploy_task(input_data)
+                    self.logger.info("received result from offloaded processing")
                     split_grad, loss = decode_offload_response(result_data)
 
                     progress_bar.update(len(X))
@@ -90,3 +96,24 @@ class SplitTrainingClient(Master):
                 compressedPred = torch.cat((compressedPred, predRow), 1)
 
         return compressedPred, mask
+
+if __name__ == '__main__':
+    args = parse_arguments()
+
+    compressionProps = {}
+    ### resolution compression factor, compress by how many times
+    compressionProps['feature_compression_factor'] = args.feature_compression_factor
+    ###layer compression factor, reduce by how many times TBD
+    compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
+    depruneProps = get_depruneProps()
+
+    dataset, classes = DatasetRepository().get_dataset(args.dataset)
+    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, "client", compressionProps)
+
+    asyncio.run(LearningClient(dataset=dataset,
+                               model=model,
+                               loss_fn=loss_fn,
+                               optimizer=optimizer).start(args.batch_size,
+                                                          args.batches,
+                                                          depruneProps,
+                                                          log_file_prefix=_get_benchmark_log_file_prefix(args, "datasource", get_deprune_epochs(depruneProps))))
