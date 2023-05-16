@@ -96,10 +96,13 @@ class GradientCalculatorPruneStep(TaskExecutor):
         
         #send budget and prune loss function here? or has to be passed each time?
         
-    def compress_with_pruneFilter(self, pred, prune_filter, budget):
+    def compress_with_pruneFilter(self, pred, prune_filter, budget, serverFlag = False):
         
         compressedPred = torch.tensor([])
-        mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
+        if serverFlag:
+            mask = prune_filter.to('cpu')
+        else:
+            mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
         masknp = mask.detach().numpy()
         partitioned = np.partition(masknp, -budget)[-budget]
         for entry in range(len(mask)):
@@ -108,7 +111,7 @@ class GradientCalculatorPruneStep(TaskExecutor):
                  compressedPred = torch.cat((compressedPred, predRow), 1)
                 
         return compressedPred, mask    
-        
+       
     def decompress_with_pruneFilter(self, pred, mask, budget):
         
         decompressed_pred = torch.tensor([]).to(self.device)
@@ -169,6 +172,8 @@ class GradientCalculatorPruneStep(TaskExecutor):
             split_grad, loss = decode_offload_response(result_data)
             split_grad = split_grad.to(self.device)
             
+            split_layer = self.decompress_with_pruneFilter(split_layer, prune_filter, budget)
+            
             self.optimizer.zero_grad()
             model_return[0].backward(split_grad)
             self.optimizer.step()
@@ -203,8 +208,8 @@ class GradientCalculatorPruneStep(TaskExecutor):
                 self.optimizer.step()
                 self.logger.debug("Updated optimizer")
                 loss = loss.item()
-
-        # Result serialization
+                split_layer, _ = self.compress_with_pruneFilter(split_layer, prune_filter, budget, serverFlag=True)
+                # Result serialization
         result_data = encode_offload_response(split_layer.grad.to("cpu").detach(), loss)
 
         self.logger.debug("Executed task")
