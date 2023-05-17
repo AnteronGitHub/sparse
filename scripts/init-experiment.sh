@@ -29,6 +29,10 @@ init_environment () {
   export SPARSE_BATCHES
 }
 
+create_sparse_namespace () {
+  sudo kubectl create namespace sparse
+}
+
 deploy_node () {
   cat k8s/$1.yaml | envsubst | sudo kubectl create -f -
 }
@@ -64,4 +68,5 @@ deploy_nodes () {
 }
 
 init_environment
+create_sparse_namespace
 deploy_nodes
