@@ -7,7 +7,11 @@ from torch.utils.data import DataLoader
 from sparse_framework.dl.utils import get_device
 from sparse_framework.stats.monitor_client import MonitorClient
 
-class AllInOne():
+from benchmark import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
+from datasets import DatasetRepository
+from models import ModelTrainingRepository
+
+class LearningAllInOne():
     def __init__(self, dataset, classes, model, loss_fn, optimizer, benchmark = True):
         self.dataset = dataset
         self.classes = classes
@@ -56,3 +60,13 @@ class AllInOne():
         if self.monitor_client is not None:
             print("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
+
+if __name__ == '__main__':
+    args = parse_arguments()
+    dataset, classes = DatasetRepository().get_dataset(args.dataset)
+    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, "aio")
+
+    asyncio.run(LearningAllInOne(dataset, classes, model, loss_fn, optimizer).train(args.batches,
+                                                                                    args.batch_size,
+                                                                                    args.epochs,
+                                                                                    _get_benchmark_log_file_prefix(args, "aio", args.epochs)))
