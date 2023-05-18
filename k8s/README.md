@@ -20,7 +20,7 @@ make docker
 
 ### Set up host paths
 
-To ease development, the resource templates map source code from host path `/opt/sparse/src` to the containers. If the
+To ease development, the resource templates map source code from host path `/opt/sparse/sparse_framework` to the containers. If the
 repository was not cloned to `/opt` directory, you can create a symbolic link to your repository:
 ```
 sudo ln -s <sparse_repo_path> /opt/sparse

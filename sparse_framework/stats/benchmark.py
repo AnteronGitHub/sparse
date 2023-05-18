@@ -24,7 +24,7 @@ class Benchmark():
     def receive_message(self, payload):
         self.previous_message_received_at = time.time()
         if payload['event'] == 'batch_processed':
-            self.monitor_container.batch_processed(payload['batch_size'])
+            self.monitor_container.batch_processed(payload['batch_size'], payload['loss'])
         elif payload['event'] == 'task_processed':
             self.monitor_container.task_processed()
 

@@ -30,7 +30,7 @@ spec:
       volumes:
       - name: sparse-code
         hostPath:
-          path: /opt/sparse/src
+          path: /opt/sparse/sparse_framework
       - name: sparse-stats
         hostPath:
           path: /var/lib/sparse/stats

@@ -30,10 +30,10 @@ class MonitorContainer(Monitor):
             stats += monitor.get_stats()
         return stats
 
-    def batch_processed(self, batch_size):
+    def batch_processed(self, batch_size, loss):
         for monitor in self.monitors:
             if type(monitor).__name__ == 'TrainingMonitor':
-                monitor.add_point(newly_processed_samples = batch_size)
+                monitor.add_point(newly_processed_samples = batch_size, loss = loss)
 
     def task_processed(self):
         for monitor in self.monitors:

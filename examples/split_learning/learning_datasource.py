@@ -49,7 +49,7 @@ class LearningDataSource(Master):
 
                     progress_bar.update(len(X))
                     if self.benchmark:
-                        monitor_client.batch_processed(len(X))
+                        monitor_client.batch_processed(len(X), loss)
 
                     if batch + 1 >= batches:
                         break
