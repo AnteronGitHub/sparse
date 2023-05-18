@@ -35,6 +35,8 @@ class LearningAllInOne():
         loss.backward()
         self.optimizer.step()
 
+        return loss.item()
+
     async def train(self, batches, batch_size, epochs, log_file_prefix):
         print(f"Using {self.device} for processing")
         self.model.to(self.device)
@@ -47,10 +49,10 @@ class LearningAllInOne():
                             unit_scale=True)
         for t in range(epochs):
             for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
-                await asyncio.create_task(self.process_batch(X, y))
+                loss = await asyncio.create_task(self.process_batch(X, y))
 
                 if self.monitor_client is not None:
-                    await self.monitor_client.batch_processed(len(X))
+                    await self.monitor_client.batch_processed(len(X), loss)
 
                 progress_bar.update(len(X))
                 if batch + 1 >= batches:

@@ -74,7 +74,7 @@ class LearningClient(Master):
 
                     progress_bar.update(len(X))
                     if self.monitor_client is not None:
-                        self.monitor_client.batch_processed(len(X))
+                        self.monitor_client.batch_processed(len(X), loss)
 
                     if batch + 1 >= batches:
                         break

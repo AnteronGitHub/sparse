@@ -29,10 +29,11 @@ class MonitorClient():
                                    "event": "start",
                                    "log_file_prefix": log_file_prefix })
 
-    def batch_processed(self, batch_size : int):
+    def batch_processed(self, batch_size : int, loss : float = None):
         return self.submit_event({ "benchmark_id": self.benchmark_id,
                                    "event": "batch_processed",
-                                   "batch_size": batch_size })
+                                   "batch_size": batch_size,
+                                   "loss": loss })
 
     def task_processed(self):
         return self.submit_event({ "benchmark_id": self.benchmark_id,
