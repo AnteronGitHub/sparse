@@ -72,6 +72,14 @@ class LearningClient(Master):
                     self.logger.info("received result from offloaded processing")
                     split_grad, loss = decode_offload_response(result_data)
 
+                    # Back Propagation
+                    split_grad = self.decompress_with_pruneFilter(split_grad, filter_to_send, budget)
+                    split_grad = split_grad.to(self.device)
+
+                    self.optimizer.zero_grad()
+                    model_return[0].backward(split_grad)
+                    self.optimizer.step()
+
                     progress_bar.update(len(X))
                     if self.monitor_client is not None:
                         self.monitor_client.batch_processed(len(X), loss)
@@ -96,6 +104,24 @@ class LearningClient(Master):
                 compressedPred = torch.cat((compressedPred, predRow), 1)
 
         return compressedPred, mask
+
+    def decompress_with_pruneFilter(self, pred, mask, budget):
+
+        decompressed_pred = torch.tensor([]).to(self.device)
+        a_row = pred[:,0,:,:].unsqueeze(dim=1)
+        zeroPad = torch.zeros(a_row.shape).to(self.device)
+        masknp = mask.to('cpu').detach().numpy()
+        partitioned = np.partition(masknp, -budget)[-budget]
+        count = 0
+        for entry in range(len(mask)):
+            if mask[entry] >= partitioned:
+                predRow = pred[:,count,:,:].unsqueeze(dim=1).to(self.device)
+                decompressed_pred = torch.cat((decompressed_pred, predRow), 1)
+                count += 1
+            else:
+                decompressed_pred = torch.cat((decompressed_pred, zeroPad), 1)
+
+        return decompressed_pred
 
 if __name__ == '__main__':
     args = parse_arguments()
