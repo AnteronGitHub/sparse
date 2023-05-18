@@ -98,7 +98,7 @@ class GradientCalculatorPruneStep(TaskExecutor):
         
     def compress_with_pruneFilter(self, pred, prune_filter, budget, serverFlag = False):
         
-        compressedPred = torch.tensor([])
+        compressedPred = torch.tensor([]).to(self.device)
         if serverFlag:
             mask = prune_filter.to('cpu')
         else:
@@ -107,7 +107,7 @@ class GradientCalculatorPruneStep(TaskExecutor):
         partitioned = np.partition(masknp, -budget)[-budget]
         for entry in range(len(mask)):
             if mask[entry] >= partitioned:
-                 predRow = pred[:,entry,:,:].unsqueeze(dim=1) 
+                 predRow = pred[:,entry,:,:].unsqueeze(dim=1).to(self.device)
                  compressedPred = torch.cat((compressedPred, predRow), 1)
                 
         return compressedPred, mask    
@@ -122,7 +122,7 @@ class GradientCalculatorPruneStep(TaskExecutor):
         count = 0
         for entry in range(len(mask)):
             if mask[entry] >= partitioned: 
-                predRow = pred[:,count,:,:].unsqueeze(dim=1)
+                predRow = pred[:,count,:,:].unsqueeze(dim=1).to(self.device)
                 decompressed_pred = torch.cat((decompressed_pred, predRow), 1)
                 count += 1
             else:
@@ -132,7 +132,9 @@ class GradientCalculatorPruneStep(TaskExecutor):
         
     def prune_loss_fn(self, loss_fn, pred, y, prune_filter, budget, delta = 0.1, epsilon=1000):
         prune_filter_squeezed = prune_filter.squeeze()
-        prune_filter_control = torch.exp( delta * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget)   )
+        prune_filter_control_1 = torch.exp( delta * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget))
+        prune_filter_control_2 = torch.exp(-delta * (sum(torch.square(torch.sigmoid(prune_filter_squeezed)))-budget))
+        prune_filter_control = prune_filter_control_1 + prune_filter_control_2
         entropyLoss = loss_fn(pred,y)
         diff = entropyLoss + epsilon * prune_filter_control
         return diff
@@ -170,9 +172,8 @@ class GradientCalculatorPruneStep(TaskExecutor):
 
             # Local back propagation
             split_grad, loss = decode_offload_response(result_data)
+            split_grad = self.decompress_with_pruneFilter(split_grad, filter_to_send, budget)
             split_grad = split_grad.to(self.device)
-            
-            split_layer = self.decompress_with_pruneFilter(split_layer, prune_filter, budget)
             
             self.optimizer.zero_grad()
             model_return[0].backward(split_grad)
@@ -208,9 +209,9 @@ class GradientCalculatorPruneStep(TaskExecutor):
                 self.optimizer.step()
                 self.logger.debug("Updated optimizer")
                 loss = loss.item()
-                split_layer, _ = self.compress_with_pruneFilter(split_layer, prune_filter, budget, serverFlag=True)
+                split_layer, _ = self.compress_with_pruneFilter(split_layer.grad, prune_filter, budget, serverFlag=True)
                 # Result serialization
-        result_data = encode_offload_response(split_layer.grad.to("cpu").detach(), loss)
+        result_data = encode_offload_response(split_layer.to(self.device).detach(), loss)
 
         self.logger.debug("Executed task")
         return result_data
