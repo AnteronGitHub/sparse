@@ -40,29 +40,3 @@ def get_deprune_epochs(depruneProps):
 
 def _get_benchmark_log_file_prefix(args, node_name, epochs):
     return f"learning-{args.suite}-{node_name}-{args.model_name}-{args.dataset}-{epochs}_{args.batch_size}_{args.batch_size}"
-
-def run_aio_benchmark(args):
-    print('All-in-one benchmark suite')
-    print('--------------------------')
-
-    import asyncio
-    from datasets import DatasetRepository
-    from models import ModelTrainingRepository
-    from nodes.all_in_one import AllInOne
-
-    dataset, classes = DatasetRepository().get_dataset(args.model_name, args.dataset)
-    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name)
-
-    asyncio.run(AllInOne(dataset, classes, model, loss_fn, optimizer).train(args.batches,
-                                                                            args.batch_size,
-                                                                            args.epochs,
-                                                                            _get_benchmark_log_file_prefix(args)))
-
-def run_monitor(args):
-    from sparse_framework.stats.monitor_server import MonitorServer
-    MonitorServer().start()
-
-if __name__ == '__main__':
-    args = parse_arguments()
-
-    run_aio_benchmark(args)

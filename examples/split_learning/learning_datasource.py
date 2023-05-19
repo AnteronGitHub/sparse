@@ -8,7 +8,7 @@ from sparse_framework.node.master import Master
 from sparse_framework.stats.monitor_client import MonitorClient
 
 from datasets import DatasetRepository
-from benchmark import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
+from utils import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
 
 class LearningDataSource(Master):
     def __init__(self, dataset, classes, benchmark = True):
