@@ -35,6 +35,8 @@ spec:
         - "$SPARSE_BATCH_SIZE"
         - "--batches"
         - "$SPARSE_BATCHES"
+        - "--deprune-props"
+        - "$SPARSE_DEPRUNE_PROPS"
         volumeMounts:
         - name: app-code
           mountPath: /app

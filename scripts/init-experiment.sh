@@ -6,12 +6,14 @@ init_environment () {
   read -p "Dataset to be used (default CIFAR10): " SPARSE_DATASET
   read -p "Batch size to be used in training (default 64): " SPARSE_BATCH_SIZE
   read -p "Number of batches to be used in training (default 64): " SPARSE_BATCHES
+  read -p "Deprune props to be used in training (default 'budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1'): " SPARSE_DEPRUNE_PROPS
 
   SPARSE_SUITE=${SPARSE_SUITE:-aio}
   SPARSE_MODEL=${SPARSE_MODEL:-VGG}
   SPARSE_DATASET=${SPARSE_DATASET:-CIFAR10}
   SPARSE_BATCH_SIZE=${SPARSE_BATCH_SIZE:-64}
   SPARSE_BATCHES=${SPARSE_BATCHES:-64}
+  SPARSE_DEPRUNE_PROPS=${SPARSE_DEPRUNE_PROPS:-budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1}
 
   if [ $SPARSE_SUITE == "fog_offloading" ]
   then
@@ -27,6 +29,7 @@ init_environment () {
   export SPARSE_DATASET
   export SPARSE_BATCH_SIZE
   export SPARSE_BATCHES
+  export SPARSE_DEPRUNE_PROPS
 }
 
 create_sparse_namespace () {
