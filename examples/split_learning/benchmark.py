@@ -12,21 +12,30 @@ def parse_arguments():
     parser.add_argument('--dataset', default='CIFAR10', type=str, help="Options: FMNIST, CIFAR10, CIFAR100, Imagenet100")
     parser.add_argument('--feature_compression_factor', default=1, type=int)
     parser.add_argument('--resolution_compression_factor', default=1, type=int)
+    parser.add_argument('--deprune_props',
+                        type=str,
+                        default="budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1",
+                        help="Comma separated list of phases in format: budget:int;epochs:int;pruneState:[01]")
 
     return parser.parse_args()
 
-def get_depruneProps():
-    # depruneProps format is {step, budget, ephochs, pruneState} with all others int and pruneState boolean
-    depruneProps = {
-                    1: {'budget':16, 'epochs':2, 'pruneState':True},
-                    2: {'budget':128, 'epochs':2, 'pruneState':True}
-    }
+def get_depruneProps(args):
+    depruneProps = []
+    for phase in args.deprune_props.split(","):
+        prop = {}
+        for phase_prop in phase.split(";"):
+            [k, v] = phase_prop.split(":")
+            if k in ["budget", "epochs"]:
+                prop[k] = int(v)
+            else:
+                prop[k] = bool(int(v))
+        depruneProps.append(prop)
     return depruneProps
 
 def get_deprune_epochs(depruneProps):
     total_epochs = 0
-    for entry in depruneProps:
-        total_epochs += depruneProps[entry]['epochs']
+    for prop in depruneProps:
+        total_epochs += prop['epochs']
     return total_epochs
 
 def _get_benchmark_log_file_prefix(args, node_name, epochs):

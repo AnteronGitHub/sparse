@@ -34,18 +34,16 @@ class LearningClient(Master):
         if self.monitor_client is not None:
             self.monitor_client.start_benchmark(log_file_prefix)
 
-        total_epochs = 0
-        for entry in depruneProps:
-            total_epochs += depruneProps[entry]['epochs']
+        total_epochs = get_deprune_epochs(depruneProps)
 
         progress_bar = tqdm(total=batch_size*batches*total_epochs,
                             unit='samples',
                             unit_scale=True)
 
-        for entry in depruneProps:
-            epochs = depruneProps[entry]['epochs']
-            pruneState = depruneProps[entry]['pruneState']
-            budget = depruneProps[entry]['budget']
+        for prop in depruneProps:
+            epochs = prop['epochs']
+            pruneState = prop['pruneState']
+            budget = prop['budget']
             for t in range(epochs):
                 for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
                     X, y = X.to(self.device), y.to(self.device)
@@ -131,7 +129,7 @@ if __name__ == '__main__':
     compressionProps['feature_compression_factor'] = args.feature_compression_factor
     ###layer compression factor, reduce by how many times TBD
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
-    depruneProps = get_depruneProps()
+    depruneProps = get_depruneProps(args)
 
     dataset, classes = DatasetRepository().get_dataset(args.dataset)
     model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, "client", compressionProps)
