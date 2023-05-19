@@ -1,7 +1,7 @@
 #!/bin/bash
 
 init_environment () {
-  read -p "Name of the experiment suite (aio/edge_offloading/cloud_offloading/edge_split/fog_offloading): " SPARSE_SUITE
+  read -p "Name of the experiment suite (aio/edge_offloading/edge_split/fog_offloading): " SPARSE_SUITE
   read -p "Model to be used (default VGG): " SPARSE_MODEL
   read -p "Dataset to be used (default CIFAR10): " SPARSE_DATASET
   read -p "Batch size to be used in training (default 64): " SPARSE_BATCH_SIZE
@@ -43,8 +43,10 @@ wait_for_deployment () {
 }
 
 deploy_nodes () {
+  deploy_node "sparse_monitor"
+
   case $SPARSE_SUITE in
-    "edge_offloading" | "cloud_offloading")
+    "edge_offloading")
       deploy_node "learning_worker"
       wait_for_deployment "learning-worker"
       deploy_node "learning_datasource"

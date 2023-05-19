@@ -8,7 +8,7 @@ from sparse_framework.node.master import Master
 from sparse_framework.stats.monitor_client import MonitorClient
 
 from datasets import DatasetRepository
-from benchmark import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
+from utils import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
 
 class LearningDataSource(Master):
     def __init__(self, dataset, classes, benchmark = True):
@@ -24,18 +24,15 @@ class LearningDataSource(Master):
             monitor_client.start_benchmark(log_file_prefix)
 
         total_ephochs = get_deprune_epochs(depruneProps)
-        for entry in depruneProps:
-            total_ephochs += depruneProps[entry]['epochs']
-
 
         progress_bar = tqdm(total=batch_size*batches*total_ephochs,
                             unit='samples',
                             unit_scale=True)
 
-        for entry in depruneProps:
-            epochs = depruneProps[entry]['epochs']
-            pruneState = depruneProps[entry]['pruneState']
-            budget = depruneProps[entry]['budget']
+        for prop in depruneProps:
+            epochs = prop['epochs']
+            pruneState = prop['pruneState']
+            budget = prop['budget']
             for t in range(epochs):
                 for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
 
@@ -63,7 +60,7 @@ if __name__ == '__main__':
     args = parse_arguments()
 
     dataset, classes = DatasetRepository().get_dataset(args.dataset)
-    depruneProps = get_depruneProps()
+    depruneProps = get_depruneProps(args)
     asyncio.run(LearningDataSource(dataset, classes).train(args.batch_size,
                                                            args.batches,
                                                            depruneProps,

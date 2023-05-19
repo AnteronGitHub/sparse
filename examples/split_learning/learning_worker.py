@@ -1,7 +1,7 @@
 from sparse_framework.node.worker import Worker
 from sparse_framework.dl.gradient_calculator import GradientCalculator, GradientCalculatorPruneStep
 
-from benchmark import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
+from utils import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
 from models import ModelTrainingRepository
 
 class LearningWorker(Worker):
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     ###layer compression factor, reduce by how many times TBD
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
 
-    depruneProps = get_depruneProps()
+    depruneProps = get_depruneProps(args)
     partition = "server" if args.suite in ["fog_offloading", "edge_split"] else "unsplit"
     model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, partition, compressionProps)
 

@@ -9,4 +9,4 @@ WORKDIR /app
 
 COPY . .
 
-CMD ["python3", "benchmark.py"]
+CMD ["python3", "learning_aio.py"]

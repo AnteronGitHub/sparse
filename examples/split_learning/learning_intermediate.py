@@ -2,7 +2,7 @@ from sparse_framework.node.master import Master
 from sparse_framework.node.worker import Worker
 from sparse_framework.dl.gradient_calculator import GradientCalculator, GradientCalculatorPruneStep
 
-from benchmark import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
+from utils import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
 
 class LearningIntermediate(Master, Worker):
     def __init__(self, model, loss_fn, optimizer, depruneProps, benchmark_log_file_prefix = 'benchmark_split_training'):
@@ -24,7 +24,7 @@ if __name__ == '__main__':
     ###layer compression factor, reduce by how many times TBD
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
 
-    depruneProps = get_depruneProps()
+    depruneProps = get_depruneProps(args)
     model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, "client", compressionProps)
 
     LearningIntermediate(model=model,
