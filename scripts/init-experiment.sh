@@ -43,6 +43,8 @@ wait_for_deployment () {
 }
 
 deploy_nodes () {
+  deploy_node "sparse_monitor"
+
   case $SPARSE_SUITE in
     "edge_offloading" | "cloud_offloading")
       deploy_node "learning_worker"
