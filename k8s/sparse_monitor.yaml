@@ -20,6 +20,9 @@ spec:
       - name: sparse-monitor
         image: sparse/pytorch
         imagePullPolicy: IfNotPresent
+        env:
+        - name: SPARSE_MONITOR_NIC
+          value: "$SPARSE_MONITOR_NIC"
         volumeMounts:
         - name: sparse-code
           mountPath: /usr/lib/sparse_framework

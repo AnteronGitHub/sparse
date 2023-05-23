@@ -8,14 +8,14 @@ class Monitor():
         return []
 
 class MonitorContainer(Monitor):
-    def __init__(self):
+    def __init__(self, nic):
         from .network_monitor import NetworkMonitor
         from .time_monitor import TimeMonitor
         from .training_monitor import TrainingMonitor
 
         self.monitors = []
         self.monitors.append(TimeMonitor())
-        self.monitors.append(NetworkMonitor())
+        self.monitors.append(NetworkMonitor(nic))
         self.monitors.append(TrainingMonitor())
 
     def get_metrics(self):

@@ -7,6 +7,7 @@ init_environment () {
   read -p "Batch size to be used in training (default 64): " SPARSE_BATCH_SIZE
   read -p "Number of batches to be used in training (default 64): " SPARSE_BATCHES
   read -p "Deprune props to be used in training (default 'budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1'): " SPARSE_DEPRUNE_PROPS
+  read -p "Network interface to monitor in benchmarks (default '' (all)): " SPARSE_MONITOR_NIC
 
   SPARSE_SUITE=${SPARSE_SUITE:-aio}
   SPARSE_MODEL=${SPARSE_MODEL:-VGG}
@@ -14,6 +15,7 @@ init_environment () {
   SPARSE_BATCH_SIZE=${SPARSE_BATCH_SIZE:-64}
   SPARSE_BATCHES=${SPARSE_BATCHES:-64}
   SPARSE_DEPRUNE_PROPS=${SPARSE_DEPRUNE_PROPS:-budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1}
+  SPARSE_MONITOR_NIC=${SPARSE_MONITOR_NIC:-""}
 
   if [ $SPARSE_SUITE == "fog_offloading" ]
   then
@@ -30,6 +32,7 @@ init_environment () {
   export SPARSE_BATCH_SIZE
   export SPARSE_BATCHES
   export SPARSE_DEPRUNE_PROPS
+  export SPARSE_MONITOR_NIC
 }
 
 create_sparse_namespace () {
