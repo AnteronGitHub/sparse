@@ -29,7 +29,7 @@ class LearningClient(Master):
         else:
             self.monitor_client = None
 
-    async def start(self, batch_size, batches, depruneProps, log_file_prefix):
+    async def start(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs):
         if self.monitor_client is not None:
             self.monitor_client.start_benchmark(log_file_prefix)
 
@@ -39,42 +39,42 @@ class LearningClient(Master):
                             unit='samples',
                             unit_scale=True)
 
-        for prop in depruneProps:
+        if use_compression:
+            phases = depruneProps
+        else:
+            phases = [{'epochs': epochs, 'budget': None}]
+
+        for prop in phases:
             epochs = prop['epochs']
-            pruneState = prop['pruneState']
             budget = prop['budget']
             for t in range(epochs):
                 for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
-                    X, y = X.to(self.device), y.to(self.device)
+                    X = X.to(self.device)
 
-                    # Local forward pass
-                    model_return = self.model(X, local=True)
+                    if use_compression:
+                        # Masked prediction (quantization TBD)
+                        pred, prune_filter = self.model(X)
+                        payload, mask = self.compress_with_pruneFilter(pred.to("cpu").detach(),
+                                                                       prune_filter.to("cpu").detach(),
+                                                                       budget)
+                        input_data = encode_offload_request_pruned(payload, y, mask, budget)
+                    else:
+                        pred = self.model(X)
+                        input_data = encode_offload_request(pred, y)
 
-                    pred = model_return[0].to("cpu").detach()  # partial model output
-                    ############################
-                    # quantization/compression TBD
-                    ############################
-                    prune_filter = model_return[1].to(
-                        "cpu").detach()  # the prune filter in training
 
                     # Offloaded layers
-                    upload_data, filter_to_send = self.compress_with_pruneFilter(
-                        pred, prune_filter, budget)
-
-                    input_data = encode_offload_request_pruned(
-                        upload_data, y.to("cpu"), filter_to_send, budget)
-
-                    self.logger.info("offloading processing")
                     result_data = await self.task_deployer.deploy_task(input_data)
-                    self.logger.info("received result from offloaded processing")
-                    split_grad, loss = decode_offload_response(result_data)
 
-                    # Back Propagation
-                    split_grad = self.decompress_with_pruneFilter(split_grad, filter_to_send, budget)
+                    split_grad, loss = decode_offload_response(result_data)
+                    if use_compression:
+                        split_grad = self.decompress_with_pruneFilter(split_grad, mask, budget)
+
                     split_grad = split_grad.to(self.device)
 
+                    # Back Propagation
                     self.optimizer.zero_grad()
-                    model_return[0].backward(split_grad)
+                    pred.backward(split_grad)
                     self.optimizer.step()
 
                     progress_bar.update(len(X))
@@ -129,9 +129,11 @@ if __name__ == '__main__':
     ###layer compression factor, reduce by how many times TBD
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
     depruneProps = get_depruneProps(args)
+    use_compression = bool(args.use_compression)
 
     dataset, classes = DatasetRepository().get_dataset(args.dataset)
-    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, "client", compressionProps)
+    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, "client", compressionProps, use_compression)
+    log_file_prefix = _get_benchmark_log_file_prefix(args, "datasource", get_deprune_epochs(depruneProps))
 
     asyncio.run(LearningClient(dataset=dataset,
                                model=model,
@@ -139,4 +141,6 @@ if __name__ == '__main__':
                                optimizer=optimizer).start(args.batch_size,
                                                           args.batches,
                                                           depruneProps,
-                                                          log_file_prefix=_get_benchmark_log_file_prefix(args, "datasource", get_deprune_epochs(depruneProps))))
+                                                          log_file_prefix=log_file_prefix,
+                                                          use_compression=use_compression,
+                                                          epochs=int(args.epochs)))

@@ -17,29 +17,29 @@ class LearningDataSource(Master):
         self.classes = classes
         self.benchmark = benchmark
 
-    async def train(self, batch_size, batches, depruneProps, log_file_prefix):
-        # depruneProps format is {step, budget, ephochs, pruneState} with all others int and pruneState boolean
+    async def train(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs):
         if self.benchmark:
             monitor_client = MonitorClient()
             monitor_client.start_benchmark(log_file_prefix)
 
         total_ephochs = get_deprune_epochs(depruneProps)
-
         progress_bar = tqdm(total=batch_size*batches*total_ephochs,
                             unit='samples',
                             unit_scale=True)
 
-        for prop in depruneProps:
+        if use_compression:
+            phases = depruneProps
+        else:
+            phases = [{'epochs': epochs, 'budget': None}]
+        for prop in phases:
             epochs = prop['epochs']
-            pruneState = prop['pruneState']
             budget = prop['budget']
             for t in range(epochs):
                 for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
-
-                    #if pruneState:
-                    input_data = encode_offload_request_pruned(X, y, None, budget)
-                    #else:
-                    #    input_data = encode_offload_request(X, y)
+                    if use_compression:
+                        input_data = encode_offload_request_pruned(X, y, None, budget)
+                    else:
+                        input_data = encode_offload_request(X, y)
 
                     result_data = await self.task_deployer.deploy_task(input_data)
                     split_grad, loss = decode_offload_response(result_data)
@@ -61,8 +61,11 @@ if __name__ == '__main__':
 
     dataset, classes = DatasetRepository().get_dataset(args.dataset)
     depruneProps = get_depruneProps(args)
+    log_file_prefix = _get_benchmark_log_file_prefix(args, "datasource", get_deprune_epochs(depruneProps))
     asyncio.run(LearningDataSource(dataset, classes).train(args.batch_size,
                                                            args.batches,
                                                            depruneProps,
-                                                           log_file_prefix = _get_benchmark_log_file_prefix(args, "datasource", get_deprune_epochs(depruneProps))))
+                                                           log_file_prefix=log_file_prefix,
+                                                           use_compression=bool(args.use_compression),
+                                                           epochs=int(args.epochs)))
 

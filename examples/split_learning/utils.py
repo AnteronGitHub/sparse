@@ -12,6 +12,7 @@ def parse_arguments():
     parser.add_argument('--dataset', default='CIFAR10', type=str, help="Options: FMNIST, CIFAR10, CIFAR100, Imagenet100")
     parser.add_argument('--feature_compression_factor', default=1, type=int)
     parser.add_argument('--resolution_compression_factor', default=1, type=int)
+    parser.add_argument('--use-compression', default=1, type=int)
     parser.add_argument('--deprune-props',
                         type=str,
                         default="budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1",

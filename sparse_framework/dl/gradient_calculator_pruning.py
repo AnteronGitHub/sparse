@@ -12,14 +12,13 @@ from .serialization import encode_offload_request_pruned, decode_offload_request
 from .utils import get_device
 
 class GradientCalculatorPruneStep(TaskExecutor):
-    def __init__(self, model : Module, loss_fn, optimizer, depruneProps):
+    def __init__(self, model : Module, loss_fn, optimizer):
         super().__init__()
         self.device = get_device()
         self.loss_fn = loss_fn
         #prune loss functions
         self.model = model
         self.optimizer = optimizer
-        self.depruneProps = depruneProps
 
     def start(self):
         """Initialize executor by transferring the model to the processor memory."""
@@ -28,6 +27,7 @@ class GradientCalculatorPruneStep(TaskExecutor):
         for param in self.model.parameters():
             num_parameters += param.nelement()
         self.logger.info(f"Training {type(self.model).__name__} model with {num_parameters} parameters using {self.device} for processing")
+        self.logger.info("Using compression for communication")
         self.model.to(self.device)
         self.model.train()
         
@@ -93,7 +93,7 @@ class GradientCalculatorPruneStep(TaskExecutor):
             split_layer.retain_grad()
 
             # Local forward pass
-            model_return = self.model(split_layer, local=True)
+            model_return = self.model(split_layer)
         
             pred = model_return[0].to("cpu").detach()   #partial model output
             ############################
