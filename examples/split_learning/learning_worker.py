@@ -1,5 +1,5 @@
 from sparse_framework.node.worker import Worker
-from sparse_framework.dl.gradient_calculator import GradientCalculator, GradientCalculatorPruneStep
+from sparse_framework.dl import GradientCalculatorPruneStep
 
 from utils import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
 from models import ModelTrainingRepository

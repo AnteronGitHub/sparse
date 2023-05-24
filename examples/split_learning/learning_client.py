@@ -5,7 +5,6 @@ import torch
 from torch.utils.data import DataLoader
 
 from sparse_framework.node.master import Master
-from sparse_framework.dl.gradient_calculator import GradientCalculator
 from sparse_framework.dl.utils import get_device
 from sparse_framework.dl.serialization import encode_offload_request, decode_offload_response, encode_offload_request_pruned
 from sparse_framework.stats.monitor_client import MonitorClient
