@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import os
 import socket
 import time
 
@@ -15,6 +16,7 @@ class MonitorServer():
         self.logger = logging.getLogger("sparse")
         self.update_frequency_ps = update_frequency_ps
         self.socket_path = socket_path
+        self.nic = os.environ.get('SPARSE_MONITOR_NIC') or ''
 
         self.benchmarks = set()
         self.stopped_benchmarks = set()
@@ -30,8 +32,10 @@ class MonitorServer():
     def start_benchmark(self, benchmark_id, log_file_prefix):
         self.benchmarks.add(Benchmark(benchmark_id,
                                       log_file_prefix,
+                                      self.nic,
                                       self.stopped_benchmarks.add))
-        self.logger.info(f"Started a new benchmark '{benchmark_id}' with log prefix '{log_file_prefix}'")
+        nic_name = self.nic or "all"
+        self.logger.info(f"Started a new benchmark '{benchmark_id}' with log prefix '{log_file_prefix}' monitoring nic '{nic_name}'")
 
     async def run_monitor(self):
         self.logger.info("Starting monitor")
@@ -52,7 +56,11 @@ class MonitorServer():
             if benchmark.benchmark_id == payload['benchmark_id']:
                 benchmark.receive_message(payload)
                 return
-        self.start_benchmark(payload['benchmark_id'], payload['log_file_prefix'])
+        try:
+            self.start_benchmark(payload['benchmark_id'], payload['log_file_prefix'])
+        except Exception as e:
+            self.logger.error(f"Unable to start benchmark from message {payload}")
+            self.logger.error(e)
 
     async def run_server(self):
         self.logger.info(f"Starting the monitoring server on '{self.socket_path}'")

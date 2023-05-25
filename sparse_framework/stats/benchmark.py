@@ -4,13 +4,13 @@ from .file_logger import FileLogger
 from .monitor import MonitorContainer
 
 class Benchmark():
-    def __init__(self, benchmark_id, log_file_prefix, stop_callback, timeout = 30):
+    def __init__(self, benchmark_id, log_file_prefix, nic, stop_callback, timeout = 30):
         self.benchmark_id = benchmark_id
         self.stats_logger = FileLogger(file_prefix=f"{log_file_prefix}")
         self.stop_callback = stop_callback
         self.timeout = timeout
 
-        self.monitor_container = MonitorContainer()
+        self.monitor_container = MonitorContainer(nic=nic)
         self.stats_logger.log_row(self.monitor_container.get_metrics())
 
         self.previous_message_received_at = time.time()
