@@ -74,7 +74,7 @@ class GradientCalculatorPruneStep(TaskExecutor):
         prune_filter_control = prune_filter_control_1 + prune_filter_control_2
         entropyLoss = loss_fn(pred,y)
         diff = entropyLoss + epsilon * prune_filter_control
-        return diff
+        return diff, entropyLoss
         
         
 
@@ -108,7 +108,7 @@ class GradientCalculatorPruneStep(TaskExecutor):
             result_data = await self.task_deployer.deploy_task(input_data)
 
             # Local back propagation
-            split_grad, loss = decode_offload_response(result_data)
+            split_grad, reported_loss = decode_offload_response(result_data)
             split_grad = self.decompress_with_pruneFilter(split_grad, filter_to_send, budget)
             split_grad = split_grad.to(self.device)
             
@@ -132,23 +132,24 @@ class GradientCalculatorPruneStep(TaskExecutor):
                 self.logger.debug("Updated parameters")
                 self.optimizer.step()
                 self.logger.debug("Updated optimizer")
-                loss = loss.item()
+
+                reported_loss = loss.item()
             else:
                 prune_filter = prune_filter.to(self.device)
                 split_layer = self.decompress_with_pruneFilter(split_layer, prune_filter, budget)
                 split_layer.retain_grad()
                 pred = self.model(split_layer)   #partial model output
-                loss = self.prune_loss_fn(self.loss_fn, pred, labels, prune_filter, budget, delta = 0.1, epsilon=1000)
+                loss, true_loss = self.prune_loss_fn(self.loss_fn, pred, labels, prune_filter, budget, delta = 0.1, epsilon=1000)
                 self.logger.debug("Computed loss")
                 self.optimizer.zero_grad()
                 loss.backward()
                 self.logger.debug("Updated parameters")
                 self.optimizer.step()
                 self.logger.debug("Updated optimizer")
-                loss = loss.item()
                 split_layer, _ = self.compress_with_pruneFilter(split_layer.grad, prune_filter, budget, serverFlag=True)
-                # Result serialization
-        result_data = encode_offload_response(split_layer.to("cpu").detach(), loss)
+
+                reported_loss = true_loss.item()
+        result_data = encode_offload_response(split_layer.to("cpu").detach(), reported_loss)
 
         self.logger.debug("Executed task")
         return result_data
