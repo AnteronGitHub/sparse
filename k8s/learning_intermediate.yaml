@@ -54,6 +54,8 @@ spec:
           value: "0.0.0.0"
         - name: WORKER_LISTEN_PORT
           value: "50008"
+        - name: SPARSE_MODEL_SERVER_ADDRESS
+          value: "model-server"
         command: ["python3"]
         args:
         - "learning_intermediate.py"

@@ -74,3 +74,5 @@ class MonitorServer():
     def start(self):
         asyncio.run(self.run())
 
+if __name__ == '__main__':
+    MonitorServer().start()

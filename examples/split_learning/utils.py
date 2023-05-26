@@ -22,6 +22,8 @@ def parse_arguments():
 
 def get_depruneProps(args):
     depruneProps = []
+    if len(args.deprune_props) == 0:
+        return depruneProps
     for phase in args.deprune_props.split(","):
         prop = {}
         for phase_prop in phase.split(";"):

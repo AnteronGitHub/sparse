@@ -2,36 +2,35 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: learning-worker
+  name: model-server
   namespace: sparse
   labels:
-    app: learning-worker
+    app: model-server
 spec:
   ports:
-  - port: 50007
+  - port: 50006
     protocol: TCP
   selector:
-    app: learning-worker
-
+    app: model-server
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: learning-worker
+  name: model-server
   namespace: sparse
   labels:
-    app: learning-worker
+    app: model-server
 spec:
   replicas: 1
   strategy:
     type: RollingUpdate
   selector:
     matchLabels:
-      app: learning-worker
+      app: model-server
   template:
     metadata:
       labels:
-        app: learning-worker
+        app: model-server
     spec:
       affinity:
         nodeAffinity:
@@ -41,43 +40,19 @@ spec:
               - key: sparse/node
                 operator: In
                 values:
-                - worker
+                - models
                 - aio
       containers:
-      - name: learning-worker
+      - name: model-server
         image: split_learning
         imagePullPolicy: IfNotPresent
-        env:
-        - name: WORKER_LISTEN_ADDRESS
-          value: "0.0.0.0"
-        - name: SPARSE_MODEL_SERVER_ADDRESS
-          value: "model-server"
         command: ["python3"]
-        args:
-        - "learning_worker.py"
-        - "--suite"
-        - "$SPARSE_SUITE"
-        - "--model"
-        - "$SPARSE_MODEL"
-        - "--dataset"
-        - "$SPARSE_DATASET"
-        - "--batch-size"
-        - "$SPARSE_BATCH_SIZE"
-        - "--batches"
-        - "$SPARSE_BATCHES"
-        - "--use-compression"
-        - "$SPARSE_USE_COMPRESSION"
-        - "--deprune-props"
-        - "$SPARSE_DEPRUNE_PROPS"
-        - "--epochs"
-        - "$SPARSE_EPOCHS"
+        args: ["model_server.py"]
         volumeMounts:
         - name: app-code
           mountPath: /app
         - name: sparse-code
           mountPath: /usr/lib/sparse_framework
-        - name: sparse-run
-          mountPath: /run/sparse
       volumes:
       - name: app-code
         hostPath:
@@ -85,6 +60,3 @@ spec:
       - name: sparse-code
         hostPath:
           path: /opt/sparse/sparse_framework
-      - name: sparse-run
-        hostPath:
-          path: /run/sparse

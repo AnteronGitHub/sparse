@@ -9,6 +9,7 @@ class Worker(Node):
         Node.__init__(self)
         self.task_executor = task_executor
         self.task_executor.set_logger(self.logger)
+        self.task_executor.set_node(self)
         self.rx_pipe = get_supported_rx_pipe(self.task_executor,
                                              self.config_manager.listen_address,
                                              self.config_manager.listen_port,

@@ -9,18 +9,32 @@ from ..task_executor import TaskExecutor
 
 from .serialization import decode_offload_request, encode_offload_request, decode_offload_response, encode_offload_response
 from .utils import get_device
+from .model_loader import ModelLoader
 
 class GradientCalculator(TaskExecutor):
-    def __init__(self, model : Module, loss_fn, optimizer):
+    def __init__(self, model_name : str, partition : str, compressionProps : dict, use_compression : bool):
         super().__init__()
         self.device = get_device()
-        self.loss_fn = loss_fn
-        self.model = model
-        self.optimizer = optimizer
+        self.model_name = model_name
+        self.partition = partition
+        self.compressionProps = compressionProps
+        self.use_compression = use_compression
+
+        self.model = None
 
     def start(self):
         """Initialize executor by transferring the model to the processor memory."""
         super().start()
+
+        model_loader = ModelLoader(self.node.config_manager.model_server_address,
+                                   self.node.config_manager.model_server_port)
+
+        self.model, self.loss_fn, self.optimizer = model_loader.load_model(self.model_name,
+                                                                           self.partition,
+                                                                           self.compressionProps,
+                                                                           self.use_compression)
+        self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}' and using compression '{self.use_compression}'")
+
         num_parameters = 0
         for param in self.model.parameters():
             num_parameters += param.nelement()
@@ -70,6 +84,4 @@ class GradientCalculator(TaskExecutor):
 
         self.logger.debug("Executed task")
         return result_data
-
-
 

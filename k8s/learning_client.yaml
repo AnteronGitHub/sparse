@@ -32,6 +32,8 @@ spec:
           value: "$SPARSE_DATASOURCE_DOWNSTREAM_HOST"
         - name: MASTER_UPSTREAM_PORT
           value: "$SPARSE_DATASOURCE_DOWNSTREAM_PORT"
+        - name: SPARSE_MODEL_SERVER_ADDRESS
+          value: "model-server"
         command: ["python3"]
         args:
         - "learning_client.py"
