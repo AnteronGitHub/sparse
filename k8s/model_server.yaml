@@ -37,11 +37,10 @@ spec:
           requiredDuringSchedulingIgnoredDuringExecution:
             nodeSelectorTerms:
             - matchExpressions:
-              - key: sparse/node
+              - key: sparse/model-server
                 operator: In
                 values:
-                - models
-                - aio
+                - "true"
       containers:
       - name: model-server
         image: split_learning
