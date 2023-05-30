@@ -10,21 +10,27 @@ class TaskDeployerLegacy(TaskDeployer):
     async def stream_task_synchronous(self, input_data : bytes, loop):
         while True:
             try:
-                reader, writer = await asyncio.open_connection(self.upstream_host, self.upstream_port)
+                task = asyncio.open_connection(self.upstream_host, self.upstream_port)
+                reader, writer = await asyncio.wait_for(task, timeout=5)
                 break
             except ConnectionRefusedError:
                 self.logger.error("Unable to connect to upstream host. Trying again in 5 seconds...")
                 time.sleep(5)
-            except TimeoutError:
+            except asyncio.exceptions.TimeoutError:
                 self.logger.error("Connection to upstream host timed out. Retrying...")
 
         writer.write(input_data)
         writer.write_eof()
 
-        result_data = await reader.read()
-        writer.close()
+        # TODO: Better workaround is needed as opposed to ignoring...
+        try:
+            result_data = await reader.read()
+            writer.close()
 
-        return result_data
+            return result_data
+        except ConnectionResetError:
+            self.logger.error("Connection reset by peer. Retrying...")
+            return None
 
     async def deploy_task(self, input_data : bytes):
         loop = asyncio.get_event_loop()

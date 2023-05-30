@@ -47,7 +47,13 @@ class RXPipe:
 
         self.logger.debug("Responding with task output data...")
         writer.write(result_data)
-        await writer.drain()
+
+        # TODO: Come up with a better workaround for IO errors. Ignore for now...
+        try:
+            await writer.drain()
+        except BrokenPipeError:
+            self.logger.info("Broken pipe during response stream. Ignoring...")
+            pass
         writer.close()
 
         if self.monitor_client is not None:
