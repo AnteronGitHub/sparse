@@ -15,6 +15,8 @@ class NetworkMonitor(Monitor):
         pernic = len(self.nic) > 0
         network_stats = psutil.net_io_counters(pernic=pernic)
         if pernic:
+            if self.nic not in network_stats.keys():
+                return [None, None]
             network_stats = network_stats[self.nic]
 
         if self.initial_bytes_sent is None:
