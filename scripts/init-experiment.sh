@@ -1,6 +1,8 @@
 #!/bin/bash
 
 init_environment () {
+
+  # Experiment specs
   read -p "Name of the experiment suite (aio/edge_offloading/edge_split/fog_offloading): " SPARSE_SUITE
   export SPARSE_SUITE=${SPARSE_SUITE:-aio}
 
@@ -32,12 +34,23 @@ init_environment () {
   export SPARSE_DEPRUNE_PROPS=${SPARSE_DEPRUNE_PROPS:-budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1}
   export SPARSE_EPOCHS=${SPARSE_EPOCHS:-4}
 
+
+  # Monitoring specs
   read -p "Network interface to monitor in benchmarks (default '' (all)): " SPARSE_MONITOR_NIC
 
-  export SPARSE_MONITOR_NIC=${SPARSE_MONITOR_NIC:-""}
+  export SPARSE_MONITOR_NIC=$SPARSE_MONITOR_NIC
 
-  if [ $SPARSE_SUITE == "fog_offloading" ]
-  then
+
+  # Deployment specs
+  read -p "Use external link for data source (default 'no'): " SPARSE_DATASOURCE_USE_EXTERNAL_LINK
+  export SPARSE_DATASOURCE_USE_EXTERNAL_LINK=${SPARSE_DATASOURCE_USE_EXTERNAL_LINK:-"no"}
+  if [ $SPARSE_DATASOURCE_USE_EXTERNAL_LINK == "yes" ]; then
+    read -p "External IP for downstream link: " SPARSE_DATASOURCE_DOWNSTREAM_HOST
+    read -p "Port for downstream link (default 30007): " SPARSE_DATASOURCE_DOWNSTREAM_PORT
+
+    export SPARSE_DATASOURCE_DOWNSTREAM_HOST=$SPARSE_DATASOURCE_DOWNSTREAM_HOST
+    export SPARSE_DATASOURCE_DOWNSTREAM_PORT=${SPARSE_DATASOURCE_DOWNSTREAM_PORT:-"30007"}
+  elif [ $SPARSE_SUITE == "fog_offloading" ]; then
     export SPARSE_DATASOURCE_DOWNSTREAM_HOST="learning-intermediate"
     export SPARSE_DATASOURCE_DOWNSTREAM_PORT=50008
   else
@@ -50,7 +63,7 @@ create_sparse_namespace () {
   sudo kubectl create namespace sparse
 }
 
-deploy_node () {
+deploy_resource () {
   cat k8s/$1.yaml | envsubst | sudo kubectl create -f -
 }
 
@@ -60,28 +73,47 @@ wait_for_deployment () {
 }
 
 deploy_nodes () {
-  deploy_node "sparse_monitor"
+  deploy_resource "sparse_monitor"
+  deploy_resource "model_server"
 
   case $SPARSE_SUITE in
     "edge_offloading")
-      deploy_node "learning_worker"
+      deploy_resource "learning_worker_deployment"
       wait_for_deployment "learning-worker"
-      deploy_node "learning_datasource"
+      if [ $SPARSE_DATASOURCE_USE_EXTERNAL_LINK == "yes" ]; then
+        deploy_resource "learning_worker_nodeport"
+      else
+        deploy_resource "learning_worker_clusterip"
+      fi
+
+      deploy_resource "learning_datasource"
       ;;
     "edge_split")
-      deploy_node "learning_worker"
+      deploy_resource "learning_worker_deployment"
       wait_for_deployment "learning-worker"
-      deploy_node "learning_client"
+      if [ $SPARSE_DATASOURCE_USE_EXTERNAL_LINK == "yes" ]; then
+        deploy_resource "learning_worker_nodeport"
+      else
+        deploy_resource "learning_worker_clusterip"
+      fi
+
+      deploy_resource "learning_client"
       ;;
     "fog_offloading")
-      deploy_node "learning_worker"
+      deploy_resource "learning_worker_deployment"
       wait_for_deployment "learning-worker"
-      deploy_node "learning_intermediate"
+      if [ $SPARSE_DATASOURCE_USE_EXTERNAL_LINK == "yes" ]; then
+        deploy_resource "learning_worker_nodeport"
+      else
+        deploy_resource "learning_worker_clusterip"
+      fi
+
+      deploy_resource "learning_intermediate"
       wait_for_deployment "learning-intermediate"
-      deploy_node "learning_datasource"
+      deploy_resource "learning_datasource"
       ;;
     *)
-      deploy_node "learning_aio"
+      deploy_resource "learning_aio"
       ;;
   esac
 }
