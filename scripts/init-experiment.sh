@@ -25,11 +25,12 @@ init_environment () {
 
   if [ $SPARSE_USE_COMPRESSION == 1 ]; then
     read -p "Deprune props to be used in training (default 'budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1'): " SPARSE_DEPRUNE_PROPS
-    export SPARSE_DEPRUNE_PROPS=${SPARSE_DEPRUNE_PROPS:-budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1}
   else
     read -p "How many epochs to run training for (default '4'): " SPARSE_EPOCHS
-    export SPARSE_EPOCHS=${SPARSE_EPOCHS:-4}
   fi
+
+  export SPARSE_DEPRUNE_PROPS=${SPARSE_DEPRUNE_PROPS:-budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1}
+  export SPARSE_EPOCHS=${SPARSE_EPOCHS:-4}
 
   read -p "Network interface to monitor in benchmarks (default '' (all)): " SPARSE_MONITOR_NIC
 
