@@ -54,6 +54,10 @@ spec:
         - "$SPARSE_USE_COMPRESSION"
         - "--deprune-props"
         - "$SPARSE_DEPRUNE_PROPS"
+        - "--feature_compression_factor"
+        - "$FEATURE_COMPRESSION_FACTOR"
+        - "--resolution_compression_factor"
+        - "$RESOLUTION_COMPRESSION_FACTOR"
         - "--epochs"
         - "$SPARSE_EPOCHS"
         volumeMounts:

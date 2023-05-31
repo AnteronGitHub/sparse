@@ -27,11 +27,15 @@ init_environment () {
 
   if [ $SPARSE_USE_COMPRESSION == 1 ]; then
     read -p "Deprune props to be used in training (default 'budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1'): " SPARSE_DEPRUNE_PROPS
+    read -p "Feature compression factor (default '1'): " FEATURE_COMPRESSION_FACTOR
+    read -p "Resolution compression factor (default '1'): " RESOLUTION_COMPRESSION_FACTOR
   else
     read -p "How many epochs to run training for (default '4'): " SPARSE_EPOCHS
   fi
 
   export SPARSE_DEPRUNE_PROPS=${SPARSE_DEPRUNE_PROPS:-budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1}
+  export FEATURE_COMPRESSION_FACTOR=${FEATURE_COMPRESSION_FACTOR:-1}
+  export RESOLUTION_COMPRESSION_FACTOR=${RESOLUTION_COMPRESSION_FACTOR:-1}
   export SPARSE_EPOCHS=${SPARSE_EPOCHS:-4}
 
 
