@@ -28,8 +28,16 @@ sudo ln -s <sparse_repo_path> /opt/sparse
 
 ### Label cluster nodes
 
-The templates place pods to hosts based on node labels. To enable all pods to be placed on a node (e.g. in development
-environments), you can use label aio:
+The templates place pods to hosts based on node labels.
+
+Firstly, one of the cluster nodes needs to be labeled as a model server. To do so, use the command below (with
+<model-server> replaced as the name of the node):
+
+```
+kubectl label node <model-server> sparse/model-server=true
+```
+
+To enable all pods to be placed on a node (e.g. in development environments), you can use label aio:
 
 ```
 kubectl label node <dev-node> sparse/node=aio

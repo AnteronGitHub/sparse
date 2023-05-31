@@ -19,6 +19,7 @@ class LearningAllInOne():
         self.loss_fn = loss_fn
         self.optimizer = optimizer
         self.device = get_device()
+        self.warmed_up = False
         if benchmark:
             print(f"Benchmarking the suite")
             self.monitor_client = MonitorClient()
@@ -41,9 +42,6 @@ class LearningAllInOne():
         print(f"Using {self.device} for processing")
         self.model.to(self.device)
 
-        if self.monitor_client is not None:
-            await self.monitor_client.start_benchmark(log_file_prefix)
-
         progress_bar = tqdm(total=epochs*batches*batch_size,
                             unit='samples',
                             unit_scale=True)
@@ -52,10 +50,14 @@ class LearningAllInOne():
                 loss = await asyncio.create_task(self.process_batch(X, y))
 
                 if self.monitor_client is not None:
-                    await self.monitor_client.batch_processed(len(X), loss)
+                    if self.warmed_up:
+                        self.monitor_client.batch_processed(len(X), loss)
+                    else:
+                        self.warmed_up = True
+                        self.monitor_client.start_benchmark(log_file_prefix)
 
                 progress_bar.update(len(X))
-                if batch + 1 >= batches:
+                if batch >= batches:
                     break
 
         progress_bar.close()

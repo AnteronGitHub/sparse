@@ -31,15 +31,13 @@ class RXPipe:
             self.monitor_client = MonitorClient()
         else:
             self.monitor_client = None
+        self.warmed_up = False
 
     async def receive_task(self, reader : asyncio.StreamReader, writer : asyncio.StreamWriter) -> None:
         """Generic callback function which passes offloaded task directly to the task executor.
 
         """
-        if self.monitor_client is not None:
-            if (self.previous_message_received_at is None) or (time.time() - self.previous_message_received_at >= self.benchmark_timeout):
-                self.monitor_client.start_benchmark(self.benchmark_log_file_prefix)
-            self.previous_message_received_at = time.time()
+        self.previous_message_received_at = time.time()
 
         self.logger.debug("Reading task input data...")
         input_data = await reader.read()
@@ -49,11 +47,21 @@ class RXPipe:
 
         self.logger.debug("Responding with task output data...")
         writer.write(result_data)
-        await writer.drain()
+
+        # TODO: Come up with a better workaround for IO errors. Ignore for now...
+        try:
+            await writer.drain()
+        except BrokenPipeError:
+            self.logger.info("Broken pipe during response stream. Ignoring...")
+            pass
         writer.close()
 
         if self.monitor_client is not None:
-            self.monitor_client.task_processed()
+            if self.warmed_up and (time.time() - self.previous_message_received_at < self.benchmark_timeout):
+                self.monitor_client.task_processed()
+            else:
+                self.monitor_client.start_benchmark(self.benchmark_log_file_prefix)
+                self.warmed_up = True
         self.logger.info("Finished streaming task result.")
 
     def set_logger(self, logger : logging.Logger):

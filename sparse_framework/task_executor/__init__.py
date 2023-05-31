@@ -9,6 +9,7 @@ class TaskExecutor:
     """
     def __init__(self):
         self.task_deployer = None
+        self.node = None
 
     def start(self):
         self.logger.debug("Starting task executor")
@@ -18,6 +19,9 @@ class TaskExecutor:
 
     def set_logger(self, logger : logging.Logger = logging.getLogger("sparse")):
         self.logger = logger
+
+    def set_node(self, node):
+        self.node = node
 
     async def execute_task(self, input_data : bytes) -> bytes:
         raise "Task executor not implemented! See documentation on how to implement your own executor"

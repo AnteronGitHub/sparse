@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from sparse_framework.node.master import Master
 from sparse_framework.dl.utils import get_device
 from sparse_framework.dl.serialization import encode_offload_request, decode_offload_response, encode_offload_request_pruned
+from sparse_framework.dl.model_loader import ModelLoader
 from sparse_framework.stats.monitor_client import MonitorClient
 
 import numpy as np
@@ -16,23 +17,40 @@ from datasets import DatasetRepository
 from models import ModelTrainingRepository
 
 class LearningClient(Master):
-    def __init__(self, dataset, model, loss_fn, optimizer, benchmark = True):
+    def __init__(self,
+                 dataset,
+                 model_name : str,
+                 partition : str,
+                 compressionProps : dict,
+                 use_compression : bool,
+                 benchmark : bool = True):
         Master.__init__(self)
-        self.dataset = dataset
-        # self.model = model
-        self.loss_fn = loss_fn
-        self.optimizer = optimizer
+
         self.device = get_device()
-        self.model = model.to(self.device)
+
+        self.dataset = dataset
+        self.model_name = model_name
+        self.partition = partition
+        self.compressionProps = compressionProps
+        self.use_compression = use_compression
+        self.warmed_up = False
+
         if benchmark:
             self.monitor_client = MonitorClient()
         else:
             self.monitor_client = None
 
-    async def start(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs):
-        if self.monitor_client is not None:
-            self.monitor_client.start_benchmark(log_file_prefix)
+    def load_model(self):
+        model_loader = ModelLoader(self.config_manager.model_server_address,
+                                   self.config_manager.model_server_port)
 
+        self.model, self.loss_fn, self.optimizer = model_loader.load_model(self.model_name,
+                                                                           self.partition,
+                                                                           self.compressionProps,
+                                                                           self.use_compression)
+        self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}' and using compression '{self.use_compression}'")
+
+    async def start(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs):
         total_epochs = get_deprune_epochs(depruneProps)
 
         progress_bar = tqdm(total=batch_size*batches*total_epochs,
@@ -79,9 +97,13 @@ class LearningClient(Master):
 
                     progress_bar.update(len(X))
                     if self.monitor_client is not None:
-                        self.monitor_client.batch_processed(len(X), loss)
+                        if self.warmed_up:
+                            self.monitor_client.batch_processed(len(X), loss)
+                        else:
+                            self.warmed_up = True
+                            self.monitor_client.start_benchmark(log_file_prefix)
 
-                    if batch + 1 >= batches:
+                    if batch >= batches:
                         break
 
         progress_bar.close()
@@ -129,18 +151,21 @@ if __name__ == '__main__':
     ###layer compression factor, reduce by how many times TBD
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
     depruneProps = get_depruneProps(args)
+    partition = "client"
     use_compression = bool(args.use_compression)
 
     dataset, classes = DatasetRepository().get_dataset(args.dataset)
-    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, "client", compressionProps, use_compression)
     log_file_prefix = _get_benchmark_log_file_prefix(args, "datasource", get_deprune_epochs(depruneProps))
 
-    asyncio.run(LearningClient(dataset=dataset,
-                               model=model,
-                               loss_fn=loss_fn,
-                               optimizer=optimizer).start(args.batch_size,
-                                                          args.batches,
-                                                          depruneProps,
-                                                          log_file_prefix=log_file_prefix,
-                                                          use_compression=use_compression,
-                                                          epochs=int(args.epochs)))
+    learning_client = LearningClient(dataset=dataset,
+                                     model_name=args.model_name,
+                                     partition=partition,
+                                     compressionProps=compressionProps,
+                                     use_compression=use_compression)
+    learning_client.load_model()
+    asyncio.run(learning_client.start(args.batch_size,
+                                      args.batches,
+                                      depruneProps,
+                                      log_file_prefix=log_file_prefix,
+                                      use_compression=use_compression,
+                                      epochs=int(args.epochs)))
