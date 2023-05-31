@@ -33,6 +33,7 @@ class LearningClient(Master):
         self.partition = partition
         self.compressionProps = compressionProps
         self.use_compression = use_compression
+        self.warmed_up = False
 
         if benchmark:
             self.monitor_client = MonitorClient()
@@ -50,9 +51,6 @@ class LearningClient(Master):
         self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}' and using compression '{self.use_compression}'")
 
     async def start(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs):
-        if self.monitor_client is not None:
-            self.monitor_client.start_benchmark(log_file_prefix)
-
         total_epochs = get_deprune_epochs(depruneProps)
 
         progress_bar = tqdm(total=batch_size*batches*total_epochs,
@@ -99,9 +97,13 @@ class LearningClient(Master):
 
                     progress_bar.update(len(X))
                     if self.monitor_client is not None:
-                        self.monitor_client.batch_processed(len(X), loss)
+                        if self.warmed_up:
+                            self.monitor_client.batch_processed(len(X), loss)
+                        else:
+                            self.warmed_up = True
+                            self.monitor_client.start_benchmark(log_file_prefix)
 
-                    if batch + 1 >= batches:
+                    if batch >= batches:
                         break
 
         progress_bar.close()

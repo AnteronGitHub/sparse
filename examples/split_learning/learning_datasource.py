@@ -15,13 +15,14 @@ class LearningDataSource(Master):
         super().__init__()
         self.dataset = dataset
         self.classes = classes
-        self.benchmark = benchmark
+        self.warmed_up = False
+
+        if benchmark:
+            self.monitor_client = MonitorClient()
+        else:
+            self.monitor_client = None
 
     async def train(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs):
-        if self.benchmark:
-            monitor_client = MonitorClient()
-            monitor_client.start_benchmark(log_file_prefix)
-
         total_ephochs = get_deprune_epochs(depruneProps)
         progress_bar = tqdm(total=batch_size*batches*total_ephochs,
                             unit='samples',
@@ -45,10 +46,14 @@ class LearningDataSource(Master):
                     split_grad, loss = decode_offload_response(result_data)
 
                     progress_bar.update(len(X))
-                    if self.benchmark:
-                        monitor_client.batch_processed(len(X), loss)
+                    if self.monitor_client is not None:
+                        if self.warmed_up:
+                            self.monitor_client.batch_processed(len(X), loss)
+                        else:
+                            self.warmed_up = True
+                            self.monitor_client.start_benchmark(log_file_prefix)
 
-                    if batch + 1 >= batches:
+                    if batch >= batches:
                         break
 
         progress_bar.close()
