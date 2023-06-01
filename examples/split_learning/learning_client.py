@@ -65,10 +65,11 @@ class LearningClient(Master):
         else:
             phases = [{'epochs': epochs, 'budget': None}]
 
-        for prop in phases:
+        for phase, prop in enumerate(phases):
             epochs = prop['epochs']
             budget = prop['budget']
             for t in range(epochs):
+                offset = 0 if phase == 0 and t == 0 else 1 # Ensures that an extra batch is processed in the first epoch since one batch is for warming up
                 for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
                     X = X.to(self.device)
 
@@ -112,7 +113,7 @@ class LearningClient(Master):
                             self.warmed_up = True
                             self.monitor_client.start_benchmark(log_file_prefix)
 
-                    if batch >= batches:
+                    if batch + offset >= batches:
                         break
 
         if progress_bar is not None:

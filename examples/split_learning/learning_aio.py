@@ -54,6 +54,7 @@ class LearningAllInOne():
             progress_bar = None
 
         for t in range(epochs):
+            offset = 0 if t == 0 else 1 # Ensures that an extra batch is processed in the first epoch since one batch is for warming up
             for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
                 loss = await asyncio.create_task(self.process_batch(X, y))
 
@@ -68,7 +69,7 @@ class LearningAllInOne():
                         self.warmed_up = True
                         self.monitor_client.start_benchmark(log_file_prefix)
 
-                if batch >= batches:
+                if batch + offset >= batches:
                     break
 
         if progress_bar is not None:

@@ -35,10 +35,12 @@ class LearningDataSource(Master):
             phases = depruneProps
         else:
             phases = [{'epochs': epochs, 'budget': None}]
-        for prop in phases:
+
+        for phase, prop in enumerate(phases):
             epochs = prop['epochs']
             budget = prop['budget']
             for t in range(epochs):
+                offset = 0 if phase == 0 and t == 0 else 1 # Ensures that an extra batch is processed in the first epoch since one batch is for warming up
                 for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
                     if use_compression:
                         input_data = encode_offload_request_pruned(X, y, None, budget)
@@ -62,13 +64,13 @@ class LearningDataSource(Master):
                             self.warmed_up = True
                             self.monitor_client.start_benchmark(log_file_prefix)
 
-                    if batch >= batches:
+                    if batch + offset >= batches:
                         break
 
         if progress_bar is not None:
             progress_bar.close()
 
-        if self.benchmark:
+        if self.monitor_client is not None:
             self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
 
