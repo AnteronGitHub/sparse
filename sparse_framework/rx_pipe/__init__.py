@@ -2,7 +2,6 @@ import asyncio
 import logging
 import time
 
-from ..stats.monitor_client import MonitorClient
 from ..task_executor import TaskExecutor
 
 class RXPipe:
@@ -27,11 +26,11 @@ class RXPipe:
         self.benchmark_log_file_prefix = benchmark_log_file_prefix
         self.benchmark_timeout = benchmark_timeout
         self.previous_message_received_at = None
-        if benchmark:
-            self.monitor_client = MonitorClient()
-        else:
-            self.monitor_client = None
         self.warmed_up = False
+        self.node = None
+
+    def set_node(self, node):
+        self.node = node
 
     async def receive_task(self, reader : asyncio.StreamReader, writer : asyncio.StreamWriter) -> None:
         """Generic callback function which passes offloaded task directly to the task executor.
@@ -56,11 +55,11 @@ class RXPipe:
             pass
         writer.close()
 
-        if self.monitor_client is not None:
+        if self.node.monitor_client is not None:
             if self.warmed_up and (time.time() - self.previous_message_received_at < self.benchmark_timeout):
-                self.monitor_client.task_processed()
+                self.node.monitor_client.task_processed()
             else:
-                self.monitor_client.start_benchmark(self.benchmark_log_file_prefix)
+                self.node.monitor_client.start_benchmark(self.benchmark_log_file_prefix)
                 self.warmed_up = True
         self.logger.info("Finished streaming task result.")
 

@@ -16,6 +16,7 @@ class Worker(Node):
                                              legacy_asyncio = self.check_asyncio_use_legacy(),
                                              benchmark_log_file_prefix = benchmark_log_file_prefix)
         self.rx_pipe.set_logger(self.logger)
+        self.rx_pipe.set_node(self)
         if isinstance(self, Master):
             self.task_executor.task_deployer = self.task_deployer
 

@@ -42,4 +42,4 @@ def get_deprune_epochs(depruneProps):
     return total_epochs
 
 def _get_benchmark_log_file_prefix(args, node_name, epochs):
-    return f"learning-{args.suite}-{node_name}-{args.model_name}-{args.dataset}-{epochs}_{args.batch_size}_{args.batch_size}"
+    return f"learning-{args.suite}-{node_name}-{args.model_name}-{args.dataset}-{epochs}_{args.batch_size}_{args.batches}-{args.feature_compression_factor}_{args.resolution_compression_factor}_{args.deprune_props}"

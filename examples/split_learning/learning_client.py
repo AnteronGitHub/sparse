@@ -8,7 +8,6 @@ from sparse_framework.node.master import Master
 from sparse_framework.dl.utils import get_device
 from sparse_framework.dl.serialization import encode_offload_request, decode_offload_response, encode_offload_request_pruned
 from sparse_framework.dl.model_loader import ModelLoader
-from sparse_framework.stats.monitor_client import MonitorClient
 
 import numpy as np
 
@@ -24,7 +23,7 @@ class LearningClient(Master):
                  compressionProps : dict,
                  use_compression : bool,
                  benchmark : bool = True):
-        Master.__init__(self)
+        Master.__init__(self, benchmark=benchmark)
 
         self.device = get_device()
 
@@ -34,11 +33,6 @@ class LearningClient(Master):
         self.compressionProps = compressionProps
         self.use_compression = use_compression
         self.warmed_up = False
-
-        if benchmark:
-            self.monitor_client = MonitorClient()
-        else:
-            self.monitor_client = None
 
     def load_model(self):
         model_loader = ModelLoader(self.config_manager.model_server_address,
@@ -50,22 +44,26 @@ class LearningClient(Master):
                                                                            self.use_compression)
         self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}' and using compression '{self.use_compression}'")
 
-    async def start(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs):
+    async def start(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs, verbose = False):
         total_epochs = get_deprune_epochs(depruneProps)
 
-        progress_bar = tqdm(total=batch_size*batches*total_epochs,
-                            unit='samples',
-                            unit_scale=True)
+        if verbose:
+            progress_bar = tqdm(total=batch_size*batches*total_epochs,
+                                unit='samples',
+                                unit_scale=True)
+        else:
+            progress_bar = None
 
         if use_compression:
             phases = depruneProps
         else:
             phases = [{'epochs': epochs, 'budget': None}]
 
-        for prop in phases:
+        for phase, prop in enumerate(phases):
             epochs = prop['epochs']
             budget = prop['budget']
             for t in range(epochs):
+                offset = 0 if phase == 0 and t == 0 else 1 # Ensures that an extra batch is processed in the first epoch since one batch is for warming up
                 for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
                     X = X.to(self.device)
 
@@ -95,7 +93,13 @@ class LearningClient(Master):
                     pred.backward(split_grad)
                     self.optimizer.step()
 
-                    progress_bar.update(len(X))
+                    # Logging
+                    if progress_bar is not None:
+                        progress_bar.update(len(X))
+                    else:
+                        self.logger.info(f"Processed batch of {len(X)} samples")
+
+                    # Benchmarks
                     if self.monitor_client is not None:
                         if self.warmed_up:
                             self.monitor_client.batch_processed(len(X), loss)
@@ -103,10 +107,11 @@ class LearningClient(Master):
                             self.warmed_up = True
                             self.monitor_client.start_benchmark(log_file_prefix)
 
-                    if batch >= batches:
+                    if batch + offset >= batches:
                         break
 
-        progress_bar.close()
+        if progress_bar is not None:
+            progress_bar.close()
         if self.monitor_client is not None:
             self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)

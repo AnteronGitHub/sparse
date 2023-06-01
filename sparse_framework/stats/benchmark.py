@@ -27,4 +27,6 @@ class Benchmark():
             self.monitor_container.batch_processed(payload['batch_size'], payload['loss'])
         elif payload['event'] == 'task_processed':
             self.monitor_container.task_processed()
+        elif payload['event'] == 'connection_timeout':
+            self.monitor_container.connection_timeout()
 
