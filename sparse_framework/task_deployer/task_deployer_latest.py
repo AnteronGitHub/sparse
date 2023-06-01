@@ -17,6 +17,8 @@ class TaskDeployerLatest(TaskDeployer):
                 await asyncio.sleep(5)
             except asyncio.exceptions.TimeoutError:
                 self.logger.error("Connection to upstream host timed out. Retrying...")
+                if self.node.monitor_client is not None:
+                    self.node.monitor_client.connection_timeout()
 
         writer.write(input_data)
         writer.write_eof()

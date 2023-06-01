@@ -5,22 +5,16 @@ from tqdm import tqdm
 from sparse_framework.dl.serialization import encode_offload_request, decode_offload_response
 from sparse_framework.dl.serialization import encode_offload_request_pruned
 from sparse_framework.node.master import Master
-from sparse_framework.stats.monitor_client import MonitorClient
 
 from datasets import DatasetRepository
 from utils import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
 
 class LearningDataSource(Master):
     def __init__(self, dataset, classes, benchmark = True):
-        super().__init__()
+        super().__init__(benchmark=benchmark)
         self.dataset = dataset
         self.classes = classes
         self.warmed_up = False
-
-        if benchmark:
-            self.monitor_client = MonitorClient()
-        else:
-            self.monitor_client = None
 
     async def train(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs, verbose = False):
         total_ephochs = get_deprune_epochs(depruneProps)

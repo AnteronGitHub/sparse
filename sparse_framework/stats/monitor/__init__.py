@@ -40,3 +40,7 @@ class MonitorContainer(Monitor):
             if type(monitor).__name__ == 'TrainingMonitor':
                 monitor.add_point(newly_processed_tasks = 1)
 
+    def connection_timeout(self):
+        for monitor in self.monitors:
+            if type(monitor).__name__ == 'NetworkMonitor':
+                monitor.add_connection_timeout()

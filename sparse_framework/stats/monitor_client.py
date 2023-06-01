@@ -39,3 +39,7 @@ class MonitorClient():
         return self.submit_event({ "benchmark_id": self.benchmark_id,
                                    "event": "task_processed" })
 
+    def connection_timeout(self):
+        return self.submit_event({ "benchmark_id": self.benchmark_id,
+                                   "event": "connection_timeout" })
+

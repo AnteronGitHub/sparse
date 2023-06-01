@@ -8,7 +8,6 @@ from sparse_framework.node.master import Master
 from sparse_framework.dl.utils import get_device
 from sparse_framework.dl.serialization import encode_offload_request, decode_offload_response, encode_offload_request_pruned
 from sparse_framework.dl.model_loader import ModelLoader
-from sparse_framework.stats.monitor_client import MonitorClient
 
 import numpy as np
 
@@ -24,7 +23,7 @@ class LearningClient(Master):
                  compressionProps : dict,
                  use_compression : bool,
                  benchmark : bool = True):
-        Master.__init__(self)
+        Master.__init__(self, benchmark=benchmark)
 
         self.device = get_device()
 
@@ -34,11 +33,6 @@ class LearningClient(Master):
         self.compressionProps = compressionProps
         self.use_compression = use_compression
         self.warmed_up = False
-
-        if benchmark:
-            self.monitor_client = MonitorClient()
-        else:
-            self.monitor_client = None
 
     def load_model(self):
         model_loader = ModelLoader(self.config_manager.model_server_address,
