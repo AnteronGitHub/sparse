@@ -22,11 +22,14 @@ class LearningDataSource(Master):
         else:
             self.monitor_client = None
 
-    async def train(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs):
+    async def train(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs, verbose = False):
         total_ephochs = get_deprune_epochs(depruneProps)
-        progress_bar = tqdm(total=batch_size*batches*total_ephochs,
-                            unit='samples',
-                            unit_scale=True)
+        if verbose:
+            progress_bar = tqdm(total=batch_size*batches*total_ephochs,
+                                unit='samples',
+                                unit_scale=True)
+        else:
+            progress_bar = None
 
         if use_compression:
             phases = depruneProps
@@ -45,7 +48,13 @@ class LearningDataSource(Master):
                     result_data = await self.task_deployer.deploy_task(input_data)
                     split_grad, loss = decode_offload_response(result_data)
 
-                    progress_bar.update(len(X))
+                    # Logging
+                    if progress_bar is not None:
+                        progress_bar.update(len(X))
+                    else:
+                        self.logger.info(f"Processed batch of {len(X)} samples")
+
+                    # Benchmarks
                     if self.monitor_client is not None:
                         if self.warmed_up:
                             self.monitor_client.batch_processed(len(X), loss)
@@ -56,7 +65,9 @@ class LearningDataSource(Master):
                     if batch >= batches:
                         break
 
-        progress_bar.close()
+        if progress_bar is not None:
+            progress_bar.close()
+
         if self.benchmark:
             self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from tqdm import tqdm
 
 import torch
@@ -27,6 +28,9 @@ class LearningAllInOne():
             print(f"Not benchmarking the suite")
             self.monitor_client = None
 
+        logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=logging.INFO)
+        self.logger = logging.getLogger("sparse")
+
     async def process_batch(self, X, y):
         X, y = X.to(self.device), y.to(self.device)
         pred = self.model(X)
@@ -38,17 +42,25 @@ class LearningAllInOne():
 
         return loss.item()
 
-    async def train(self, batches, batch_size, epochs, log_file_prefix):
-        print(f"Using {self.device} for processing")
+    async def train(self, batches, batch_size, epochs, log_file_prefix, verbose = False):
+        self.logger.info(f"Using {self.device} for processing")
         self.model.to(self.device)
 
-        progress_bar = tqdm(total=epochs*batches*batch_size,
-                            unit='samples',
-                            unit_scale=True)
+        if verbose:
+            progress_bar = tqdm(total=epochs*batches*batch_size,
+                                unit='samples',
+                                unit_scale=True)
+        else:
+            progress_bar = None
+
         for t in range(epochs):
             for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
                 loss = await asyncio.create_task(self.process_batch(X, y))
 
+                if progress_bar is not None:
+                    progress_bar.update(len(X))
+                else:
+                    self.logger.info(f"Processed batch of {len(X)} samples")
                 if self.monitor_client is not None:
                     if self.warmed_up:
                         self.monitor_client.batch_processed(len(X), loss)
@@ -56,13 +68,13 @@ class LearningAllInOne():
                         self.warmed_up = True
                         self.monitor_client.start_benchmark(log_file_prefix)
 
-                progress_bar.update(len(X))
                 if batch >= batches:
                     break
 
-        progress_bar.close()
+        if progress_bar is not None:
+            progress_bar.close()
         if self.monitor_client is not None:
-            print("Waiting for the benchmark client to finish sending messages")
+            self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
 
 if __name__ == '__main__':

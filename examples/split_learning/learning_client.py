@@ -50,12 +50,15 @@ class LearningClient(Master):
                                                                            self.use_compression)
         self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}' and using compression '{self.use_compression}'")
 
-    async def start(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs):
+    async def start(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs, verbose = False):
         total_epochs = get_deprune_epochs(depruneProps)
 
-        progress_bar = tqdm(total=batch_size*batches*total_epochs,
-                            unit='samples',
-                            unit_scale=True)
+        if verbose:
+            progress_bar = tqdm(total=batch_size*batches*total_epochs,
+                                unit='samples',
+                                unit_scale=True)
+        else:
+            progress_bar = None
 
         if use_compression:
             phases = depruneProps
@@ -95,7 +98,13 @@ class LearningClient(Master):
                     pred.backward(split_grad)
                     self.optimizer.step()
 
-                    progress_bar.update(len(X))
+                    # Logging
+                    if progress_bar is not None:
+                        progress_bar.update(len(X))
+                    else:
+                        self.logger.info(f"Processed batch of {len(X)} samples")
+
+                    # Benchmarks
                     if self.monitor_client is not None:
                         if self.warmed_up:
                             self.monitor_client.batch_processed(len(X), loss)
@@ -106,7 +115,8 @@ class LearningClient(Master):
                     if batch >= batches:
                         break
 
-        progress_bar.close()
+        if progress_bar is not None:
+            progress_bar.close()
         if self.monitor_client is not None:
             self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
