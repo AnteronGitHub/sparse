@@ -1,5 +1,9 @@
 #!/bin/bash
 
+create_sparse_namespace () {
+  sudo kubectl create namespace sparse
+}
+
 deploy_resource () {
   cat k8s/$1.yaml | envsubst | sudo kubectl create -f -
 }
@@ -55,4 +59,5 @@ deploy_nodes () {
   esac
 }
 
+create_sparse_namespace
 deploy_nodes

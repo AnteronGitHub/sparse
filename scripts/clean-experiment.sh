@@ -26,6 +26,9 @@ delete_pods () {
       delete_resource "learning_aio"
       ;;
   esac
+
+  delete_resource "model_server"
+  delete_resource "sparse_monitor"
 }
 
 delete_pods

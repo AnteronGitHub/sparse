@@ -63,9 +63,4 @@ init_environment () {
   fi
 }
 
-create_sparse_namespace () {
-  sudo kubectl create namespace sparse
-}
-
 init_environment
-create_sparse_namespace
