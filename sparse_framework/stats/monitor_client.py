@@ -29,6 +29,10 @@ class MonitorClient():
                                    "event": "start",
                                    "log_file_prefix": log_file_prefix })
 
+    def stop_benchmark(self):
+        return self.submit_event({ "benchmark_id": self.benchmark_id,
+                                   "event": "stop_benchmark" })
+
     def batch_processed(self, batch_size : int, loss : float = None):
         return self.submit_event({ "benchmark_id": self.benchmark_id,
                                    "event": "batch_processed",

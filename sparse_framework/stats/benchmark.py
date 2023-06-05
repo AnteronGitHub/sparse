@@ -4,7 +4,7 @@ from .file_logger import FileLogger
 from .monitor import MonitorContainer
 
 class Benchmark():
-    def __init__(self, benchmark_id, log_file_prefix, nic, stop_callback, timeout = 30):
+    def __init__(self, benchmark_id, log_file_prefix, nic, stop_callback, timeout = 60):
         self.benchmark_id = benchmark_id
         self.stats_logger = FileLogger(file_prefix=f"{log_file_prefix}")
         self.stop_callback = stop_callback
@@ -29,4 +29,5 @@ class Benchmark():
             self.monitor_container.task_processed()
         elif payload['event'] == 'connection_timeout':
             self.monitor_container.connection_timeout()
-
+        elif payload['event'] == 'stop_benchmark':
+            self.stop_callback(self)
