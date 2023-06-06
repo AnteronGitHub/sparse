@@ -80,7 +80,14 @@ class LearningClient(Master):
 
 
                     # Offloaded layers
-                    result_data = await self.task_deployer.deploy_task(input_data)
+                    while True:
+                        result_data = await self.task_deployer.deploy_task(input_data)
+                        if result_data is None:
+                            self.logger.error(f"Broken pipe error. Re-executing...")
+                            if self.monitor_client is not None:
+                                self.monitor_client.broken_pipe_error()
+                        else:
+                            break
 
                     split_grad, loss = decode_offload_response(result_data)
                     if use_compression:

@@ -47,3 +47,7 @@ class MonitorClient():
         return self.submit_event({ "benchmark_id": self.benchmark_id,
                                    "event": "connection_timeout" })
 
+    def broken_pipe_error(self):
+        return self.submit_event({ "benchmark_id": self.benchmark_id,
+                                   "event": "broken_pipe_error" })
+

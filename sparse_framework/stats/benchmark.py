@@ -29,5 +29,7 @@ class Benchmark():
             self.monitor_container.task_processed()
         elif payload['event'] == 'connection_timeout':
             self.monitor_container.connection_timeout()
+        elif payload['event'] == 'broken_pipe_error':
+            self.monitor_container.broken_pipe_error()
         elif payload['event'] == 'stop_benchmark':
             self.stop_callback(self)
