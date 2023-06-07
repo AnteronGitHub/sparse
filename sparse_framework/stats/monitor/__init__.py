@@ -44,3 +44,8 @@ class MonitorContainer(Monitor):
         for monitor in self.monitors:
             if type(monitor).__name__ == 'NetworkMonitor':
                 monitor.add_connection_timeout()
+
+    def broken_pipe_error(self):
+        for monitor in self.monitors:
+            if type(monitor).__name__ == 'NetworkMonitor':
+                monitor.add_broken_pipe_error()

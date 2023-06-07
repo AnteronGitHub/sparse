@@ -75,6 +75,7 @@ class LearningAllInOne():
         if progress_bar is not None:
             progress_bar.close()
         if self.monitor_client is not None:
+            self.monitor_client.stop_benchmark()
             self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
 

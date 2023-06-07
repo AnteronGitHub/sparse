@@ -41,7 +41,14 @@ class LearningDataSource(Master):
                     else:
                         input_data = encode_offload_request(X, y)
 
-                    result_data = await self.task_deployer.deploy_task(input_data)
+                    while True:
+                        result_data = await self.task_deployer.deploy_task(input_data)
+                        if result_data is None:
+                            self.logger.error(f"Broken pipe error. Re-executing...")
+                            if self.monitor_client is not None:
+                                self.monitor_client.broken_pipe_error()
+                        else:
+                            break
                     split_grad, loss = decode_offload_response(result_data)
 
                     # Logging
@@ -65,6 +72,7 @@ class LearningDataSource(Master):
             progress_bar.close()
 
         if self.monitor_client is not None:
+            self.monitor_client.stop_benchmark()
             self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
 
