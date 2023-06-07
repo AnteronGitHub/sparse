@@ -7,6 +7,7 @@ metadata:
   labels:
     app: learning-datasource
 spec:
+  parallelism: $SPARSE_NO_DATASOURCES
   template:
     spec:
       affinity:
@@ -51,6 +52,11 @@ spec:
         - "$SPARSE_RESOLUTION_COMPRESSION_FACTOR"
         - "--epochs"
         - "$SPARSE_EPOCHS"
+        resources:
+          limits:
+            cpu: "$SPARSE_DATASOURCE_CPU_LIMIT"
+              # Adding memory limitations restrics using swap
+              #            memory: "$SPARSE_DATASOURCE_MEMORY_LIMIT"
         volumeMounts:
         - name: app-code
           mountPath: /app
