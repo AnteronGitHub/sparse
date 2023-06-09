@@ -41,6 +41,7 @@ class LearningClient(Master):
                                                                            self.partition,
                                                                            self.compressionProps,
                                                                            self.use_compression)
+        self.model = self.model.to(self.device)
         self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}' and using compression '{self.use_compression}'")
 
     async def start(self, batch_size, batches, depruneProps, log_file_prefix, use_compression, epochs, verbose = False):
@@ -69,8 +70,8 @@ class LearningClient(Master):
                     if use_compression:
                         # Masked prediction (quantization TBD)
                         pred, prune_filter = self.model(X)
-                        payload, mask = self.compress_with_pruneFilter(pred.to("cpu").detach(),
-                                                                       prune_filter.to("cpu").detach(),
+                        payload, mask = self.compress_with_pruneFilter(pred.to(self.device).detach(),
+                                                                       prune_filter.to(self.device).detach(),
                                                                        budget)
                         input_data = encode_offload_request_pruned(payload, y, mask, budget)
                     else:
@@ -125,15 +126,9 @@ class LearningClient(Master):
 
     def compress_with_pruneFilter(self, pred, prune_filter, budget):
 
-        compressedPred = torch.tensor([])
-        mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
-        masknp = mask.detach().numpy()
-        partitioned = np.partition(masknp, -budget)[-budget]
-        for entry in range(len(mask)):
-            if mask[entry] >= partitioned:
-                predRow = pred[:, entry, :, :].unsqueeze(dim=1)
-                compressedPred = torch.cat((compressedPred, predRow), 1)
-
+        mask = torch.square(torch.sigmoid(prune_filter.squeeze()))
+        topk = torch.topk(mask, budget)
+        compressedPred = torch.index_select(pred, 1, topk.indices.sort().values)
         return compressedPred, mask
 
     def decompress_with_pruneFilter(self, pred, mask, budget):

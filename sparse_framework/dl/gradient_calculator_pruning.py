@@ -45,19 +45,14 @@ class GradientCalculatorPruneStep(TaskExecutor):
         #send budget and prune loss function here? or has to be passed each time?
         
     def compress_with_pruneFilter(self, pred, prune_filter, budget, serverFlag = False):
-        
-        compressedPred = torch.tensor([]).to(self.device)
+
         if serverFlag:
-            mask = prune_filter.to('cpu')
+            mask = prune_filter
         else:
-            mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
-        masknp = mask.detach().numpy()
-        partitioned = np.partition(masknp, -budget)[-budget]
-        for entry in range(len(mask)):
-            if mask[entry] >= partitioned:
-                 predRow = pred[:,entry,:,:].unsqueeze(dim=1).to(self.device)
-                 compressedPred = torch.cat((compressedPred, predRow), 1)
-                
+            mask = torch.square(torch.sigmoid(prune_filter.squeeze()))
+        topk = torch.topk(mask, budget)
+        compressedPred = torch.index_select(pred, 1, topk.indices.sort().values)
+
         return compressedPred, mask    
        
     def decompress_with_pruneFilter(self, pred, mask, budget):
