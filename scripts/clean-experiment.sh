@@ -7,23 +7,35 @@ delete_resource () {
 delete_pods () {
   case $SPARSE_SUITE in
     "edge_offloading")
-      delete_resource "learning_datasource"
-      delete_resource "learning_worker_deployment"
-      delete_resource "learning_worker_nodeport"
+      delete_resource $SPARSE_APPLICATION"_datasource"
+      delete_resource $SPARSE_APPLICATION"_worker_deployment"
+      if [ $SPARSE_DATASOURCE_USE_EXTERNAL_LINK == "yes" ]; then
+        delete_resource $SPARSE_APPLICATION"_worker_nodeport"
+      else
+        delete_resource $SPARSE_APPLICATION"_worker_clusterip"
+      fi
       ;;
     "edge_split")
-      delete_resource "learning_client"
-      delete_resource "learning_worker_deployment"
-      delete_resource "learning_worker_nodeport"
+      delete_resource $SPARSE_APPLICATION"_client"
+      delete_resource $SPARSE_APPLICATION"_worker_deployment"
+      if [ $SPARSE_DATASOURCE_USE_EXTERNAL_LINK == "yes" ]; then
+        delete_resource $SPARSE_APPLICATION"_worker_nodeport"
+      else
+        delete_resource $SPARSE_APPLICATION"_worker_clusterip"
+      fi
       ;;
     "fog_offloading")
-      delete_resource "learning_datasource"
-      delete_resource "learning_intermediate"
-      delete_resource "learning_worker_deployment"
-      delete_resource "learning_worker_nodeport"
+      delete_resource $SPARSE_APPLICATION"_datasource"
+      delete_resource $SPARSE_APPLICATION"_intermediate"
+      delete_resource $SPARSE_APPLICATION"_worker_deployment"
+      if [ $SPARSE_DATASOURCE_USE_EXTERNAL_LINK == "yes" ]; then
+        delete_resource $SPARSE_APPLICATION"_worker_nodeport"
+      else
+        delete_resource $SPARSE_APPLICATION"_worker_clusterip"
+      fi
       ;;
     *)
-      delete_resource "learning_aio"
+      delete_resource $SPARSE_APPLICATION"_aio"
       ;;
   esac
 

@@ -15,6 +15,8 @@ from utils import get_device, ImageLoading, non_max_suppression, save_detection
 from torch.utils.data import DataLoader
 from sparse_framework.dl.serialization import encode_offload_inference_request, encode_offload_inference_request_pruned
 
+from benchmark import parse_arguments, get_depruneProps, _get_benchmark_log_file_prefix
+
 class SplitInferenceClient(Master):
     def __init__(self, dataset, model, benchmark = True):
         super().__init__()
@@ -101,9 +103,24 @@ class SplitInferenceClient(Master):
             await asyncio.sleep(1)
 
 if __name__ == "__main__":
+    args = parse_arguments()
+
     compressionProps = {}
     compressionProps['feature_compression_factor'] = 4
     compressionProps['resolution_compression_factor'] = 1
 
-    split_inference_client = SplitInferenceClient(YOLOv3_local(compressionProps))
-    asyncio.run(split_inference_client.infer())
+    from datasets import DatasetRepository
+    from models import ModelTrainingRepository
+
+    dataset, classes = DatasetRepository().get_dataset(args.model, args.dataset)
+
+    compressionProps = {} # resolution compression factor, compress by how many times
+    compressionProps['feature_compression_factor'] = args.feature_compression_factor # layer compression factor, reduce by how many times TBD
+    compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
+    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model, compressionProps)
+
+    depruneProps = get_depruneProps()
+    asyncio.run(SplitInferenceClient(dataset, model).infer(args.batch_size,
+                                                           args.batches,
+                                                           depruneProps,
+                                                           log_file_prefix=_get_benchmark_log_file_prefix(args)))

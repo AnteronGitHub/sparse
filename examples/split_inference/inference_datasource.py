@@ -9,6 +9,8 @@ from sparse_framework.stats.monitor_client import MonitorClient
 from datasets.yolov3 import YOLOv3Dataset
 import torch
 
+from benchmark import parse_arguments, get_depruneProps, _get_benchmark_log_file_prefix
+
 class InferenceDataSourceYOLO(Master):
     def __init__(self, benchmark = True):
         super().__init__()
@@ -50,16 +52,16 @@ class InferenceDataSource(Master):
             self.monitor_client = None
 
     async def start(self, batch_size, batches, depruneProps, log_file_prefix):
-        
+
         inferences_to_be_run = batch_size * batches
         progress_bar = tqdm(total=inferences_to_be_run,
                             unit='inferences',
                             unit_scale=True)
         if self.monitor_client is not None:
             self.monitor_client.start_benchmark(log_file_prefix)
-            
-        pruneState = depruneProps['pruneState'] 
-        budget = depruneProps['budget'] 
+
+        pruneState = depruneProps['pruneState']
+        budget = depruneProps['budget']
         with torch.no_grad():
             for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
                 if pruneState:
@@ -79,3 +81,15 @@ class InferenceDataSource(Master):
             if self.monitor_client is not None:
                 self.logger.info("Waiting for the benchmark client to finish sending messages")
                 await asyncio.sleep(1)
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    from datasets import DatasetRepository
+    from models import ModelTrainingRepository
+
+    dataset, classes = DatasetRepository().get_dataset(args.model, args.dataset)
+    depruneProps = get_depruneProps()
+    asyncio.run(InferenceDataSource(dataset, args.model).start(args.batch_size,
+                                                                    args.batches,
+                                                                    depruneProps,
+                                                                    log_file_prefix=_get_benchmark_log_file_prefix(args)))

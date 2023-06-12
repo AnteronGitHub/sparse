@@ -5,6 +5,8 @@ from models.yolov3 import YOLOv3
 from utils import get_device, non_max_suppression, save_detection
 from datasets.yolov3 import YOLOv3Dataset
 
+from benchmark import parse_arguments
+
 class AllInOne():
     def __init__(self):
         compressionProps = {}
@@ -44,3 +46,7 @@ class AllInOne():
                 progress_bar.update(1)
 
         progress_bar.close()
+
+if __name__ == "__main__":
+    args = parse_arguments()
+    AllInOne().benchmark(inferences_to_be_run = args.inferences_to_be_run)

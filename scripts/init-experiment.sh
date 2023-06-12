@@ -3,6 +3,9 @@
 init_environment () {
 
   # Experiment specs
+  read -p "Run learning or inference (default learning)? " SPARSE_APPLICATION
+  export SPARSE_APPLICATION=${SPARSE_APPLICATION:-learning}
+
   read -p "Name of the experiment suite (aio/edge_offloading/edge_split/fog_offloading): " SPARSE_SUITE
   export SPARSE_SUITE=${SPARSE_SUITE:-aio}
 
