@@ -4,13 +4,12 @@ from torch.nn import Module
 import torch
 import numpy as np
 
-
-from ..task_executor import TaskExecutor
+from sparse_framework.task_executor import TaskExecutor
 
 from .serialization import decode_offload_request, encode_offload_request, decode_offload_response, encode_offload_response
 from .serialization import encode_offload_request_pruned, decode_offload_request_pruned
 from .utils import get_device
-from .model_loader import ModelLoader
+from .models.model_loader import ModelLoader
 
 class GradientCalculatorPruneStep(TaskExecutor):
     def __init__(self, model_name : str, partition : str, compressionProps : dict, use_compression : bool):

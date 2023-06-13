@@ -7,13 +7,12 @@ from torch.utils.data import DataLoader
 from sparse_framework.node.master import Master
 from sparse_framework.dl.utils import get_device
 from sparse_framework.dl.serialization import encode_offload_request, decode_offload_response, encode_offload_request_pruned
-from sparse_framework.dl.model_loader import ModelLoader
+from sparse_framework.dl import ModelLoader
 
 import numpy as np
 
 from utils import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
 from datasets import DatasetRepository
-from models import ModelTrainingRepository
 
 class LearningClient(Master):
     def __init__(self,

@@ -2,7 +2,7 @@
 import torch 
 import numpy as np
 
-from ..task_executor import TaskExecutor
+from sparse_framework.task_executor import TaskExecutor
 
 from .serialization import decode_offload_inference_request, \
                            encode_offload_inference_request, \
