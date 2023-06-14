@@ -57,20 +57,11 @@ class GradientCalculatorPruneStep(TaskExecutor):
        
     def decompress_with_pruneFilter(self, pred, mask, budget):
         
-        decompressed_pred = torch.tensor([]).to(self.device)
-        a_row = pred[:,0,:,:].unsqueeze(dim=1)
-        zeroPad = torch.zeros(a_row.shape).to(self.device)
-        masknp = mask.to('cpu').detach().numpy()
-        partitioned = np.partition(masknp, -budget)[-budget]
-        count = 0
-        for entry in range(len(mask)):
-            if mask[entry] >= partitioned: 
-                predRow = pred[:,count,:,:].unsqueeze(dim=1).to(self.device)
-                decompressed_pred = torch.cat((decompressed_pred, predRow), 1)
-                count += 1
-            else:
-                decompressed_pred = torch.cat((decompressed_pred, zeroPad), 1) 
-        
+        a = torch.mul(mask.repeat([128,1]).t(), torch.eye(128).to(self.device))
+        b = a.index_select(1, mask.topk(budget).indices.sort().values)
+        b = torch.where(b>0.0, 1.0, 0.0).to(self.device)
+        decompressed_pred = torch.einsum('ij,bjlm->bilm', b, pred)
+
         return decompressed_pred
         
     def prune_loss_fn(self, loss_fn, pred, y, prune_filter, budget, delta = 0.1, epsilon=1000):
@@ -101,16 +92,16 @@ class GradientCalculatorPruneStep(TaskExecutor):
             # Local forward pass
             model_return = self.model(split_layer)
         
-            pred = model_return[0].to("cpu").detach()   #partial model output
+            pred = model_return[0].to(self.device).detach()   #partial model output
             ############################
             #quantization/compression TBD
             ############################
-            prune_filter = model_return[1].to("cpu").detach()   #the prune filter in training
+            prune_filter = model_return[1].to(self.device).detach()   #the prune filter in training
 
             # Offloaded layers
             upload_data, filter_to_send = self.compress_with_pruneFilter(pred, prune_filter, budget)
             
-            input_data = encode_offload_request_pruned(upload_data, labels.to("cpu"), filter_to_send, budget)
+            input_data = encode_offload_request_pruned(upload_data, labels.to(self.device), filter_to_send, budget)
             result_data = await self.task_deployer.deploy_task(input_data)
 
             # Local back propagation
@@ -155,7 +146,7 @@ class GradientCalculatorPruneStep(TaskExecutor):
                 split_layer, _ = self.compress_with_pruneFilter(split_layer.grad, prune_filter, budget, serverFlag=True)
 
                 reported_loss = true_loss.item()
-        result_data = encode_offload_response(split_layer.to("cpu").detach(), reported_loss)
+        result_data = encode_offload_response(split_layer.to(self.device).detach(), reported_loss)
 
         self.logger.debug("Executed task")
         return result_data

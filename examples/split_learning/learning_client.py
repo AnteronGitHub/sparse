@@ -133,19 +133,10 @@ class LearningClient(Master):
 
     def decompress_with_pruneFilter(self, pred, mask, budget):
 
-        decompressed_pred = torch.tensor([]).to(self.device)
-        a_row = pred[:,0,:,:].unsqueeze(dim=1)
-        zeroPad = torch.zeros(a_row.shape).to(self.device)
-        masknp = mask.to('cpu').detach().numpy()
-        partitioned = np.partition(masknp, -budget)[-budget]
-        count = 0
-        for entry in range(len(mask)):
-            if mask[entry] >= partitioned:
-                predRow = pred[:,count,:,:].unsqueeze(dim=1).to(self.device)
-                decompressed_pred = torch.cat((decompressed_pred, predRow), 1)
-                count += 1
-            else:
-                decompressed_pred = torch.cat((decompressed_pred, zeroPad), 1)
+        a = torch.mul(mask.repeat([128,1]).t(), torch.eye(128).to(self.device))
+        b = a.index_select(1, mask.topk(budget).indices.sort().values)
+        b = torch.where(b>0.0, 1.0, 0.0).to(self.device)
+        decompressed_pred = torch.einsum('ij,bjlm->bilm', b, pred)
 
         return decompressed_pred
 
