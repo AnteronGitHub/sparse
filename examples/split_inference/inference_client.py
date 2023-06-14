@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from sparse_framework.node.master import Master
 from sparse_framework.stats.monitor_client import MonitorClient
+from sparse_framework.dl import ModelLoader
 
 from datasets.yolov3 import YOLOv3Dataset
 from models.yolov3 import YOLOv3_local
@@ -17,19 +18,37 @@ from sparse_framework.dl.serialization import encode_offload_inference_request, 
 
 from benchmark import parse_arguments, get_depruneProps, _get_benchmark_log_file_prefix
 
-class SplitInferenceClient(Master):
-    def __init__(self, dataset, model, benchmark = True):
-        super().__init__()
-        compressionProps = {}
-        compressionProps['feature_compression_factor'] = 4
-        compressionProps['resolution_compression_factor'] = 1
-        self.model = model
-        self.dataset = dataset
+class InferenceClient(Master):
+    def __init__(self,
+                 dataset,
+                 model_name : str,
+                 partition : str,
+                 compressionProps : dict,
+                 use_compression : bool,
+                 benchmark : bool = True):
+        Master.__init__(self, benchmark=benchmark)
+
         self.device = get_device()
-        if benchmark:
-            self.monitor_client = MonitorClient()
-        else:
-            self.monitor_client = None
+
+        self.dataset = dataset
+        self.model_name = model_name
+        self.partition = partition
+        self.compressionProps = compressionProps
+        self.use_compression = use_compression
+        self.warmed_up = False
+
+        self.model = None
+
+    def load_model(self):
+        model_loader = ModelLoader(self.config_manager.model_server_address,
+                                   self.config_manager.model_server_port)
+
+        self.model, self.loss_fn, self.optimizer = model_loader.load_model(self.model_name,
+                                                                           self.partition,
+                                                                           self.compressionProps,
+                                                                           self.use_compression)
+        self.model = self.model.to(self.device)
+        self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}' and using compression '{self.use_compression}'")
 
     def compress_with_pruneFilter(self, pred, prune_filter, budget):
         compressedPred = torch.tensor([])
@@ -43,61 +62,54 @@ class SplitInferenceClient(Master):
 
         return compressedPred, mask
 
-    async def infer(self, batch_size, batches, depruneProps,
-                    inferences_to_be_run = 100, save_result = False, log_file_prefix = None):
+    async def infer(self, batch_size, batches, depruneProps, epochs, log_file_prefix = None, verbose = False):
         if self.monitor_client is not None:
             self.monitor_client.start_benchmark(log_file_prefix)
 
-        self.logger.info(
-            f"Starting inference using {self.device} for local computations"
-        )
+        if verbose:
+            inferences_to_be_run = batch_size * batches
+            progress_bar = tqdm(total=inferences_to_be_run,
+                                unit='inferences',
+                                unit_scale=True)
+        else:
+            progress_bar = None
 
-        # Transfer model to device
-        model = self.model.to(self.device)
+        if self.use_compression:
+            phases = depruneProps
+        else:
+            phases = [{'epochs': epochs, 'budget': None, 'pruneState': 0}]
 
-        inferences_to_be_run = batch_size * batches
-        progress_bar = tqdm(total=inferences_to_be_run,
-                            unit='inferences',
-                            unit_scale=True)
-        pruneState = depruneProps['pruneState']
-        budget = depruneProps['budget']
         with torch.no_grad():
-            self.logger.info(f"--------- inferring ----------")
+            for phase, prop in enumerate(phases):
+                epochs = prop['epochs']
+                pruneState = prop['pruneState']
+                budget = prop['budget']
+                for t in range(epochs):
+                    for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
+                        X, y = X.to(self.device), y.to(self.device)
 
-            for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
-                X, y = X.to(self.device), y.to(self.device)
+                        if pruneState:
+                            pred, prune_filter = self.model(X)
+                            pred, mask = self.compress_with_pruneFilter(pred.to("cpu").detach(),
+                                                                        prune_filter.to("cpu").detach(),
+                                                                        budget)
+                            input_data = encode_offload_inference_request_pruned(pred, mask, budget)
+                        else:
+                            pred = self.model(X)
+                            input_data = encode_offload_inference_request(pred.to("cpu").detach())
 
-                model_return = self.model(X, local=True)
-                pred = model_return[0].to(
-                    "cpu").detach()  # partial model output
-                # quantization/compression TBD
-                prune_filter = model_return[1].to(
-                    "cpu").detach()  # the prune filter in training
+                        result_data = await self.task_deployer.deploy_task(input_data)
 
-                pred, mask = self.compress_with_pruneFilter(
-                    pred, prune_filter, budget)
+                        if self.monitor_client is not None:
+                            self.monitor_client.batch_processed(len(X))
+                        if progress_bar is not None:
+                            progress_bar.update(len(X))
 
-                if pruneState:
-                    input_data = encode_offload_inference_request_pruned(
-                        pred, mask, budget)
-                else:
-                    input_data = encode_offload_inference_request(X)
+                        if batch + 1 >= batches:
+                            break
 
-                self.logger.debug("Deploying to the next worker further")
-
-                offload_input_data = encode_offload_inference_request_pruned(
-                    pred.to("cpu").detach(), mask, budget)
-                result_data = await self.task_deployer.deploy_task(offload_input_data)
-
-                if self.monitor_client is not None:
-                    self.monitor_client.batch_processed(len(X))
-                progress_bar.update(len(X))
-
-                if batch + 1 >= batches:
-                    break
-
-        progress_bar.close()
-        self.logger.info("Done!")
+        if progress_bar is not None:
+            progress_bar.close()
         if self.monitor_client is not None:
             self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
@@ -106,21 +118,24 @@ if __name__ == "__main__":
     args = parse_arguments()
 
     compressionProps = {}
-    compressionProps['feature_compression_factor'] = 4
-    compressionProps['resolution_compression_factor'] = 1
+    compressionProps['feature_compression_factor'] = args.feature_compression_factor
+    compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
+
+    depruneProps = get_depruneProps(args)
+    partition = "client"
+    use_compression = bool(args.use_compression)
 
     from datasets import DatasetRepository
-    from models import ModelTrainingRepository
+    dataset, classes = DatasetRepository().get_dataset(args.dataset)
 
-    dataset, classes = DatasetRepository().get_dataset(args.model, args.dataset)
-
-    compressionProps = {} # resolution compression factor, compress by how many times
-    compressionProps['feature_compression_factor'] = args.feature_compression_factor # layer compression factor, reduce by how many times TBD
-    compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
-    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model, compressionProps)
-
-    depruneProps = get_depruneProps()
-    asyncio.run(SplitInferenceClient(dataset, model).infer(args.batch_size,
-                                                           args.batches,
-                                                           depruneProps,
-                                                           log_file_prefix=_get_benchmark_log_file_prefix(args)))
+    inference_client = InferenceClient(dataset=dataset,
+                                       model_name=args.model_name,
+                                       partition=partition,
+                                       compressionProps=compressionProps,
+                                       use_compression=use_compression)
+    inference_client.load_model()
+    asyncio.run(inference_client.infer(args.batch_size,
+                                       args.batches,
+                                       depruneProps,
+                                       int(args.epochs),
+                                       log_file_prefix=_get_benchmark_log_file_prefix(args)))

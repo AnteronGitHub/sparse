@@ -34,7 +34,7 @@ class ModelTrainingRepository(ModelRepository):
             loss_fn = nn.CrossEntropyLoss()
             optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
         else:
-            raise f'No model with the name {model_name} was found in the repository'
+            raise f"No model with the name {model_name} was found in the repository"
 
         return model, loss_fn, optimizer
 

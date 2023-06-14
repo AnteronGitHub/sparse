@@ -21,7 +21,7 @@ class ModelLoader():
                 reader, writer = await asyncio.open_connection(self.model_server_address, self.model_server_port)
                 break
             except ConnectionRefusedError:
-                self.logger.error(f"Unable to connect to upstream host {self.model_server_address}:{self.model_server_port}. Trying again in 5 seconds...")
+                self.logger.error(f"Unable to connect to model server on {self.model_server_address}:{self.model_server_port}. Trying again in 5 seconds...")
                 time.sleep(5)
             except TimeoutError:
                 self.logger.error("Connection to upstream host timed out. Retrying...")

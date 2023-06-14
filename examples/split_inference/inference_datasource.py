@@ -20,7 +20,7 @@ class InferenceDataSourceYOLO(Master):
         else:
             self.monitor_client = None
 
-    async def start(self, inferences_to_be_run = 100, img_size=416, log_file_prefix=None):
+    async def start(self, inferences_to_be_run = 100, img_size=416, log_file_prefix = None, verbose = False):
         progress_bar = tqdm(total=inferences_to_be_run,
                             unit='inferences',
                             unit_scale=True)
@@ -41,55 +41,63 @@ class InferenceDataSourceYOLO(Master):
 
 
 class InferenceDataSource(Master):
-    def __init__(self, dataset, model_name, benchmark = True):
-        super().__init__()
+    def __init__(self, dataset, benchmark = True):
+        Master.__init__(self, benchmark=benchmark)
         self.dataset = dataset
-        #self.classes = classes
-        self.model_name = model_name
-        if benchmark:
-            self.monitor_client = MonitorClient()
-        else:
-            self.monitor_client = None
 
-    async def start(self, batch_size, batches, depruneProps, log_file_prefix):
-
-        inferences_to_be_run = batch_size * batches
-        progress_bar = tqdm(total=inferences_to_be_run,
-                            unit='inferences',
-                            unit_scale=True)
+    async def start(self, batch_size, batches, depruneProps, use_compression, log_file_prefix, verbose = False):
         if self.monitor_client is not None:
             self.monitor_client.start_benchmark(log_file_prefix)
 
-        pruneState = depruneProps['pruneState']
-        budget = depruneProps['budget']
-        with torch.no_grad():
-            for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
-                if pruneState:
-                    input_data = encode_offload_inference_request_pruned(X, None, budget)
-                else:
-                    input_data = encode_offload_inference_request(X)
+        if verbose:
+            inferences_to_be_run = batch_size * batches
+            progress_bar = tqdm(total=inferences_to_be_run,
+                                unit='inferences',
+                                unit_scale=True)
+        else:
+            progress_bar = None
 
-                result_data = await self.task_deployer.deploy_task(input_data)
-                if self.monitor_client is not None:
-                    self.monitor_client.batch_processed(len(X))
-                progress_bar.update(len(X))
+        if use_compression:
+            phases = depruneProps
+        else:
+            phases = [{'epochs': epochs, 'budget': None, 'pruneState': 0}]
 
-                if batch + 1 >= batches:
-                    break
+        for phase, prop in enumerate(phases):
+            epochs = prop['epochs']
+            pruneState = prop['pruneState']
+            budget = prop['budget']
+            for t in range(epochs):
+                for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
+                    if pruneState:
+                        input_data = encode_offload_inference_request_pruned(X, None, budget)
+                    else:
+                        input_data = encode_offload_inference_request(X)
 
-            progress_bar.close()
-            if self.monitor_client is not None:
-                self.logger.info("Waiting for the benchmark client to finish sending messages")
-                await asyncio.sleep(1)
+                    result_data = await self.task_deployer.deploy_task(input_data)
+
+                    if self.monitor_client is not None:
+                        self.monitor_client.batch_processed(len(X))
+                    if progress_bar is not None:
+                        progress_bar.update(len(X))
+
+                    if batch + 1 >= batches:
+                        break
+
+        progress_bar.close()
+        if self.monitor_client is not None:
+            self.logger.info("Waiting for the benchmark client to finish sending messages")
+            await asyncio.sleep(1)
 
 if __name__ == "__main__":
     args = parse_arguments()
-    from datasets import DatasetRepository
-    from models import ModelTrainingRepository
 
-    dataset, classes = DatasetRepository().get_dataset(args.model, args.dataset)
-    depruneProps = get_depruneProps()
-    asyncio.run(InferenceDataSource(dataset, args.model).start(args.batch_size,
-                                                                    args.batches,
-                                                                    depruneProps,
-                                                                    log_file_prefix=_get_benchmark_log_file_prefix(args)))
+    from datasets import DatasetRepository
+    dataset, classes = DatasetRepository().get_dataset(args.dataset)
+    depruneProps = get_depruneProps(args)
+    use_compression = bool(args.use_compression)
+
+    asyncio.run(InferenceDataSource(dataset).start(args.batch_size,
+                                                   args.batches,
+                                                   depruneProps,
+                                                   use_compression,
+                                                   log_file_prefix=_get_benchmark_log_file_prefix(args)))

@@ -35,6 +35,8 @@ spec:
         env:
         - name: WORKER_LISTEN_ADDRESS
           value: "0.0.0.0"
+        - name: SPARSE_MODEL_SERVER_ADDRESS
+          value: "model-server"
         command: ["python3"]
         args:
         - "inference_worker.py"
@@ -48,16 +50,16 @@ spec:
         - "$SPARSE_BATCH_SIZE"
         - "--batches"
         - "$SPARSE_BATCHES"
-          #        - "--use-compression"
-          #        - "$SPARSE_USE_COMPRESSION"
-          #        - "--deprune-props"
-          #        - "$SPARSE_DEPRUNE_PROPS"
+        - "--use-compression"
+        - "$SPARSE_USE_COMPRESSION"
+        - "--deprune-props"
+        - "$SPARSE_DEPRUNE_PROPS"
         - "--feature_compression_factor"
         - "$SPARSE_FEATURE_COMPRESSION_FACTOR"
         - "--resolution_compression_factor"
         - "$SPARSE_RESOLUTION_COMPRESSION_FACTOR"
-          #        - "--epochs"
-          #        - "$SPARSE_EPOCHS"
+        - "--epochs"
+        - "$SPARSE_EPOCHS"
         volumeMounts:
         - name: app-code
           mountPath: /app

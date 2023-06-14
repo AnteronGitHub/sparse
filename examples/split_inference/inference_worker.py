@@ -1,22 +1,31 @@
 from sparse_framework.node.worker import Worker
 from sparse_framework.dl.inference_calculator import InferenceCalculator
 
-from benchmark import parse_arguments
+from benchmark import parse_arguments, get_depruneProps
 
-class SplitInferenceFinal(Worker):
-    def __init__(self, model):
-        Worker.__init__(self,
-                        task_executor = InferenceCalculator(model))
+class InferenceWorker(Worker):
+    def __init__(self, model_name, partition, compressionProps, use_compression):
+        if use_compression:
+            from sparse_framework.dl import InferenceCalculatorPruning
+            task_executor = InferenceCalculatorPruning(model_name, partition, compressionProps, use_compression)
+        else:
+            from sparse_framework.dl import InferenceCalculator
+            task_executor = InferenceCalculator(model_name, partition, compressionProps, use_compression)
+
+        Worker.__init__(self, task_executor=task_executor)
 
 if __name__ == "__main__":
     args = parse_arguments()
-    from datasets import DatasetRepository
-    from models import ModelTrainingRepository
 
     compressionProps = {}
-    compressionProps['feature_compression_factor'] = args.feature_compression_factor ### resolution compression factor, compress by how many times
-    compressionProps['resolution_compression_factor'] = args.resolution_compression_factor ###layer compression factor, reduce by how many times TBD
-    partition = "server" if args.suite in ["fog_offloading", "edge_split"] else "unsplit"
-    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model, partition, compressionProps)
+    compressionProps['feature_compression_factor'] = args.feature_compression_factor
+    compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
 
-    SplitInferenceFinal(model).start()
+    depruneProps = get_depruneProps(args)
+    partition = "server" if args.suite in ["fog_offloading", "edge_split"] else "unsplit"
+    use_compression = bool(args.use_compression)
+
+    InferenceWorker(model_name=args.model_name,
+                    partition=partition,
+                    compressionProps=compressionProps,
+                    use_compression=use_compression).start()
