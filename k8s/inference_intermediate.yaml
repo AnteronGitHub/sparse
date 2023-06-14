@@ -1,0 +1,103 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: inference-intermediate
+  namespace: sparse
+  labels:
+    app: inference-intermediate
+spec:
+  ports:
+  - port: 50007
+    protocol: TCP
+  selector:
+    app: inference-intermediate
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inference-intermediate
+  namespace: sparse
+  labels:
+    app: inference-intermediate
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: inference-intermediate
+  template:
+    metadata:
+      labels:
+        app: inference-intermediate
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: sparse/node
+                operator: In
+                values:
+                - intermediate
+                - aio
+      containers:
+      - name: inference-intermediate
+        image: split_inference
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: MASTER_UPSTREAM_HOST
+          value: "inference-final"
+        - name: MASTER_UPSTREAM_PORT
+          value: "50008"
+        - name: WORKER_LISTEN_ADDRESS
+          value: "0.0.0.0"
+        - name: SPARSE_MODEL_SERVER_ADDRESS
+          value: "model-server"
+        command: ["python3"]
+        args:
+        - "inference_intermediate.py"
+        - "--suite"
+        - "$SPARSE_SUITE"
+        - "--model"
+        - "$SPARSE_MODEL"
+        - "--dataset"
+        - "$SPARSE_DATASET"
+        - "--batch-size"
+        - "$SPARSE_BATCH_SIZE"
+        - "--batches"
+        - "$SPARSE_BATCHES"
+        - "--use-compression"
+        - "$SPARSE_USE_COMPRESSION"
+        - "--deprune-props"
+        - "$SPARSE_DEPRUNE_PROPS"
+        - "--feature_compression_factor"
+        - "$SPARSE_FEATURE_COMPRESSION_FACTOR"
+        - "--resolution_compression_factor"
+        - "$SPARSE_RESOLUTION_COMPRESSION_FACTOR"
+        - "--epochs"
+        - "$SPARSE_EPOCHS"
+        volumeMounts:
+        - name: app-code
+          mountPath: /app
+        - name: sparse-code
+          mountPath: /usr/lib/sparse_framework
+        - name: sparse-data
+          mountPath: /data
+        - name: sparse-run
+          mountPath: /run/sparse
+      volumes:
+      - name: app-code
+        hostPath:
+          path: /opt/sparse/examples/split_inference
+      - name: sparse-code
+        hostPath:
+          path: /opt/sparse/sparse_framework
+      - name: sparse-data
+        hostPath:
+          path: /var/lib/sparse/data
+      - name: sparse-run
+        hostPath:
+          path: /mnt/sparse/run

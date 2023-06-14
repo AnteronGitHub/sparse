@@ -18,9 +18,7 @@ if __name__ == '__main__':
     args = parse_arguments()
 
     compressionProps = {}
-    ### resolution compression factor, compress by how many times
     compressionProps['feature_compression_factor'] = args.feature_compression_factor
-    ###layer compression factor, reduce by how many times TBD
     compressionProps['resolution_compression_factor'] = args.resolution_compression_factor
 
     depruneProps = get_depruneProps(args)

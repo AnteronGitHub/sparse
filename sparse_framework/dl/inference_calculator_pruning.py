@@ -49,20 +49,20 @@ class InferenceCalculatorPruning(TaskExecutor):
         self.logger.info(f"Task executor using {self.device} for processing")
 
         self.model.to(self.device)
-        
+
     def compress_with_pruneFilter(self, pred, prune_filter, budget):
-        
+
         compressedPred = torch.tensor([])
         mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
         masknp = mask.detach().numpy()
         partitioned = np.partition(masknp, -budget)[-budget]
         for entry in range(len(mask)):
             if mask[entry] >= partitioned:
-                 predRow = pred[:,entry,:,:].unsqueeze(dim=1) 
+                 predRow = pred[:,entry,:,:].unsqueeze(dim=1)
                  compressedPred = torch.cat((compressedPred, predRow), 1)
-                
-        return compressedPred, mask    
-        
+
+        return compressedPred, mask
+
     def decompress_with_pruneFilter(self, pred, mask, budget):
 
         decompressed_pred = torch.tensor([]).to(self.device)
