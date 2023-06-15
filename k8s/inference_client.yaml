@@ -7,6 +7,7 @@ metadata:
   labels:
     app: inference-client
 spec:
+  parallelism: $SPARSE_NO_DATASOURCES
   template:
     metadata:
       labels:
