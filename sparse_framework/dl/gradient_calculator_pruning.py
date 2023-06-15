@@ -146,7 +146,7 @@ class GradientCalculatorPruneStep(TaskExecutor):
                 split_layer, _ = self.compress_with_pruneFilter(split_layer.grad, prune_filter, budget, serverFlag=True)
 
                 reported_loss = true_loss.item()
-        result_data = encode_offload_response(split_layer.to(self.device).detach(), reported_loss)
+        result_data = encode_offload_response(split_layer.to("cpu").detach(), reported_loss)
 
         self.logger.debug("Executed task")
         return result_data
