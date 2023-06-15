@@ -50,34 +50,23 @@ class InferenceCalculatorPruning(TaskExecutor):
 
         self.model.to(self.device)
 
-    def compress_with_pruneFilter(self, pred, prune_filter, budget):
+    def compress_with_pruneFilter(self, pred, prune_filter, budget, serverFlag = False):
 
-        compressedPred = torch.tensor([])
-        mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
-        masknp = mask.detach().numpy()
-        partitioned = np.partition(masknp, -budget)[-budget]
-        for entry in range(len(mask)):
-            if mask[entry] >= partitioned:
-                 predRow = pred[:,entry,:,:].unsqueeze(dim=1)
-                 compressedPred = torch.cat((compressedPred, predRow), 1)
+        if serverFlag:
+            mask = prune_filter
+        else:
+            mask = torch.square(torch.sigmoid(prune_filter.squeeze()))
+        topk = torch.topk(mask, budget)
+        compressedPred = torch.index_select(pred, 1, topk.indices.sort().values)
 
         return compressedPred, mask
 
     def decompress_with_pruneFilter(self, pred, mask, budget):
 
-        decompressed_pred = torch.tensor([]).to(self.device)
-        a_row = pred[:,0,:,:].unsqueeze(dim=1)
-        zeroPad = torch.zeros(a_row.shape).to(self.device)
-        masknp = mask.to('cpu').detach().numpy()
-        partitioned = np.partition(masknp, -budget)[-budget]
-        count = 0
-        for entry in range(len(mask)):
-            if mask[entry] >= partitioned:
-                predRow = pred[:,count,:,:].unsqueeze(dim=1)
-                decompressed_pred = torch.cat((decompressed_pred, predRow), 1)
-                count += 1
-            else:
-                decompressed_pred = torch.cat((decompressed_pred, zeroPad), 1)
+        a = torch.mul(mask.repeat([128,1]).t(), torch.eye(128).to(self.device))
+        b = a.index_select(1, mask.topk(budget).indices.sort().values)
+        b = torch.where(b>0.0, 1.0, 0.0).to(self.device)
+        decompressed_pred = torch.einsum('ij,bjlm->bilm', b, pred)
 
         return decompressed_pred
 
