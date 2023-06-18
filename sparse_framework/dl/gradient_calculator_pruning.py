@@ -4,13 +4,12 @@ from torch.nn import Module
 import torch
 import numpy as np
 
-
-from ..task_executor import TaskExecutor
+from sparse_framework.task_executor import TaskExecutor
 
 from .serialization import decode_offload_request, encode_offload_request, decode_offload_response, encode_offload_response
 from .serialization import encode_offload_request_pruned, decode_offload_request_pruned
 from .utils import get_device
-from .model_loader import ModelLoader
+from .models.model_loader import ModelLoader
 
 class GradientCalculatorPruneStep(TaskExecutor):
     def __init__(self, model_name : str, partition : str, compressionProps : dict, use_compression : bool):
@@ -46,37 +45,23 @@ class GradientCalculatorPruneStep(TaskExecutor):
         #send budget and prune loss function here? or has to be passed each time?
         
     def compress_with_pruneFilter(self, pred, prune_filter, budget, serverFlag = False):
-        
-        compressedPred = torch.tensor([]).to(self.device)
+
         if serverFlag:
-            mask = prune_filter.to('cpu')
+            mask = prune_filter
         else:
-            mask = torch.square(torch.sigmoid(prune_filter.squeeze())).to('cpu')
-        masknp = mask.detach().numpy()
-        partitioned = np.partition(masknp, -budget)[-budget]
-        for entry in range(len(mask)):
-            if mask[entry] >= partitioned:
-                 predRow = pred[:,entry,:,:].unsqueeze(dim=1).to(self.device)
-                 compressedPred = torch.cat((compressedPred, predRow), 1)
-                
+            mask = torch.square(torch.sigmoid(prune_filter.squeeze()))
+        topk = torch.topk(mask, budget)
+        compressedPred = torch.index_select(pred, 1, topk.indices.sort().values)
+
         return compressedPred, mask    
        
     def decompress_with_pruneFilter(self, pred, mask, budget):
         
-        decompressed_pred = torch.tensor([]).to(self.device)
-        a_row = pred[:,0,:,:].unsqueeze(dim=1)
-        zeroPad = torch.zeros(a_row.shape).to(self.device)
-        masknp = mask.to('cpu').detach().numpy()
-        partitioned = np.partition(masknp, -budget)[-budget]
-        count = 0
-        for entry in range(len(mask)):
-            if mask[entry] >= partitioned: 
-                predRow = pred[:,count,:,:].unsqueeze(dim=1).to(self.device)
-                decompressed_pred = torch.cat((decompressed_pred, predRow), 1)
-                count += 1
-            else:
-                decompressed_pred = torch.cat((decompressed_pred, zeroPad), 1) 
-        
+        a = torch.mul(mask.repeat([128,1]).t(), torch.eye(128).to(self.device))
+        b = a.index_select(1, mask.topk(budget).indices.sort().values)
+        b = torch.where(b>0.0, 1.0, 0.0).to(self.device)
+        decompressed_pred = torch.einsum('ij,bjlm->bilm', b, pred)
+
         return decompressed_pred
         
     def prune_loss_fn(self, loss_fn, pred, y, prune_filter, budget, delta = 0.1, epsilon=1000):
@@ -107,16 +92,16 @@ class GradientCalculatorPruneStep(TaskExecutor):
             # Local forward pass
             model_return = self.model(split_layer)
         
-            pred = model_return[0].to("cpu").detach()   #partial model output
+            pred = model_return[0].to(self.device).detach()   #partial model output
             ############################
             #quantization/compression TBD
             ############################
-            prune_filter = model_return[1].to("cpu").detach()   #the prune filter in training
+            prune_filter = model_return[1].to(self.device).detach()   #the prune filter in training
 
             # Offloaded layers
             upload_data, filter_to_send = self.compress_with_pruneFilter(pred, prune_filter, budget)
             
-            input_data = encode_offload_request_pruned(upload_data, labels.to("cpu"), filter_to_send, budget)
+            input_data = encode_offload_request_pruned(upload_data, labels.to(self.device), filter_to_send, budget)
             result_data = await self.task_deployer.deploy_task(input_data)
 
             # Local back propagation

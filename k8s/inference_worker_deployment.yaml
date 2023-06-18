@@ -1,14 +1,22 @@
 ---
-apiVersion: batch/v1
-kind: Job
+apiVersion: apps/v1
+kind: Deployment
 metadata:
-  name: learning-datasource
+  name: inference-worker
   namespace: sparse
   labels:
-    app: learning-datasource
+    app: inference-worker
 spec:
-  parallelism: $SPARSE_NO_DATASOURCES
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: inference-worker
   template:
+    metadata:
+      labels:
+        app: inference-worker
     spec:
       affinity:
         nodeAffinity:
@@ -18,20 +26,20 @@ spec:
               - key: sparse/node
                 operator: In
                 values:
-                - datasource
+                - worker
                 - aio
       containers:
-      - name: learning-datasource
-        image: split_learning
+      - name: inference-worker
+        image: split_inference
         imagePullPolicy: IfNotPresent
         env:
-        - name: MASTER_UPSTREAM_HOST
-          value: "$SPARSE_DATASOURCE_DOWNSTREAM_HOST"
-        - name: MASTER_UPSTREAM_PORT
-          value: "$SPARSE_DATASOURCE_DOWNSTREAM_PORT"
+        - name: WORKER_LISTEN_ADDRESS
+          value: "0.0.0.0"
+        - name: SPARSE_MODEL_SERVER_ADDRESS
+          value: "model-server"
         command: ["python3"]
         args:
-        - "learning_datasource.py"
+        - "inference_worker.py"
         - "--suite"
         - "$SPARSE_SUITE"
         - "--model"
@@ -52,11 +60,6 @@ spec:
         - "$SPARSE_RESOLUTION_COMPRESSION_FACTOR"
         - "--epochs"
         - "$SPARSE_EPOCHS"
-        resources:
-          limits:
-            cpu: "$SPARSE_DATASOURCE_CPU_LIMIT"
-              # Adding memory limitations restrics using swap
-              #            memory: "$SPARSE_DATASOURCE_MEMORY_LIMIT"
         volumeMounts:
         - name: app-code
           mountPath: /app
@@ -66,11 +69,10 @@ spec:
           mountPath: /data
         - name: sparse-run
           mountPath: /run/sparse
-      restartPolicy: Never
       volumes:
       - name: app-code
         hostPath:
-          path: /opt/sparse/examples/split_learning
+          path: /opt/sparse/examples/split_inference
       - name: sparse-code
         hostPath:
           path: /opt/sparse/sparse_framework

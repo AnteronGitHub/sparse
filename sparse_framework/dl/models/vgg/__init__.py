@@ -2,9 +2,8 @@ import torch.nn as nn
 import torch
 
 
-from models.compression_utils_vgg import encodingUnit
-from models.compression_utils_vgg import decodingUnit
-
+from .compression_utils_vgg import encodingUnit
+from .compression_utils_vgg import decodingUnit
 
 class VGG(nn.Module):
     def __init__(self, features, num_classes=1000, init_weights=False, local = False, use_compression = False):

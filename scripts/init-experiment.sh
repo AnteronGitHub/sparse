@@ -3,6 +3,9 @@
 init_environment () {
 
   # Experiment specs
+  read -p "Run learning or inference (default learning)? " SPARSE_APPLICATION
+  export SPARSE_APPLICATION=${SPARSE_APPLICATION:-learning}
+
   read -p "Name of the experiment suite (aio/edge_offloading/edge_split/fog_offloading): " SPARSE_SUITE
   export SPARSE_SUITE=${SPARSE_SUITE:-aio}
 
@@ -24,6 +27,12 @@ init_environment () {
   else
     export SPARSE_USE_COMPRESSION=0
   fi
+
+  read -p "How many data sources to run (default 1): " SPARSE_NO_DATASOURCES
+  export SPARSE_NO_DATASOURCES=${SPARSE_NO_DATASOURCES:-1}
+
+  read -p "Specify the data source cpu limitation (default 400m): " SPARSE_DATASOURCE_CPU_LIMIT
+  export SPARSE_DATASOURCE_CPU_LIMIT=${SPARSE_DATASOURCE_CPU_LIMIT:-400m}
 
   if [ $SPARSE_USE_COMPRESSION == 1 ]; then
     read -p "Deprune props to be used in training (default 'budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1'): " SPARSE_DEPRUNE_PROPS

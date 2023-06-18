@@ -6,7 +6,7 @@ from .monitor import MonitorContainer
 class Benchmark():
     def __init__(self, benchmark_id, log_file_prefix, nic, stop_callback, timeout = 60):
         self.benchmark_id = benchmark_id
-        self.stats_logger = FileLogger(file_prefix=f"{log_file_prefix}")
+        self.stats_logger = FileLogger(benchmark_id, file_prefix=f"{log_file_prefix}")
         self.stop_callback = stop_callback
         self.timeout = timeout
 

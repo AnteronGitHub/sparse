@@ -43,19 +43,14 @@ spec:
                 - "true"
       containers:
       - name: model-server
-        image: split_learning
+        image: sparse/pytorch
         imagePullPolicy: IfNotPresent
         command: ["python3"]
-        args: ["model_server.py"]
+        args: ["-m", "dl.models"]
         volumeMounts:
-        - name: app-code
-          mountPath: /app
         - name: sparse-code
           mountPath: /usr/lib/sparse_framework
       volumes:
-      - name: app-code
-        hostPath:
-          path: /opt/sparse/examples/split_learning
       - name: sparse-code
         hostPath:
           path: /opt/sparse/sparse_framework

@@ -19,42 +19,42 @@ deploy_nodes () {
 
   case $SPARSE_SUITE in
     "edge_offloading")
-      deploy_resource "learning_worker_deployment"
-      wait_for_deployment "learning-worker"
+      deploy_resource $SPARSE_APPLICATION"_worker_deployment"
+      wait_for_deployment $SPARSE_APPLICATION"-worker"
       if [ $SPARSE_DATASOURCE_USE_EXTERNAL_LINK == "yes" ]; then
-        deploy_resource "learning_worker_nodeport"
+        deploy_resource $SPARSE_APPLICATION"_worker_nodeport"
       else
-        deploy_resource "learning_worker_clusterip"
+        deploy_resource $SPARSE_APPLICATION"_worker_clusterip"
       fi
 
-      deploy_resource "learning_datasource"
+      deploy_resource $SPARSE_APPLICATION"_datasource"
       ;;
     "edge_split")
-      deploy_resource "learning_worker_deployment"
-      wait_for_deployment "learning-worker"
+      deploy_resource $SPARSE_APPLICATION"_worker_deployment"
+      wait_for_deployment $SPARSE_APPLICATION"-worker"
       if [ $SPARSE_DATASOURCE_USE_EXTERNAL_LINK == "yes" ]; then
-        deploy_resource "learning_worker_nodeport"
+        deploy_resource $SPARSE_APPLICATION"_worker_nodeport"
       else
-        deploy_resource "learning_worker_clusterip"
+        deploy_resource $SPARSE_APPLICATION"_worker_clusterip"
       fi
 
-      deploy_resource "learning_client"
+      deploy_resource $SPARSE_APPLICATION"_client"
       ;;
     "fog_offloading")
-      deploy_resource "learning_worker_deployment"
-      wait_for_deployment "learning-worker"
+      deploy_resource $SPARSE_APPLICATION"_worker_deployment"
+      wait_for_deployment $SPARSE_APPLICATION"-worker"
       if [ $SPARSE_DATASOURCE_USE_EXTERNAL_LINK == "yes" ]; then
-        deploy_resource "learning_worker_nodeport"
+        deploy_resource $SPARSE_APPLICATION"_worker_nodeport"
       else
-        deploy_resource "learning_worker_clusterip"
+        deploy_resource $SPARSE_APPLICATION"_worker_clusterip"
       fi
 
-      deploy_resource "learning_intermediate"
-      wait_for_deployment "learning-intermediate"
-      deploy_resource "learning_datasource"
+      deploy_resource $SPARSE_APPLICATION"_intermediate"
+      wait_for_deployment $SPARSE_APPLICATION"-intermediate"
+      deploy_resource $SPARSE_APPLICATION"_datasource"
       ;;
     *)
-      deploy_resource "learning_aio"
+      deploy_resource $SPARSE_APPLICATION"_aio"
       ;;
   esac
 }

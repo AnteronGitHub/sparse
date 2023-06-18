@@ -1,7 +1,7 @@
 from sparse_framework.node.worker import Worker
+from sparse_framework.dl import ModelTrainingRepository
 
 from utils import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
-from models import ModelTrainingRepository
 
 class LearningWorker(Worker):
     def __init__(self, model_name, partition, compressionProps, benchmark_log_file_prefix, use_compression):

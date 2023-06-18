@@ -2,14 +2,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: learning-datasource
+  name: inference-client
   namespace: sparse
   labels:
-    app: learning-datasource
+    app: inference-client
 spec:
   parallelism: $SPARSE_NO_DATASOURCES
   template:
+    metadata:
+      labels:
+        app: inference-client
     spec:
+      restartPolicy: Never
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -21,17 +25,17 @@ spec:
                 - datasource
                 - aio
       containers:
-      - name: learning-datasource
-        image: split_learning
+      - name: inference-client
+        image: split_inference
         imagePullPolicy: IfNotPresent
         env:
         - name: MASTER_UPSTREAM_HOST
-          value: "$SPARSE_DATASOURCE_DOWNSTREAM_HOST"
-        - name: MASTER_UPSTREAM_PORT
-          value: "$SPARSE_DATASOURCE_DOWNSTREAM_PORT"
+          value: "inference-worker"
+        - name: SPARSE_MODEL_SERVER_ADDRESS
+          value: "model-server"
         command: ["python3"]
         args:
-        - "learning_datasource.py"
+        - "inference_client.py"
         - "--suite"
         - "$SPARSE_SUITE"
         - "--model"
@@ -52,11 +56,6 @@ spec:
         - "$SPARSE_RESOLUTION_COMPRESSION_FACTOR"
         - "--epochs"
         - "$SPARSE_EPOCHS"
-        resources:
-          limits:
-            cpu: "$SPARSE_DATASOURCE_CPU_LIMIT"
-              # Adding memory limitations restrics using swap
-              #            memory: "$SPARSE_DATASOURCE_MEMORY_LIMIT"
         volumeMounts:
         - name: app-code
           mountPath: /app
@@ -66,11 +65,10 @@ spec:
           mountPath: /data
         - name: sparse-run
           mountPath: /run/sparse
-      restartPolicy: Never
       volumes:
       - name: app-code
         hostPath:
-          path: /opt/sparse/examples/split_learning
+          path: /opt/sparse/examples/split_inference
       - name: sparse-code
         hostPath:
           path: /opt/sparse/sparse_framework
