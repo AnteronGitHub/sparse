@@ -45,7 +45,7 @@ class InferenceDataSource(Master):
         Master.__init__(self, benchmark=benchmark)
         self.dataset = dataset
 
-    async def start(self, batch_size, batches, depruneProps, use_compression, log_file_prefix, verbose = False):
+    async def start(self, batch_size, batches, depruneProps, use_compression, epochs, log_file_prefix, verbose = False):
         if self.monitor_client is not None:
             self.monitor_client.start_benchmark(log_file_prefix)
 
@@ -100,4 +100,5 @@ if __name__ == "__main__":
                                                    args.batches,
                                                    depruneProps,
                                                    use_compression,
+                                                   epochs=int(args.epochs),
                                                    log_file_prefix=_get_benchmark_log_file_prefix(args)))
