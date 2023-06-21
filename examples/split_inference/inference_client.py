@@ -99,6 +99,8 @@ class InferenceClient(Master):
                             self.monitor_client.batch_processed(len(X))
                         if progress_bar is not None:
                             progress_bar.update(len(X))
+                        else:
+                            self.logger.info(f"Processed batch of {len(X)} samples")
 
                         if batch + 1 >= batches:
                             break
