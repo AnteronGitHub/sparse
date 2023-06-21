@@ -8,7 +8,7 @@ metadata:
     app: inference-intermediate
 spec:
   ports:
-  - port: 50007
+  - port: 50008
     protocol: TCP
   selector:
     app: inference-intermediate
@@ -49,11 +49,11 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: MASTER_UPSTREAM_HOST
-          value: "inference-final"
-        - name: MASTER_UPSTREAM_PORT
-          value: "50008"
+          value: "inference-worker"
         - name: WORKER_LISTEN_ADDRESS
           value: "0.0.0.0"
+        - name: WORKER_LISTEN_PORT
+          value: "50008"
         - name: SPARSE_MODEL_SERVER_ADDRESS
           value: "model-server"
         command: ["python3"]

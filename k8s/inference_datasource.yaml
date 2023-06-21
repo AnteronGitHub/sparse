@@ -26,9 +26,32 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: MASTER_UPSTREAM_HOST
-          value: "inference-worker"
+          value: "$SPARSE_DATASOURCE_DOWNSTREAM_HOST"
+        - name: MASTER_UPSTREAM_PORT
+          value: "$SPARSE_DATASOURCE_DOWNSTREAM_PORT"
         command: ["python3"]
-        args: ["inference_datasource.py"]
+        args:
+        - "inference_datasource.py"
+        - "--suite"
+        - "$SPARSE_SUITE"
+        - "--model"
+        - "$SPARSE_MODEL"
+        - "--dataset"
+        - "$SPARSE_DATASET"
+        - "--batch-size"
+        - "$SPARSE_BATCH_SIZE"
+        - "--batches"
+        - "$SPARSE_BATCHES"
+        - "--use-compression"
+        - "$SPARSE_USE_COMPRESSION"
+        - "--deprune-props"
+        - "$SPARSE_DEPRUNE_PROPS"
+        - "--feature_compression_factor"
+        - "$SPARSE_FEATURE_COMPRESSION_FACTOR"
+        - "--resolution_compression_factor"
+        - "$SPARSE_RESOLUTION_COMPRESSION_FACTOR"
+        - "--epochs"
+        - "$SPARSE_EPOCHS"
         volumeMounts:
         - name: app-code
           mountPath: /app

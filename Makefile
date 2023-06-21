@@ -44,6 +44,14 @@ docker: $(docker_build_file)
 run: | $(sparse_data_dir) $(docker_build_file)
 	make run-learning-aio
 
+# Experiments
+.PHONY: run-experiment clean-experiment
+run-experiment:
+	scripts/run-experiment.sh
+
+clean-experiment:
+	scripts/clean-experiment.sh
+
 # Learning
 .PHONY: run-sparse-monitor
 run-sparse-monitor: | $(sparse_data_dir) $(docker_build_file)
