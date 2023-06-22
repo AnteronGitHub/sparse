@@ -5,21 +5,21 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
+from sparse_framework.dl import DatasetRepository, ModelTrainingRepository
 from sparse_framework.dl.utils import get_device
 from sparse_framework.stats.monitor_client import MonitorClient
 
-from utils import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
-from datasets import DatasetRepository
-from models import ModelTrainingRepository
+from utils import parse_arguments, _get_benchmark_log_file_prefix
 
 class LearningAllInOne():
     def __init__(self, dataset, classes, model, loss_fn, optimizer, benchmark = True):
+        self.device = get_device()
+
         self.dataset = dataset
         self.classes = classes
         self.model = model
         self.loss_fn = loss_fn
         self.optimizer = optimizer
-        self.device = get_device()
         self.warmed_up = False
         if benchmark:
             print(f"Benchmarking the suite")
@@ -30,6 +30,17 @@ class LearningAllInOne():
 
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=logging.INFO)
         self.logger = logging.getLogger("sparse")
+
+    def load_model(self):
+        model_loader = ModelLoader(self.config_manager.model_server_address,
+                                   self.config_manager.model_server_port)
+
+        self.model, self.loss_fn, self.optimizer = model_loader.load_model(self.model_name,
+                                                                           self.partition,
+                                                                           self.compressionProps,
+                                                                           self.use_compression)
+        self.model = self.model.to(self.device)
+        self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}' and using compression '{self.use_compression}'")
 
     async def process_batch(self, X, y):
         X, y = X.to(self.device), y.to(self.device)
@@ -87,4 +98,4 @@ if __name__ == '__main__':
     asyncio.run(LearningAllInOne(dataset, classes, model, loss_fn, optimizer).train(args.batches,
                                                                                     args.batch_size,
                                                                                     args.epochs,
-                                                                                    _get_benchmark_log_file_prefix(args, "aio", args.epochs)))
+                                                                                    _get_benchmark_log_file_prefix(args, "aio")))

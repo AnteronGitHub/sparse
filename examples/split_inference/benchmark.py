@@ -35,6 +35,18 @@ def get_depruneProps(args):
         depruneProps.append(prop)
     return depruneProps
 
+def format_depruneProps(args):
+    formatted = f"{args.feature_compression_factor}_{args.resolution_compression_factor}"
+    for depruneProp in get_depruneProps(args):
+        formatted += "_" + str(depruneProp["epochs"]) + "_" + str(depruneProp["budget"])
+    return formatted
+
+def get_deprune_epochs(depruneProps):
+    total_epochs = 0
+    for prop in depruneProps:
+        total_epochs += prop['epochs']
+    return total_epochs
+
 def _get_benchmark_log_file_prefix(args):
     return f"benchmark_inference-{args.suite}\
 -{args.model_name}-{args.dataset}-{args.batch_size}-{args.resolution_compression_factor}"

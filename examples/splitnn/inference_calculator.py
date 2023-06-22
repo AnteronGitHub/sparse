@@ -1,12 +1,16 @@
-from .model_executor import ModelExecutor
+from sparse_framework.dl import ModelExecutor
 
-from .serialization import decode_offload_inference_request, \
-                           encode_offload_inference_request, \
-                           decode_offload_inference_response, \
-                           encode_offload_inference_response
+from serialization import decode_offload_inference_request, \
+                          encode_offload_inference_request, \
+                          decode_offload_inference_response, \
+                          encode_offload_inference_response
 
 
 class InferenceCalculator(ModelExecutor):
+    def start(self):
+        super().start()
+        self.logger.info(f"Inferring with the model.")
+
     async def execute_task(self, input_data: bytes) -> bytes:
         """Execute a single forward computation for the offloaded layers."""
         split_layer = decode_offload_inference_request(input_data)

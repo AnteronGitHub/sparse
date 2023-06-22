@@ -3,6 +3,9 @@
 init_environment () {
 
   # Experiment specs
+  read -p "Which example to run (splitnn/deprune)? " SPARSE_EXAMPLE
+  export SPARSE_EXAMPLE=${SPARSE_EXAMPLE:-splitnn}
+
   read -p "Run learning or inference (default learning)? " SPARSE_APPLICATION
   export SPARSE_APPLICATION=${SPARSE_APPLICATION:-learning}
 
@@ -64,10 +67,10 @@ init_environment () {
     export SPARSE_DATASOURCE_DOWNSTREAM_HOST=$SPARSE_DATASOURCE_DOWNSTREAM_HOST
     export SPARSE_DATASOURCE_DOWNSTREAM_PORT=${SPARSE_DATASOURCE_DOWNSTREAM_PORT:-"30007"}
   elif [ $SPARSE_SUITE == "fog_offloading" ]; then
-    export SPARSE_DATASOURCE_DOWNSTREAM_HOST="learning-intermediate"
+    export SPARSE_DATASOURCE_DOWNSTREAM_HOST=$SPARSE_EXAMPLE"-intermediate"
     export SPARSE_DATASOURCE_DOWNSTREAM_PORT=50008
   else
-    export SPARSE_DATASOURCE_DOWNSTREAM_HOST="learning-worker"
+    export SPARSE_DATASOURCE_DOWNSTREAM_HOST=$SPARSE_EXAMPLE"-worker"
     export SPARSE_DATASOURCE_DOWNSTREAM_PORT=50007
   fi
 }

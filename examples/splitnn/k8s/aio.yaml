@@ -2,10 +2,10 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: learning-aio
+  name: splitnn-aio
   namespace: sparse
   labels:
-    app: learning-aio
+    app: splitnn-aio
 spec:
   template:
     spec:
@@ -19,12 +19,12 @@ spec:
                 values:
                 - aio
       containers:
-      - name: learning-aio
+      - name: splitnn-aio
         image: split_learning
         imagePullPolicy: IfNotPresent
         command: ["python3"]
         args:
-        - "learning_aio.py"
+        - "aio.py"
         - "--suite"
         - "$SPARSE_SUITE"
         - "--model"
@@ -35,12 +35,6 @@ spec:
         - "$SPARSE_BATCH_SIZE"
         - "--batches"
         - "$SPARSE_BATCHES"
-        - "--deprune-props"
-        - "$SPARSE_DEPRUNE_PROPS"
-        - "--feature_compression_factor"
-        - "$SPARSE_FEATURE_COMPRESSION_FACTOR"
-        - "--resolution_compression_factor"
-        - "$SPARSE_RESOLUTION_COMPRESSION_FACTOR"
         - "--epochs"
         - "$SPARSE_EPOCHS"
         volumeMounts:
@@ -56,7 +50,7 @@ spec:
       volumes:
       - name: app-code
         hostPath:
-          path: /opt/sparse/examples/split_learning
+          path: /opt/sparse/examples/splitnn
       - name: sparse-code
         hostPath:
           path: /opt/sparse/sparse_framework

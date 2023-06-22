@@ -33,11 +33,11 @@ $(docker_build_file): $(sparse_py) $(dockerfile)
 
 .PHONY: all
 all: $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_learning all
+	make -C examples/splitnn all
 
 .PHONY: docker
 docker: $(docker_build_file)
-	make -C examples/split_learning docker
+	make -C examples/splitnn docker
 	make -C examples/split_inference docker
 
 .PHONY: run
@@ -61,32 +61,32 @@ run-sparse-monitor: | $(sparse_data_dir) $(docker_build_file)
 
 .PHONY: run-learning-aio
 run-learning-aio: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_learning run-aio
+	make -C examples/splitnn run-aio
 
 .PHONY: run-learning-data-source
 run-learning-data-source: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_learning run-data-source
+	make -C examples/splitnn run-data-source
 
 .PHONY: run-learning-unsplit
 run-learning-unsplit: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_learning run-unsplit-final
+	make -C examples/splitnn run-unsplit-final
 
 .PHONY: run-learning-split
 run-learning-split: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_learning run-split-final
-	make -C examples/split_learning run-split-intermediate
+	make -C examples/splitnn run-split-final
+	make -C examples/splitnn run-split-intermediate
 
 .PHONY: run-learning-split-final
 run-learning-split-final: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_learning run-split-final
+	make -C examples/splitnn run-split-final
 
 .PHONY: run-learning-split-client
 run-learning-split-client: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_learning run-split-client
+	make -C examples/splitnn run-split-client
 
 .PHONY: run-learning-split-intermediate
 run-learning-split-intermediate: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_learning run-split-intermediate
+	make -C examples/splitnn run-split-intermediate
 
 # Inference
 .PHONY: run-inference-aio
@@ -120,7 +120,7 @@ run-inference-split-intermediate: | $(sparse_data_dir) $(docker_build_file)
 
 .PHONY: clean
 clean:
-	make -iC examples/split_learning clean
+	make -iC examples/splitnn clean
 	make -iC examples/split_inference clean
 	docker container prune -f
 	docker image prune -f

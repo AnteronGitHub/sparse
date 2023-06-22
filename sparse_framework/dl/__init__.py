@@ -1,15 +1,9 @@
-from .gradient_calculator import GradientCalculator
-from .gradient_calculator_pruning import GradientCalculatorPruneStep
-from .inference_calculator import InferenceCalculator
-from .inference_calculator_pruning import InferenceCalculatorPruning
 from .models import ModelLoader, ModelServer, ModelTrainingRepository
+from .model_executor import ModelExecutor
 from .datasets import DatasetRepository
 
 __all__ = ["DatasetRepository",
-           "GradientCalculator",
-           "GradientCalculatorPruneStep",
-           "InferenceCalculator",
-           "InferenceCalculatorPruning",
+           "ModelExecutor",
            "ModelLoader",
            "ModelServer",
            "ModelTrainingRepository"]
