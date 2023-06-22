@@ -13,9 +13,7 @@ class GradientCalculator(ModelExecutor):
     async def execute_task(self, input_data: bytes) -> bytes:
         """Execute a single gradient computation for the offloaded layers."""
         split_layer, labels = decode_offload_request(input_data)
-        split_layer, labels = Variable(split_layer, requires_grad=True).to(
-            self.device
-        ), labels.to(self.device)
+        split_layer = Variable(split_layer, requires_grad=True).to(self.device)
         split_layer.retain_grad()
 
         pred = self.model(split_layer)
@@ -30,7 +28,7 @@ class GradientCalculator(ModelExecutor):
             pred.backward(split_grad)
             self.optimizer.step()
         else:
-            loss = self.loss_fn(pred, labels)
+            loss = self.loss_fn(pred, labels.to(self.device))
 
             self.optimizer.zero_grad()
             loss.backward()
