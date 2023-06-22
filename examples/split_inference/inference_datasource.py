@@ -93,7 +93,7 @@ class InferenceDataSource(Master):
 if __name__ == "__main__":
     args = parse_arguments()
 
-    from datasets import DatasetRepository
+    from sparse_framework.dl import DatasetRepository
     dataset, classes = DatasetRepository().get_dataset(args.dataset)
     depruneProps = get_depruneProps(args)
     use_compression = bool(args.use_compression)

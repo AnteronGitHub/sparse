@@ -2,11 +2,11 @@ import asyncio
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
+from sparse_framework.dl import DatasetRepository
 from sparse_framework.dl.serialization import encode_offload_request, decode_offload_response
 from sparse_framework.dl.serialization import encode_offload_request_pruned
 from sparse_framework.node.master import Master
 
-from datasets import DatasetRepository
 from utils import parse_arguments, get_depruneProps, get_deprune_epochs, _get_benchmark_log_file_prefix
 
 class LearningDataSource(Master):

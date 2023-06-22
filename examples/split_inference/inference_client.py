@@ -122,7 +122,7 @@ if __name__ == "__main__":
     partition = "client"
     use_compression = bool(args.use_compression)
 
-    from datasets import DatasetRepository
+    from sparse_framework.dl import DatasetRepository
     dataset, classes = DatasetRepository().get_dataset(args.dataset)
 
     inference_client = InferenceClient(dataset=dataset,

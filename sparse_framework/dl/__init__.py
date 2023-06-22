@@ -3,8 +3,10 @@ from .gradient_calculator_pruning import GradientCalculatorPruneStep
 from .inference_calculator import InferenceCalculator
 from .inference_calculator_pruning import InferenceCalculatorPruning
 from .models import ModelLoader, ModelServer, ModelTrainingRepository
+from .datasets import DatasetRepository
 
-__all__ = ["GradientCalculator",
+__all__ = ["DatasetRepository",
+           "GradientCalculator",
            "GradientCalculatorPruneStep",
            "InferenceCalculator",
            "InferenceCalculatorPruning",
