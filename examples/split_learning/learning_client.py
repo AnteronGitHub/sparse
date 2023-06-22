@@ -104,7 +104,7 @@ class LearningClient(Master):
                     if progress_bar is not None:
                         progress_bar.update(len(X))
                     else:
-                        self.logger.info(f"Processed batch of {len(X)} samples")
+                        self.logger.info(f"Processed batch of {len(X)} samples. Loss: {loss}")
 
                     # Benchmarks
                     if self.monitor_client is not None:
