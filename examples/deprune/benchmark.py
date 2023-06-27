@@ -4,15 +4,13 @@ import asyncio
 def parse_arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument('--suite', default='aio', type=str)
+    parser.add_argument('--application', default='learning', type=str)
     parser.add_argument('--model-name', default='VGG', type=str)   #YOLOv3_server prev, this needs to be worked on
-    parser.add_argument('--inferences-to-be-run', default=100, type=int)
     parser.add_argument('--batches', default=64, type=int)
     parser.add_argument('--batch-size', default=64, type=int)
-    parser.add_argument('--epochs', default=1, type=int)
     parser.add_argument('--dataset', default='CIFAR10', type=str, help="Options: FMNIST, CIFAR10, CIFAR100, Imagenet100")
     parser.add_argument('--feature_compression_factor', default=1, type=int)
     parser.add_argument('--resolution_compression_factor', default=1, type=int)
-    parser.add_argument('--use-compression', default=1, type=int)
     parser.add_argument('--deprune-props',
                         type=str,
                         default="budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1",
@@ -48,6 +46,5 @@ def get_deprune_epochs(depruneProps):
     return total_epochs
 
 def _get_benchmark_log_file_prefix(args):
-    return f"benchmark_inference-{args.suite}\
--{args.model_name}-{args.dataset}-{args.batch_size}-{args.resolution_compression_factor}"
+    return f"deprune-{args.application}-{args.suite}-{args.model_name}-{args.dataset}-{args.batch_size}-{args.resolution_compression_factor}"
 

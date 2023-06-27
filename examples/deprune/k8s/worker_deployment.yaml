@@ -2,21 +2,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: inference-worker
+  name: deprune-worker
   namespace: sparse
   labels:
-    app: inference-worker
+    app: deprune-worker
 spec:
   replicas: 1
   strategy:
     type: RollingUpdate
   selector:
     matchLabels:
-      app: inference-worker
+      app: deprune-worker
   template:
     metadata:
       labels:
-        app: inference-worker
+        app: deprune-worker
     spec:
       affinity:
         nodeAffinity:
@@ -29,7 +29,7 @@ spec:
                 - worker
                 - aio
       containers:
-      - name: inference-worker
+      - name: deprune-worker
         image: split_inference
         imagePullPolicy: IfNotPresent
         env:
@@ -39,7 +39,9 @@ spec:
           value: "model-server"
         command: ["python3"]
         args:
-        - "inference_worker.py"
+        - "worker.py"
+        - "--application"
+        - "$SPARSE_APPLICATION"
         - "--suite"
         - "$SPARSE_SUITE"
         - "--model"
@@ -50,16 +52,12 @@ spec:
         - "$SPARSE_BATCH_SIZE"
         - "--batches"
         - "$SPARSE_BATCHES"
-        - "--use-compression"
-        - "$SPARSE_USE_COMPRESSION"
         - "--deprune-props"
         - "$SPARSE_DEPRUNE_PROPS"
         - "--feature_compression_factor"
         - "$SPARSE_FEATURE_COMPRESSION_FACTOR"
         - "--resolution_compression_factor"
         - "$SPARSE_RESOLUTION_COMPRESSION_FACTOR"
-        - "--epochs"
-        - "$SPARSE_EPOCHS"
         volumeMounts:
         - name: app-code
           mountPath: /app
@@ -72,7 +70,7 @@ spec:
       volumes:
       - name: app-code
         hostPath:
-          path: /opt/sparse/examples/split_inference
+          path: /opt/sparse/examples/deprune
       - name: sparse-code
         hostPath:
           path: /opt/sparse/sparse_framework

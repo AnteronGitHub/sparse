@@ -2,13 +2,18 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: inference-aio
+  name: deprune-client
   namespace: sparse
   labels:
-    app: inference-aio
+    app: deprune-client
 spec:
+  parallelism: $SPARSE_NO_DATASOURCES
   template:
+    metadata:
+      labels:
+        app: deprune-client
     spec:
+      restartPolicy: Never
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -17,13 +22,38 @@ spec:
               - key: sparse/node
                 operator: In
                 values:
+                - datasource
                 - aio
       containers:
-      - name: inference-aio
+      - name: deprune-client
         image: split_inference
         imagePullPolicy: IfNotPresent
+        env:
+        - name: MASTER_UPSTREAM_HOST
+          value: "deprune-worker"
+        - name: SPARSE_MODEL_SERVER_ADDRESS
+          value: "model-server"
         command: ["python3"]
-        args: ["inference_aio.py", "--dataset", "Imagenet100"]
+        args:
+        - "client.py"
+        - "--application"
+        - "$SPARSE_APPLICATION"
+        - "--suite"
+        - "$SPARSE_SUITE"
+        - "--model"
+        - "$SPARSE_MODEL"
+        - "--dataset"
+        - "$SPARSE_DATASET"
+        - "--batch-size"
+        - "$SPARSE_BATCH_SIZE"
+        - "--batches"
+        - "$SPARSE_BATCHES"
+        - "--deprune-props"
+        - "$SPARSE_DEPRUNE_PROPS"
+        - "--feature_compression_factor"
+        - "$SPARSE_FEATURE_COMPRESSION_FACTOR"
+        - "--resolution_compression_factor"
+        - "$SPARSE_RESOLUTION_COMPRESSION_FACTOR"
         volumeMounts:
         - name: app-code
           mountPath: /app
@@ -33,11 +63,10 @@ spec:
           mountPath: /data
         - name: sparse-run
           mountPath: /run/sparse
-      restartPolicy: Never
       volumes:
       - name: app-code
         hostPath:
-          path: /opt/sparse/examples/split_inference
+          path: /opt/sparse/examples/deprune
       - name: sparse-code
         hostPath:
           path: /opt/sparse/sparse_framework
