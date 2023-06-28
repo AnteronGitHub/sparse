@@ -6,17 +6,15 @@ from torch.nn import Module
 
 from .model_repository import ModelRepository
 
-def encode_model_request(model_name : str, partition, compressionProps, use_compression):
+def encode_model_request(model_name : str, partition):
     return pickle.dumps({
         'model_name': model_name,
-        'partition': partition,
-        'compressionProps': compressionProps,
-        'use_compression': use_compression
+        'partition': partition
     })
 
 def decode_offload_request(data : bytes):
     payload = pickle.loads(data)
-    return payload['model_name'], payload['partition'], payload['compressionProps'], payload['use_compression']
+    return payload['model_name'], payload['partition']
 
 def encode_model_reply(model : Module, loss_fn, optimizer):
     return pickle.dumps({
@@ -47,9 +45,9 @@ class ModelServer():
     async def receive_task(self, reader : asyncio.StreamReader, writer : asyncio.StreamWriter) -> None:
         input_data = await reader.read()
 
-        model_name, partition, compressionProps, use_compression = decode_offload_request(input_data)
+        model_name, partition = decode_offload_request(input_data)
 
-        model, loss_fn, optimizer = self.model_repository.get_model(model_name, partition, compressionProps, use_compression)
+        model, loss_fn, optimizer = self.model_repository.get_model(model_name, partition)
 
         writer.write(encode_model_reply(model, loss_fn, optimizer))
         await writer.drain()

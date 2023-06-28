@@ -6,13 +6,11 @@ from .models.model_loader import ModelLoader
 from .utils import get_device
 
 class ModelExecutor(TaskExecutor):
-    def __init__(self, model_name : str, partition : str, compressionProps : dict, use_compression : bool):
+    def __init__(self, model_name : str, partition : str):
         super().__init__()
         self.device = get_device()
         self.model_name = model_name
         self.partition = partition
-        self.compressionProps = compressionProps
-        self.use_compression = use_compression
 
         self.model = None
 
@@ -24,10 +22,8 @@ class ModelExecutor(TaskExecutor):
                                    self.node.config_manager.model_server_port)
 
         self.model, self.loss_fn, self.optimizer = model_loader.load_model(self.model_name,
-                                                                           self.partition,
-                                                                           self.compressionProps,
-                                                                           self.use_compression)
-        self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}' and using compression '{self.use_compression}'")
+                                                                           self.partition)
+        self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}'")
 
         num_parameters = 0
         for param in self.model.parameters():

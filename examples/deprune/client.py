@@ -20,6 +20,7 @@ from serialization import decode_offload_response, \
                           encode_offload_inference_request_pruned
 
 from compression_utils import compress_with_pruneFilter, decompress_with_pruneFilter
+from models.compression_utils_vgg import EncodingUnit
 
 class DepruneClient(Master):
     def __init__(self,
@@ -38,6 +39,7 @@ class DepruneClient(Master):
         self.model_name = model_name
         self.partition = partition
         self.compressionProps = compressionProps
+        self.encoder = EncodingUnit(compressionProps, in_channel=128)
         self.warmed_up = False
 
         self.model = None
@@ -47,11 +49,9 @@ class DepruneClient(Master):
                                    self.config_manager.model_server_port)
 
         self.model, self.loss_fn, self.optimizer = model_loader.load_model(self.model_name,
-                                                                           self.partition,
-                                                                           self.compressionProps,
-                                                                           use_compression=True)
+                                                                           self.partition)
         self.model = self.model.to(self.device)
-        self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}'")
+        self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}'")
 
         if self.is_learning():
             self.logger.info(f"Training the model.")
@@ -83,8 +83,10 @@ class DepruneClient(Master):
                     for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
                         X = X.to(self.device)
 
+                        pred = self.model(X)
+
                         if pruneState:
-                            pred, prune_filter = self.model(X)
+                            pred, prune_filter = self.encoder(pred)
                             payload, mask = compress_with_pruneFilter(pred.to("cpu").detach(),
                                                                       prune_filter.to("cpu").detach(),
                                                                       budget)
@@ -94,8 +96,6 @@ class DepruneClient(Master):
                             else:
                                 input_data = encode_offload_inference_request_pruned(payload, mask, budget)
                         else:
-                            pred = self.model(X)
-
                             if self.is_learning():
                                 input_data = encode_offload_request(pred.to("cpu").detach(), y)
                             else:

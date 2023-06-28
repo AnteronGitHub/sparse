@@ -6,10 +6,10 @@ class DepruneWorker(Worker):
     def __init__(self, application, model_name, partition, compressionProps):
         if application == 'learning':
             from gradient_calculator_pruning import GradientCalculatorPruneStep
-            task_executor = GradientCalculatorPruneStep(model_name, partition, compressionProps, use_compression=True)
+            task_executor = GradientCalculatorPruneStep(model_name, partition, compressionProps)
         else:
             from inference_calculator_pruning import InferenceCalculatorPruning
-            task_executor = InferenceCalculatorPruning(model_name, partition, compressionProps, use_compression=True)
+            task_executor = InferenceCalculatorPruning(model_name, partition, compressionProps)
 
         Worker.__init__(self, task_executor=task_executor)
 
