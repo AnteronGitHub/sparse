@@ -36,9 +36,7 @@ class LearningAllInOne():
                                    self.config_manager.model_server_port)
 
         self.model, self.loss_fn, self.optimizer = model_loader.load_model(self.model_name,
-                                                                           self.partition,
-                                                                           self.compressionProps,
-                                                                           self.use_compression)
+                                                                           self.partition)
         self.model = self.model.to(self.device)
         self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}' and using compression '{self.use_compression}'")
 

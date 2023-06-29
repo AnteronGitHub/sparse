@@ -1,9 +1,9 @@
 from sparse_framework.node.worker import Worker
 
-from benchmark import parse_arguments, get_depruneProps
+from benchmark import parse_arguments, get_depruneProps, _get_benchmark_log_file_prefix
 
 class DepruneWorker(Worker):
-    def __init__(self, application, model_name, partition, compressionProps):
+    def __init__(self, application, model_name, partition, compressionProps, benchmark_log_file_prefix):
         if application == 'learning':
             from gradient_calculator_pruning import GradientCalculatorPruneStep
             task_executor = GradientCalculatorPruneStep(model_name, partition, compressionProps)
@@ -11,7 +11,7 @@ class DepruneWorker(Worker):
             from inference_calculator_pruning import InferenceCalculatorPruning
             task_executor = InferenceCalculatorPruning(model_name, partition, compressionProps)
 
-        Worker.__init__(self, task_executor=task_executor)
+        Worker.__init__(self, task_executor, benchmark_log_file_prefix)
 
 if __name__ == "__main__":
     args = parse_arguments()
@@ -26,4 +26,5 @@ if __name__ == "__main__":
     DepruneWorker(application=args.application,
                   model_name=args.model_name,
                   partition=partition,
-                  compressionProps=compressionProps).start()
+                  compressionProps=compressionProps,
+                  benchmark_log_file_prefix=_get_benchmark_log_file_prefix(args, "worker")).start()

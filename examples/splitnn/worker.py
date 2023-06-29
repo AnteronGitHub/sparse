@@ -7,10 +7,10 @@ class SplitNNWorker(Worker):
     def __init__(self, application, model_name, partition, benchmark_log_file_prefix):
         if application == 'learning':
             from gradient_calculator import GradientCalculator
-            task_executor = GradientCalculator(model_name, partition, compressionProps={}, use_compression=False)
+            task_executor = GradientCalculator(model_name, partition)
         else:
             from inference_calculator import InferenceCalculator
-            task_executor = InferenceCalculator(model_name, partition, compressionProps={}, use_compression=False)
+            task_executor = InferenceCalculator(model_name, partition)
         Worker.__init__(self, task_executor = task_executor, benchmark_log_file_prefix = benchmark_log_file_prefix)
 
 if __name__ == '__main__':

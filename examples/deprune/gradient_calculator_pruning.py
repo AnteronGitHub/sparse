@@ -20,11 +20,14 @@ class GradientCalculatorPruneStep(ModelExecutor):
 
     def start(self):
         super().start()
-        self.model.train()
+
         if self.task_deployer:
             self.encoder = EncodingUnit(self.compressionProps, in_channel=128)
         else:
             self.decoder = DecodingUnit(self.compressionProps, out_channel=128)
+
+        self.logger.info(f"Training the model.")
+        self.model.train()
 
     async def execute_task(self, input_data: bytes) -> bytes:
         """Execute a single gradient computation for the offloaded layers."""

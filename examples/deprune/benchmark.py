@@ -45,6 +45,7 @@ def get_deprune_epochs(depruneProps):
         total_epochs += prop['epochs']
     return total_epochs
 
-def _get_benchmark_log_file_prefix(args):
-    return f"deprune-{args.application}-{args.suite}-{args.model_name}-{args.dataset}-{args.batch_size}-{args.resolution_compression_factor}"
+def _get_benchmark_log_file_prefix(args, node_name):
+    formatted_depruneProps = format_depruneProps(args)
+    return f"deprune-{args.application}-{args.suite}-{node_name}-{args.model_name}-{args.dataset}-{args.batch_size}-{formatted_depruneProps}"
 

@@ -38,7 +38,6 @@ class DepruneClient(Master):
         self.dataset = dataset
         self.model_name = model_name
         self.partition = partition
-        self.compressionProps = compressionProps
         self.encoder = EncodingUnit(compressionProps, in_channel=128)
         self.warmed_up = False
 
@@ -162,4 +161,4 @@ if __name__ == "__main__":
     asyncio.run(deprune_client.start(args.batch_size,
                                      args.batches,
                                      depruneProps,
-                                     log_file_prefix=_get_benchmark_log_file_prefix(args)))
+                                     log_file_prefix=_get_benchmark_log_file_prefix(args, "datasource")))
