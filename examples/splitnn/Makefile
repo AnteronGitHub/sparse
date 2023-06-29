@@ -2,7 +2,7 @@ uid := $(shell id -u)
 base_image_file := $(abspath ../../.DOCKER)
 py_sources := $(shell find . -iname *.py)
 
-docker_image := split_learning
+docker_image := sparse/splitnn
 docker_build_file := .DOCKER
 
 docker_run := docker run \

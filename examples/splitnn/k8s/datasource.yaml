@@ -22,7 +22,7 @@ spec:
                 - aio
       containers:
       - name: splitnn-datasource
-        image: split_learning
+        image: sparse/splitnn
         imagePullPolicy: IfNotPresent
         env:
         - name: MASTER_UPSTREAM_HOST

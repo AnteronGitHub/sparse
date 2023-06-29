@@ -20,7 +20,7 @@ spec:
                 - aio
       containers:
       - name: splitnn-aio
-        image: split_learning
+        image: sparse/splitnn
         imagePullPolicy: IfNotPresent
         command: ["python3"]
         args:

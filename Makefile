@@ -38,7 +38,7 @@ all: $(sparse_data_dir) $(docker_build_file)
 .PHONY: docker
 docker: $(docker_build_file)
 	make -C examples/splitnn docker
-	make -C examples/split_inference docker
+	make -C examples/deprune docker
 
 .PHONY: run
 run: | $(sparse_data_dir) $(docker_build_file)
@@ -91,37 +91,37 @@ run-learning-split-intermediate: | $(sparse_data_dir) $(docker_build_file)
 # Inference
 .PHONY: run-inference-aio
 run-inference-aio: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_inference run-aio
+	make -C examples/deprune run-aio
 
 .PHONY: run-inference-data-source
 run-inference-data-source: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_inference run-data-source
+	make -C examples/deprune run-data-source
 
 .PHONY: run-inference-unsplit
 run-inference-unsplit: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_inference run-unsplit-final
+	make -C examples/deprune run-unsplit-final
 
 .PHONY: run-inference-split
 run-inference-split: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_inference run-split-final
-	make -C examples/split_inference run-split-intermediate
+	make -C examples/deprune run-split-final
+	make -C examples/deprune run-split-intermediate
 
 .PHONY: run-inference-split-final
 run-inference-split-final: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_inference run-split-final
+	make -C examples/deprune run-split-final
 
 .PHONY: run-inference-split-client
 run-inference-split-client: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_inference run-split-client
+	make -C examples/deprune run-split-client
 
 .PHONY: run-inference-split-intermediate
 run-inference-split-intermediate: | $(sparse_data_dir) $(docker_build_file)
-	make -C examples/split_inference run-split-intermediate
+	make -C examples/deprune run-split-intermediate
 
 .PHONY: clean
 clean:
 	make -iC examples/splitnn clean
-	make -iC examples/split_inference clean
+	make -iC examples/deprune clean
 	docker container prune -f
 	docker image prune -f
 	sudo rm -rf $(pycache) $(docker_build_file)

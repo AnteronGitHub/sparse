@@ -30,7 +30,7 @@ spec:
                 - aio
       containers:
       - name: splitnn-worker
-        image: split_learning
+        image: sparse/splitnn
         imagePullPolicy: IfNotPresent
         env:
         - name: WORKER_LISTEN_ADDRESS

@@ -20,7 +20,7 @@ spec:
                 - aio
       containers:
       - name: deprune-aio
-        image: split_inference
+        image: sparse/deprune
         imagePullPolicy: IfNotPresent
         command: ["python3"]
         args: ["aio.py", "--dataset", "Imagenet100"]

@@ -30,7 +30,7 @@ spec:
                 - aio
       containers:
       - name: deprune-worker
-        image: split_inference
+        image: sparse/deprune
         imagePullPolicy: IfNotPresent
         env:
         - name: WORKER_LISTEN_ADDRESS

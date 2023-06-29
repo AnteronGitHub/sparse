@@ -45,7 +45,7 @@ spec:
                 - aio
       containers:
       - name: deprune-intermediate
-        image: split_inference
+        image: sparse/deprune
         imagePullPolicy: IfNotPresent
         env:
         - name: MASTER_UPSTREAM_HOST
