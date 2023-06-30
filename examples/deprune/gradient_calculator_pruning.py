@@ -22,9 +22,9 @@ class GradientCalculatorPruneStep(ModelExecutor):
         super().start()
 
         if self.task_deployer:
-            self.encoder = EncodingUnit(self.compressionProps, in_channel=128)
+            self.encoder = EncodingUnit(self.compressionProps, in_channel=128).to(self.device)
         else:
-            self.decoder = DecodingUnit(self.compressionProps, out_channel=128)
+            self.decoder = DecodingUnit(self.compressionProps, out_channel=128).to(self.device)
 
         self.logger.info(f"Training the model.")
         self.model.train()

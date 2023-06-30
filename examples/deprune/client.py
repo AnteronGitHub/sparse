@@ -49,8 +49,10 @@ class DepruneClient(Master):
 
         self.model, self.loss_fn, self.optimizer = model_loader.load_model(self.model_name,
                                                                            self.partition)
-        self.model = self.model.to(self.device)
         self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}'")
+
+        self.model = self.model.to(self.device)
+        self.encoder = self.encoder.to(self.device)
 
         if self.is_learning():
             self.logger.info(f"Training the model.")

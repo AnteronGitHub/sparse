@@ -11,8 +11,8 @@ def compress_with_pruneFilter(pred, prune_filter, budget, serverFlag = False):
     return compressedPred, mask
 
 def decompress_with_pruneFilter(pred, mask, budget, device):
-    a = torch.mul(mask.repeat([128,1]).t(), torch.eye(128).to(device))
-    b = a.index_select(1, mask.topk(budget).indices.sort().values)
+    a = torch.mul(mask.repeat([128,1]).t().to(device), torch.eye(128).to(device))
+    b = a.index_select(1, mask.topk(budget).indices.sort().values.to(device))
     b = torch.where(b>0.0, 1.0, 0.0).to(device)
     decompressed_pred = torch.einsum('ij,bjlm->bilm', b, pred)
 
