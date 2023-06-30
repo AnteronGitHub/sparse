@@ -24,20 +24,13 @@ init_environment () {
   read -p "Number of batches to be used in training (default 64): " SPARSE_BATCHES
   export SPARSE_BATCHES=${SPARSE_BATCHES:-64}
 
-  if [ $SPARSE_SUITE == "edge_split" ] || [ $SPARSE_SUITE == "fog_offloading" ]; then
-    read -p "Use compression (default 1): " SPARSE_USE_COMPRESSION
-    export SPARSE_USE_COMPRESSION=${SPARSE_USE_COMPRESSION:-1}
-  else
-    export SPARSE_USE_COMPRESSION=0
-  fi
-
   read -p "How many data sources to run (default 1): " SPARSE_NO_DATASOURCES
   export SPARSE_NO_DATASOURCES=${SPARSE_NO_DATASOURCES:-1}
 
   read -p "Specify the data source cpu limitation (default 400m): " SPARSE_DATASOURCE_CPU_LIMIT
   export SPARSE_DATASOURCE_CPU_LIMIT=${SPARSE_DATASOURCE_CPU_LIMIT:-400m}
 
-  if [ $SPARSE_USE_COMPRESSION == 1 ]; then
+  if [ $SPARSE_EXAMPLE == "deprune" ]; then
     read -p "Deprune props to be used in training (default 'budget:16;epochs:2;pruneState:1,budget:128;epochs:2;pruneState:1'): " SPARSE_DEPRUNE_PROPS
     read -p "Feature compression factor (default '1'): " SPARSE_FEATURE_COMPRESSION_FACTOR
     read -p "Resolution compression factor (default '1'): " SPARSE_RESOLUTION_COMPRESSION_FACTOR
