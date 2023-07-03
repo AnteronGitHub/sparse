@@ -50,6 +50,11 @@ spec:
         - "$SPARSE_FEATURE_COMPRESSION_FACTOR"
         - "--resolution_compression_factor"
         - "$SPARSE_RESOLUTION_COMPRESSION_FACTOR"
+        resources:
+          limits:
+            cpu: "$SPARSE_DATASOURCE_CPU_LIMIT"
+              # Adding memory limitations restrics using swap
+              #            memory: "$SPARSE_DATASOURCE_MEMORY_LIMIT"
         volumeMounts:
         - name: app-code
           mountPath: /app
