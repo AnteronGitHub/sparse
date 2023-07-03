@@ -14,7 +14,7 @@ class ModelLoader():
         self.model_server_address = model_server_address
         self.model_server_port = model_server_port
 
-    async def stream_model(self, model_name : str, partition, compressionProps, use_compression):
+    async def stream_model(self, model_name : str, partition):
         self.logger.debug(f"Connecting to {self.model_server_address}:{self.model_server_port}...")
         while True:
             try:
@@ -24,9 +24,9 @@ class ModelLoader():
                 self.logger.error(f"Unable to connect to model server on {self.model_server_address}:{self.model_server_port}. Trying again in 5 seconds...")
                 time.sleep(5)
             except TimeoutError:
-                self.logger.error("Connection to upstream host timed out. Retrying...")
+                self.logger.error("Connection to model server on {self.model_server_address}:{self.model_server_port} timed out. Retrying...")
 
-        writer.write(encode_model_request(model_name, partition, compressionProps, use_compression))
+        writer.write(encode_model_request(model_name, partition))
         writer.write_eof()
         await writer.drain()
 
@@ -35,10 +35,10 @@ class ModelLoader():
 
         return decode_offload_reply(result_data)
 
-    async def deploy_task(self, model_name : str, partition, compressionProps, use_compression):
-        task = asyncio.create_task(self.stream_model(model_name, partition, compressionProps, use_compression))
+    async def deploy_task(self, model_name : str, partition):
+        task = asyncio.create_task(self.stream_model(model_name, partition))
         await task
         return task.result()
 
-    def load_model(self, model_name : str, partition, compressionProps, use_compression):
-        return asyncio.run(self.deploy_task(model_name, partition, compressionProps, use_compression))
+    def load_model(self, model_name : str, partition):
+        return asyncio.run(self.deploy_task(model_name, partition))

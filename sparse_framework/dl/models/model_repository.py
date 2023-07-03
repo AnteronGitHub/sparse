@@ -1,19 +1,19 @@
 class ModelRepository():
-    def get_model(self, model_name : str, partition : str, compressionProps = None, use_compression = False):
+    def get_model(self, model_name : str, partition : str):
         pass
 
 import torch
 from torch import nn
 
 class ModelTrainingRepository(ModelRepository):
-    def get_model(self, model_name, partition, compressionProps = None, use_compression = False):
+    def get_model(self, model_name, partition):
         if model_name == 'VGG':
             if partition == "server":
                 from sparse_framework.dl.models.vgg import VGG_server
-                model = VGG_server(compressionProps, use_compression=use_compression)
+                model = VGG_server()
             elif partition == "client":
                 from sparse_framework.dl.models.vgg import VGG_client
-                model = VGG_client(compressionProps, use_compression=use_compression)
+                model = VGG_client()
             else:
                 from sparse_framework.dl.models.vgg import VGG_unsplit
                 model = VGG_unsplit()
