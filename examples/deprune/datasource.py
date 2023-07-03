@@ -17,6 +17,7 @@ class DepruneDataSource(Master):
         Master.__init__(self, benchmark=benchmark)
         self.application = application
         self.dataset = dataset
+        self.warmed_up = False
 
     def is_learning(self):
         return self.application == 'learning'
@@ -55,8 +56,15 @@ class DepruneDataSource(Master):
 
                     result_data = await self.task_deployer.deploy_task(input_data)
 
+                    # Benchmarks
                     if self.monitor_client is not None:
-                        self.monitor_client.batch_processed(len(X))
+                        if self.warmed_up:
+                            self.monitor_client.batch_processed(len(X), loss)
+                        else:
+                            self.warmed_up = True
+                            self.monitor_client.start_benchmark(log_file_prefix)
+
+                    # Logging
                     if progress_bar is not None:
                         progress_bar.update(len(X))
                     else:

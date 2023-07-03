@@ -64,9 +64,6 @@ class DepruneClient(Master):
         return self.application == 'learning'
 
     async def start(self, batch_size, batches, depruneProps, log_file_prefix, verbose = False):
-        if self.monitor_client is not None:
-            self.monitor_client.start_benchmark(log_file_prefix)
-
         if verbose:
             inferences_to_be_run = batch_size * batches
             progress_bar = tqdm(total=inferences_to_be_run,
@@ -126,8 +123,15 @@ class DepruneClient(Master):
                             final_prediction = decode_offload_inference_response(result_data)
                             loss = None
 
+                        # Benchmarks
                         if self.monitor_client is not None:
-                            self.monitor_client.batch_processed(len(X))
+                            if self.warmed_up:
+                                self.monitor_client.batch_processed(len(X), loss)
+                            else:
+                                self.warmed_up = True
+                                self.monitor_client.start_benchmark(log_file_prefix)
+
+                        # Logging
                         if progress_bar is not None:
                             progress_bar.update(len(X))
                         else:

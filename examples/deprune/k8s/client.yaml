@@ -30,7 +30,9 @@ spec:
         imagePullPolicy: IfNotPresent
         env:
         - name: MASTER_UPSTREAM_HOST
-          value: "deprune-worker"
+          value: "$SPARSE_DATASOURCE_DOWNSTREAM_HOST"
+        - name: MASTER_UPSTREAM_PORT
+          value: "$SPARSE_DATASOURCE_DOWNSTREAM_PORT"
         - name: SPARSE_MODEL_SERVER_ADDRESS
           value: "model-server"
         command: ["python3"]
