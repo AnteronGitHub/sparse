@@ -63,7 +63,7 @@ class GradientCalculatorPruneStep(ModelExecutor):
             loss.backward()
             self.optimizer.step()
 
-            split_layer, _ = compress_with_pruneFilter(split_layer.grad, prune_filter, budget, serverFlag=True)
+            split_layer, _ = compress_with_pruneFilter(split_layer.grad.to("cpu"), prune_filter, budget, serverFlag=True)
 
         result_data = encode_offload_response(split_layer.to("cpu").detach(), reported_loss)
 
