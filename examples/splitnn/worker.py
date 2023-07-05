@@ -1,4 +1,4 @@
-from sparse_framework.node.worker import Worker
+from sparse_framework import Worker
 from sparse_framework.dl import ModelTrainingRepository
 
 from utils import parse_arguments, _get_benchmark_log_file_prefix

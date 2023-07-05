@@ -4,9 +4,8 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from sparse_framework.node.master import Master
-from sparse_framework.dl.utils import get_device
-from sparse_framework.dl import DatasetRepository, ModelLoader
+from sparse_framework import Master
+from sparse_framework.dl import get_device, DatasetRepository, ModelLoader
 
 from serialization import encode_offload_request, decode_offload_response, encode_offload_request_pruned, decode_offload_inference_response
 from utils import parse_arguments, _get_benchmark_log_file_prefix

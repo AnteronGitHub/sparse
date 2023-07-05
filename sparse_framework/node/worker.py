@@ -1,4 +1,4 @@
-from . import Node
+from .node import Node
 from .master import Master
 
 from ..rx_pipe import get_supported_rx_pipe

@@ -2,7 +2,7 @@ import asyncio
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from sparse_framework.node.master import Master
+from sparse_framework import Master
 from sparse_framework.dl import DatasetRepository
 
 from serialization import encode_offload_request, encode_offload_inference_request, decode_offload_response, decode_offload_inference_response

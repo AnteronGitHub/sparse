@@ -6,10 +6,8 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from sparse_framework.node.master import Master
-from sparse_framework.stats.monitor_client import MonitorClient
-from sparse_framework.dl import DatasetRepository, ModelLoader
-from sparse_framework.dl.utils import get_device
+from sparse_framework import Master, MonitorClient
+from sparse_framework.dl import get_device, DatasetRepository, ModelLoader
 
 from benchmark import parse_arguments, get_depruneProps, _get_benchmark_log_file_prefix
 from serialization import decode_offload_response, \

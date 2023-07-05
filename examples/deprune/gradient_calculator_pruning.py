@@ -1,8 +1,7 @@
 from torch.autograd import Variable
 import torch
 
-from sparse_framework.dl.utils import get_device
-from sparse_framework.dl import ModelExecutor
+from sparse_framework.dl import get_device, ModelExecutor
 
 from compression_utils import compress_with_pruneFilter, decompress_with_pruneFilter, prune_loss_fn
 from serialization import decode_offload_request, \

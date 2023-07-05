@@ -2,9 +2,8 @@ import asyncio
 from tqdm import tqdm
 from torch.utils.data import DataLoader
 
-from sparse_framework.node.master import Master
+from sparse_framework import Master, MonitorClient
 from sparse_framework.dl import DatasetRepository
-from sparse_framework.stats.monitor_client import MonitorClient
 
 from serialization import encode_offload_request, \
                           encode_offload_request_pruned, \
