@@ -1,12 +1,12 @@
 import torch.nn as nn
 import torch
 
+from ..module_queue import ModuleQueue
 
-class VGG(nn.Module):
-    def __init__(self, features, num_classes=1000, init_weights=False, local = False):
-        super(VGG, self).__init__()
-        self.local = local
-        self.features = features
+class VGGClassifier(nn.Module):
+    def __init__(self, num_classes=1000):
+        super(VGGClassifier, self).__init__()
+
         self.avgpool = nn.AdaptiveAvgPool2d((7, 7))
         self.classifier = nn.Sequential(
             nn.Linear(512 * 7 * 7, 4096),
@@ -17,18 +17,23 @@ class VGG(nn.Module):
             nn.Dropout(),
             nn.Linear(4096, num_classes),
         )
-        if init_weights:
-            self._initialize_weights()
 
     def forward(self, x):
-        x = self.features(x)
-
-        if self.local == False:
-            x = self.avgpool(x)
-            x = torch.flatten(x, 1)
-            x = self.classifier(x)
+        x = self.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.classifier(x)
 
         return x
+
+class VGG(ModuleQueue):
+    def __init__(self, features, num_classes=1000, init_weights=False, local = False):
+        partitions = [features]
+        if not local:
+            partitions.append(VGGClassifier(num_classes))
+        super(VGG, self).__init__(partitions)
+
+        if init_weights:
+            self._initialize_weights()
 
     def _initialize_weights(self):
         for m in self.modules():
