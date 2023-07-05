@@ -1,6 +1,6 @@
 uid := $(shell id -u)
 base_image_file := $(abspath ../../.DOCKER)
-py_sources := $(shell find . -iname *.py)
+py_sources := $(shell find . -iname '*.py')
 
 docker_image := sparse/splitnn
 docker_build_file := .DOCKER

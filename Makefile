@@ -5,7 +5,7 @@ pycache := $(shell find $(abspath .) -iname __pycache__)
 sparse_src_dir  := $(abspath ./sparse_framework)
 sparse_data_dir := $(abspath ./data)
 sparse_run_dir  := $(abspath ./run)
-sparse_py       := $(shell find $(sparse_src_dir) -iname *.py)
+sparse_py       := $(shell find $(sparse_src_dir) -iname '*.py')
 
 docker_image      := sparse/pytorch
 dockerfile        := Dockerfile
