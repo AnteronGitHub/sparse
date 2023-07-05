@@ -8,14 +8,14 @@ class Monitor():
         return []
 
 class MonitorContainer(Monitor):
-    def __init__(self):
+    def __init__(self, nic):
         from .network_monitor import NetworkMonitor
         from .time_monitor import TimeMonitor
         from .training_monitor import TrainingMonitor
 
         self.monitors = []
         self.monitors.append(TimeMonitor())
-        self.monitors.append(NetworkMonitor())
+        self.monitors.append(NetworkMonitor(nic))
         self.monitors.append(TrainingMonitor())
 
     def get_metrics(self):
@@ -30,13 +30,22 @@ class MonitorContainer(Monitor):
             stats += monitor.get_stats()
         return stats
 
-    def batch_processed(self, batch_size):
+    def batch_processed(self, batch_size, loss):
         for monitor in self.monitors:
             if type(monitor).__name__ == 'TrainingMonitor':
-                monitor.add_point(newly_processed_samples = batch_size)
+                monitor.add_point(newly_processed_samples = batch_size, loss = loss)
 
     def task_processed(self):
         for monitor in self.monitors:
             if type(monitor).__name__ == 'TrainingMonitor':
                 monitor.add_point(newly_processed_tasks = 1)
 
+    def connection_timeout(self):
+        for monitor in self.monitors:
+            if type(monitor).__name__ == 'NetworkMonitor':
+                monitor.add_connection_timeout()
+
+    def broken_pipe_error(self):
+        for monitor in self.monitors:
+            if type(monitor).__name__ == 'NetworkMonitor':
+                monitor.add_broken_pipe_error()

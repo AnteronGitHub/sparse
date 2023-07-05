@@ -20,7 +20,7 @@ make docker
 
 ### Set up host paths
 
-To ease development, the resource templates map source code from host path `/opt/sparse/src` to the containers. If the
+To ease development, the resource templates map source code from host path `/opt/sparse/sparse_framework` to the containers. If the
 repository was not cloned to `/opt` directory, you can create a symbolic link to your repository:
 ```
 sudo ln -s <sparse_repo_path> /opt/sparse
@@ -28,8 +28,16 @@ sudo ln -s <sparse_repo_path> /opt/sparse
 
 ### Label cluster nodes
 
-The templates place pods to hosts based on node labels. To enable all pods to be placed on a node (e.g. in development
-environments), you can use label aio:
+The templates place pods to hosts based on node labels.
+
+Firstly, one of the cluster nodes needs to be labeled as a model server. To do so, use the command below (with
+<model-server> replaced as the name of the node):
+
+```
+kubectl label node <model-server> sparse/model-server=true
+```
+
+To enable all pods to be placed on a node (e.g. in development environments), you can use label aio:
 
 ```
 kubectl label node <dev-node> sparse/node=aio
@@ -50,6 +58,5 @@ kubectl create namespace sparse
 
 Then, the sparse pipeline resources can be created as follows (with monitoring included):
 ```
-kubectl create -f k8s/sparse_monitor.yaml
-kubectl create -f k8s/learning_unsplit_offloaded.yaml
+source scripts/init-experiment.sh
 ```

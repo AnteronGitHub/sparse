@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: splitnn-worker
+  namespace: sparse
+  labels:
+    app: splitnn-worker
+spec:
+  ports:
+  - port: 50007
+    protocol: TCP
+  selector:
+    app: splitnn-worker
