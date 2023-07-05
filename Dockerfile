@@ -10,16 +10,16 @@ ARG BASE_IMAGE=pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime
 
 FROM $BASE_IMAGE
 
-RUN pip3 install tqdm psutil python-dotenv
-
-# Install the library code
 ARG INSTALL_LOCATION=/usr/lib
 
 RUN mkdir -p $INSTALL_LOCATION
+
 ENV PYTHONPATH=$PYTHONPATH:$INSTALL_LOCATION
-COPY src $INSTALL_LOCATION/sparse
 
-WORKDIR $INSTALL_LOCATION/sparse
+COPY requirements.txt requirements.txt
+RUN pip3 install -r requirements.txt
 
+WORKDIR $INSTALL_LOCATION/sparse_framework
+COPY sparse_framework $INSTALL_LOCATION/sparse_framework
 
 CMD ["python3", "run_monitor_server.py"]

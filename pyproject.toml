@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sparse-framework"
+version = "1.1.0"
+authors = [
+  { name="Antero Vainio", email="anterongugl@gmail.com" },
+]
+description = "Stream Processing Architecture for Resource Subtle Environments"
+readme = "README.md"
+requires-python = ">=3.7"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "python-dotenv == 0.21.1",
+    "torch == 1.11.0",
+    "torchvision == 0.12.0"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/AnteronGitHub/sparse"
+"Bug Tracker" = "https://github.com/AnteronGitHub/sparse/issues"

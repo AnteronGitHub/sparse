@@ -1,0 +1,14 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: deprune-worker
+  namespace: sparse
+  labels:
+    app: deprune-worker
+spec:
+  ports:
+  - port: 50007
+    protocol: TCP
+  selector:
+    app: deprune-worker

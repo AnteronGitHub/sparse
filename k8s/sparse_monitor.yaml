@@ -2,43 +2,41 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: monitor-server
+  name: sparse-monitor
   namespace: sparse
   labels:
-    app: monitor-server
+    app: sparse-monitor
 spec:
   selector:
     matchLabels:
-      app: monitor-server
+      app: sparse-monitor
   template:
     metadata:
       labels:
-        app: monitor-server
+        app: sparse-monitor
     spec:
       hostNetwork: true
       containers:
-      - name: monitor-server
+      - name: sparse-monitor
         image: sparse/pytorch
         imagePullPolicy: IfNotPresent
+        env:
+        - name: SPARSE_MONITOR_NIC
+          value: "$SPARSE_MONITOR_NIC"
         volumeMounts:
         - name: sparse-code
-          mountPath: /usr/lib/sparse
+          mountPath: /usr/lib/sparse_framework
         - name: sparse-run
           mountPath: /run/sparse
         - name: sparse-stats
           mountPath: /data/stats
-        - name: jtop-socket
-          mountPath: /run/jtop.sock
       volumes:
       - name: sparse-code
         hostPath:
-          path: /opt/sparse/src
+          path: /opt/sparse/sparse_framework
       - name: sparse-stats
         hostPath:
           path: /var/lib/sparse/stats
       - name: sparse-run
         hostPath:
           path: /run/sparse
-      - name: jtop-socket
-        hostPath:
-          path: /run/jtop.sock
