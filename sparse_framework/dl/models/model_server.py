@@ -5,6 +5,7 @@ import pickle
 from torch.nn import Module
 
 from .model_repository import ModelRepository
+from ..utils import count_model_parameters
 
 def encode_model_request(model_name : str, partition):
     return pickle.dumps({
@@ -52,6 +53,9 @@ class ModelServer():
         writer.write(encode_model_reply(model, loss_fn, optimizer))
         await writer.drain()
         writer.close()
+
+        num_parameters = count_model_parameters(model)
+        self.logger.info(f"Served model '{type(model).__name__}' with {num_parameters} parameters.")
 
     async def serve(self):
         server = await asyncio.start_server(self.receive_task, self.listen_address, self.listen_port)

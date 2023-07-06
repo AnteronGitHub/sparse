@@ -3,7 +3,7 @@ import torch
 from sparse_framework.task_executor import TaskExecutor
 
 from .models.model_loader import ModelLoader
-from .utils import get_device
+from .utils import count_model_parameters, get_device
 
 class ModelExecutor(TaskExecutor):
     def __init__(self, model_name : str, partition : str):
@@ -25,9 +25,7 @@ class ModelExecutor(TaskExecutor):
                                                                            self.partition)
         self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}'")
 
-        num_parameters = 0
-        for param in self.model.parameters():
-            num_parameters += param.nelement()
+        num_parameters = count_model_parameters(self.model)
         self.logger.info(f"Model executor using model '{type(self.model).__name__}' with {num_parameters} parameters using {self.device} for processing")
         self.model.to(self.device)
 
