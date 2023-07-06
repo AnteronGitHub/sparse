@@ -5,30 +5,21 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from sparse_framework import MonitorClient
-from sparse_framework.dl import get_device, DatasetRepository, ModelTrainingRepository
+from sparse_framework import Node
+from sparse_framework.dl import get_device, DatasetRepository, ModelLoader
 
 from utils import parse_arguments, _get_benchmark_log_file_prefix
 
-class LearningAllInOne():
-    def __init__(self, dataset, classes, model, loss_fn, optimizer, benchmark = True):
+class SplitNNAllInOne(Node):
+    def __init__(self, dataset, model_name, partition, application, benchmark = True):
+        Node.__init__(self, benchmark=benchmark)
         self.device = get_device()
 
         self.dataset = dataset
-        self.classes = classes
-        self.model = model
-        self.loss_fn = loss_fn
-        self.optimizer = optimizer
+        self.model_name = model_name
+        self.partition = partition
+        self.application = application
         self.warmed_up = False
-        if benchmark:
-            print(f"Benchmarking the suite")
-            self.monitor_client = MonitorClient()
-        else:
-            print(f"Not benchmarking the suite")
-            self.monitor_client = None
-
-        logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=logging.INFO)
-        self.logger = logging.getLogger("sparse")
 
     def load_model(self):
         model_loader = ModelLoader(self.config_manager.model_server_address,
@@ -37,7 +28,8 @@ class LearningAllInOne():
         self.model, self.loss_fn, self.optimizer = model_loader.load_model(self.model_name,
                                                                            self.partition)
         self.model = self.model.to(self.device)
-        self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}' with compression props '{self.compressionProps}' and using compression '{self.use_compression}'")
+        self.logger.info(f"Using {self.device} for processing")
+        self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}'.")
 
     async def process_batch(self, X, y):
         X, y = X.to(self.device), y.to(self.device)
@@ -50,10 +42,7 @@ class LearningAllInOne():
 
         return loss.item()
 
-    async def train(self, batches, batch_size, epochs, log_file_prefix, verbose = False):
-        self.logger.info(f"Using {self.device} for processing")
-        self.model.to(self.device)
-
+    async def start(self, batch_size, batches, epochs, log_file_prefix, verbose = False):
         if verbose:
             progress_bar = tqdm(total=epochs*batches*batch_size,
                                 unit='samples',
@@ -89,10 +78,16 @@ class LearningAllInOne():
 
 if __name__ == '__main__':
     args = parse_arguments()
-    dataset, classes = DatasetRepository().get_dataset(args.dataset)
-    model, loss_fn, optimizer = ModelTrainingRepository().get_model(args.model_name, "aio")
 
-    asyncio.run(LearningAllInOne(dataset, classes, model, loss_fn, optimizer).train(args.batches,
-                                                                                    args.batch_size,
-                                                                                    args.epochs,
-                                                                                    _get_benchmark_log_file_prefix(args, "aio")))
+    partition = "aio"
+    dataset, classes = DatasetRepository().get_dataset(args.dataset)
+
+    splitnn_aio = SplitNNAllInOne(application=args.application,
+                                  dataset=dataset,
+                                  model_name=args.model_name,
+                                  partition=partition)
+    splitnn_aio.load_model()
+    asyncio.run(splitnn_aio.start(args.batch_size,
+                                  args.batches,
+                                  args.epochs,
+                                  _get_benchmark_log_file_prefix(args, "aio")))
