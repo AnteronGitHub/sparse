@@ -4,7 +4,7 @@ from tqdm import tqdm
 import torch
 from torch.utils.data import DataLoader
 
-from sparse_framework import Master
+from sparse_framework import Master, TaskDeployer
 from sparse_framework.dl import get_device, DatasetRepository, ModelLoader
 
 from serialization import encode_offload_request, decode_offload_response, encode_offload_request_pruned, decode_offload_inference_response
@@ -62,14 +62,7 @@ class SplitNNClient(Master):
 
 
                 # Offloaded layers
-                while True:
-                    result_data = await self.task_deployer.deploy_task(input_data)
-                    if result_data is None:
-                        self.logger.error(f"Broken pipe error. Re-executing...")
-                        if self.monitor_client is not None:
-                            self.monitor_client.broken_pipe_error()
-                    else:
-                        break
+                result_data = await self.task_deployer.deploy_task(input_data)
 
                 if self.is_learning():
                     split_grad, loss = decode_offload_response(result_data)

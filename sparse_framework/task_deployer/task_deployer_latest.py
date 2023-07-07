@@ -35,6 +35,12 @@ class TaskDeployerLatest(TaskDeployerBase):
             return None
 
     async def deploy_task(self, input_data : bytes):
-        task = asyncio.create_task(self.stream_task_synchronous(input_data))
-        await task
-        return task.result()
+        while True:
+            task = asyncio.create_task(self.stream_task_synchronous(input_data))
+            await task
+            if task.result() is None:
+                self.logger.error(f"Broken pipe error. Re-executing...")
+                if self.node.monitor_client is not None:
+                    self.node.monitor_client.broken_pipe_error()
+            else:
+                return task.result()
