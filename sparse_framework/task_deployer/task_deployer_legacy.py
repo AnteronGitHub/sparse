@@ -1,9 +1,9 @@
 import asyncio
 import time
 
-from ..task_deployer import TaskDeployer
+from .task_deployer_base import TaskDeployerBase
 
-class TaskDeployerLegacy(TaskDeployer):
+class TaskDeployerLegacy(TaskDeployerBase):
     """Legacy asyncio implementation for older Python compiler versions.
     """
 

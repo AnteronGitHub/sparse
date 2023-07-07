@@ -1,8 +1,8 @@
 import asyncio
 
-from . import RXPipe
+from .rx_pipe_base import RXPipeBase
 
-class RXPipeLatest(RXPipe):
+class RXPipeLatest(RXPipeBase):
     """RX pipe implementation using the current asyncio interface.
     """
 

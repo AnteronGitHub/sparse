@@ -1,27 +1,11 @@
-import logging
+from .task_deployer_base import TaskDeployerBase
 
-class TaskDeployer:
-    """Class that handles network connections to available worker nodes.
-    """
+# Select task deployer implementation based on the Python compiler version
+import sys
 
-    def __init__(self, upstream_host : str, upstream_port : int):
-        self.upstream_host = upstream_host
-        self.upstream_port = upstream_port
-        self.node = None
+if sys.version_info >= (3, 8, 10):
+    from .task_deployer_latest import TaskDeployerLatest as TaskDeployer
+else:
+    from .task_deployer_legacy import TaskDeployerLegacy as TaskDeployer
 
-    def set_logger(self, logger : logging.Logger):
-        self.logger = logger
-
-    def set_node(self, node):
-        self.node = node
-
-    def deploy_task(self, input_data : bytes):
-        pass
-
-def get_supported_task_deployer(upstream_host : str, upstream_port : int, legacy_asyncio : bool = False):
-    if legacy_asyncio:
-        from .task_deployer_legacy import TaskDeployerLegacy
-        return TaskDeployerLegacy(upstream_host=upstream_host, upstream_port=upstream_port)
-    else:
-        from .task_deployer_latest import TaskDeployerLatest
-        return TaskDeployerLatest(upstream_host=upstream_host, upstream_port=upstream_port)
+__all__ = ["TaskDeployerBase", "TaskDeployer"]

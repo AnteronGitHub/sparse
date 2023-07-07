@@ -1,8 +1,8 @@
 import asyncio
 
-from ..task_deployer import TaskDeployer
+from .task_deployer_base import TaskDeployerBase
 
-class TaskDeployerLatest(TaskDeployer):
+class TaskDeployerLatest(TaskDeployerBase):
     """Task deployer implementation using the current asyncio interface.
     """
 

@@ -17,15 +17,3 @@ class Node:
         else:
             self.logger.info(f"Not benchmarking execution")
             self.monitor_client = None
-
-    def check_asyncio_use_legacy(self):
-        if sys.version_info >= (3, 8, 10):
-            self.logger.debug("Using latest asyncio implementation.")
-            return False
-        elif sys.version_info >= (3, 6, 9):
-            self.logger.debug("Using legacy asyncio implementation.")
-            return True
-        else:
-            self.logger.warning("The used Python interpreter is older than what is officially supported. This may " +
-                                "cause some functionalities to break")
-            return True
