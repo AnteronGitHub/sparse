@@ -13,3 +13,8 @@ class ModuleQueue(Module):
     def append(self, module):
         self.partitions.append(module)
 
+    def pop(self):
+        module = self.partitions.__getitem__(0)
+        self.partitions.__delitem__(0)
+        return module
+
