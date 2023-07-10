@@ -11,9 +11,6 @@ class Master(Node):
         if task_deployer:
             self.task_deployer = task_deployer
         else:
-            self.task_deployer = TaskDeployer(upstream_host=self.config_manager.upstream_host,
-                                              upstream_port=self.config_manager.upstream_port)
+            self.task_deployer = TaskDeployer()
 
-        self.task_deployer.logger = self.logger
         self.task_deployer.set_node(self)
-        self.logger.info(f"Task deployer using upstream {self.task_deployer.upstream_host}:{self.task_deployer.upstream_port}")

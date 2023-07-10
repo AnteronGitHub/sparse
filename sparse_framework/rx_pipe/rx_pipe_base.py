@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import pickle
 import time
 
 from ..task_executor import TaskExecutor
@@ -13,15 +14,11 @@ class RXPipeBase:
     """
 
     def __init__(self,
-                 task_executor : TaskExecutor,
-                 listen_address : str,
-                 listen_port : int,
-                 benchmark = True,
                  benchmark_log_file_prefix = 'benchmark_sparse',
                  benchmark_timeout = 30):
-        self.listen_address = listen_address
-        self.listen_port = listen_port
-        self.task_executor = task_executor
+        self.listen_address = None
+        self.listen_port = None
+        self.task_executor = None
 
         self.benchmark_log_file_prefix = benchmark_log_file_prefix
         self.benchmark_timeout = benchmark_timeout
@@ -31,6 +28,16 @@ class RXPipeBase:
 
     def set_node(self, node):
         self.node = node
+        self.logger = node.logger
+        self.listen_address = node.config_manager.listen_address
+        self.listen_port = node.config_manager.listen_port
+        self.task_executor = node.task_executor
+
+    def decode_request(self, payload : bytes) -> dict:
+        return pickle.loads(payload)
+
+    def encode_response(self, result_data : dict) -> bytes:
+        return pickle.dumps(result_data)
 
     async def receive_task(self, reader : asyncio.StreamReader, writer : asyncio.StreamWriter) -> None:
         """Generic callback function which passes offloaded task directly to the task executor.
@@ -38,14 +45,11 @@ class RXPipeBase:
         """
         self.previous_message_received_at = time.time()
 
-        self.logger.debug("Reading task input data...")
-        input_data = await reader.read()
+        input_payload = await reader.read()
 
-        self.logger.debug("Executing task...")
-        result_data = await self.task_executor.execute_task(input_data)
+        result_data = await self.task_executor.execute_task(self.decode_request(input_payload))
 
-        self.logger.debug("Responding with task output data...")
-        writer.write(result_data)
+        writer.write(self.encode_response(result_data))
 
         # TODO: Come up with a better workaround for IO errors. Ignore for now...
         try:
@@ -62,9 +66,6 @@ class RXPipeBase:
                 self.node.monitor_client.start_benchmark(self.benchmark_log_file_prefix)
                 self.warmed_up = True
         self.logger.info("Finished streaming task result.")
-
-    def set_logger(self, logger : logging.Logger):
-        self.logger = logger
 
     def start(self):
         pass

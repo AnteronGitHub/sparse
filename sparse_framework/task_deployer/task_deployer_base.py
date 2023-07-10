@@ -1,19 +1,23 @@
-import logging
+import pickle
 
 class TaskDeployerBase:
     """Class that handles network connections to available worker nodes.
     """
 
-    def __init__(self, upstream_host : str, upstream_port : int):
-        self.upstream_host = upstream_host
-        self.upstream_port = upstream_port
+    def __init__(self):
         self.node = None
-
-    def set_logger(self, logger : logging.Logger):
-        self.logger = logger
+        self.logger = None
 
     def set_node(self, node):
         self.node = node
+        self.logger = node.logger
+        self.logger.info(f"Task deployer using upstream {self.node.config_manager.upstream_host}:{self.node.config_manager.upstream_port}")
 
-    def deploy_task(self, input_data : bytes):
+    def deploy_task(self, input_data : dict):
         pass
+
+    def encode_request(self, input_data : dict) -> bytes:
+        return pickle.dumps(input_data)
+
+    def decode_response(self, result_payload : bytes) -> dict:
+        return pickle.loads(result_payload)

@@ -5,8 +5,6 @@ from tqdm import tqdm
 from sparse_framework import Master
 from sparse_framework.dl import DatasetRepository
 
-from serialization import encode_offload_request, encode_offload_inference_request, decode_offload_response, decode_offload_inference_response
-
 from utils import parse_arguments, _get_benchmark_log_file_prefix
 
 class SplitNNDataSource(Master):
@@ -31,13 +29,9 @@ class SplitNNDataSource(Master):
         for t in range(epochs):
             offset = 0 if t == 0 else 1
             for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
-                if self.is_learning():
-                    input_data = encode_offload_request(X, y)
-                else:
-                    input_data = encode_offload_request(X, y)
 
                 while True:
-                    result_data = await self.task_deployer.deploy_task(input_data)
+                    result_data = await self.task_deployer.deploy_task({ 'activation': X, 'labels': y })
                     if result_data is None:
                         self.logger.error(f"Broken pipe error. Re-executing...")
                         if self.monitor_client is not None:
@@ -45,9 +39,9 @@ class SplitNNDataSource(Master):
                     else:
                         break
                 if self.is_learning():
-                    split_grad, loss = decode_offload_response(result_data)
+                    split_grad, loss = result_data['gradient'], result_data['loss']
                 else:
-                    prediction = decode_offload_inference_response(result_data)
+                    prediction = result_data['prediction']
                     loss = None
 
                 # Logging

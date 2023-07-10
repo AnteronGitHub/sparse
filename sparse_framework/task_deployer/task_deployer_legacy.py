@@ -10,7 +10,7 @@ class TaskDeployerLegacy(TaskDeployerBase):
     async def stream_task_synchronous(self, input_data : bytes, loop):
         while True:
             try:
-                task = asyncio.open_connection(self.upstream_host, self.upstream_port)
+                task = asyncio.open_connection(self.node.config_manager.upstream_host, self.node.config_manager.upstream_port)
                 reader, writer = await asyncio.wait_for(task, timeout=5)
                 break
             except ConnectionRefusedError:
