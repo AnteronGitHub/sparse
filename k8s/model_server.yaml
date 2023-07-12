@@ -46,7 +46,7 @@ spec:
         image: sparse/pytorch
         imagePullPolicy: IfNotPresent
         command: ["python3"]
-        args: ["-m", "dl.models"]
+        args: ["-m", "dl.serving"]
         volumeMounts:
         - name: sparse-code
           mountPath: /usr/lib/sparse_framework

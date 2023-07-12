@@ -1,5 +1,9 @@
-from .model_server import ModelServer
-from .model_repository import ModelRepository, ModelTrainingRepository
-from .model_loader import ModelLoader
+from .vgg import VGG_client, VGG_server, VGG_unsplit
+from .small import Small_client, Small_server, Small_unsplit
 
-__all__ = ["ModelLoader", "ModelServer", "ModelRepository", "ModelTrainingRepository"]
+__all__ = ["VGG_client",
+           "VGG_server",
+           "VGG_unsplit",
+           "Small_client",
+           "Small_server",
+           "Small_unsplit"]

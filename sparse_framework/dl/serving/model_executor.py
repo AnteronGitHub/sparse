@@ -2,8 +2,8 @@ import torch
 
 from sparse_framework.task_executor import TaskExecutor
 
-from .models.model_loader import ModelLoader
-from .utils import count_model_parameters, get_device
+from .model_loader import ModelLoader
+from ..utils import count_model_parameters, get_device
 
 class ModelExecutor(TaskExecutor):
     def __init__(self, model_name : str, partition : str):

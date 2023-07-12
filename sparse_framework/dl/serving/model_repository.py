@@ -9,26 +9,26 @@ class ModelTrainingRepository(ModelRepository):
     def get_model(self, model_name, partition):
         if model_name == 'VGG':
             if partition == "server":
-                from sparse_framework.dl.models.vgg import VGG_server
+                from sparse_framework.dl.models import VGG_server
                 model = VGG_server()
             elif partition == "client":
-                from sparse_framework.dl.models.vgg import VGG_client
+                from sparse_framework.dl.models import VGG_client
                 model = VGG_client()
             else:
-                from sparse_framework.dl.models.vgg import VGG_unsplit
+                from sparse_framework.dl.models import VGG_unsplit
                 model = VGG_unsplit()
 
             loss_fn = nn.CrossEntropyLoss()
             optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
         elif model_name == 'Small':
             if partition == "server":
-                from sparse_framework.dl.models.small import Small_server
+                from sparse_framework.dl.models import Small_server
                 model = Small_server()
             elif partition == "client":
-                from sparse_framework.dl.models.small import Small_client
+                from sparse_framework.dl.models import Small_client
                 model = Small_client()
             else:
-                from sparse_framework.dl.models.small import Small_unsplit
+                from sparse_framework.dl.models import Small_unsplit
                 model = Small_unsplit()
 
             loss_fn = nn.CrossEntropyLoss()
