@@ -1,66 +1,27 @@
-import asyncio
-import logging
-import pickle
-
 from torch.nn import Module
 
-from .model_repository import ModelRepository
+from sparse_framework.networking import TCPServer
+
 from ..utils import count_model_parameters
+from .model_repository import ModelRepository
 
-def encode_model_request(model_name : str, partition):
-    return pickle.dumps({
-        'model_name': model_name,
-        'partition': partition
-    })
-
-def decode_offload_request(data : bytes):
-    payload = pickle.loads(data)
-    return payload['model_name'], payload['partition']
-
-def encode_model_reply(model : Module, loss_fn, optimizer):
-    return pickle.dumps({
-        'model': model,
-        'loss_fn': loss_fn,
-        'optimizer': optimizer
-    })
-
-def decode_offload_reply(data : bytes):
-    payload = pickle.loads(data)
-    return payload['model'], payload['loss_fn'], payload['optimizer']
-
-class ModelServer():
+class ModelServer(TCPServer):
     """TCP server for deploying models with latest trained parameters.
     """
-    def __init__(self,
-                 model_repository : ModelRepository,
-                 listen_address : str = '0.0.0.0',
-                 listen_port : int = 50006):
-        logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=logging.INFO)
-        self.logger = logging.getLogger("sparse")
+    def __init__(self, model_repository : ModelRepository, **args):
+        super().__init__(**args)
 
         self.model_repository = model_repository
 
-        self.listen_address = listen_address
-        self.listen_port = listen_port
+    def request_processed(self, request_context : dict, processing_time : float):
+        served_model = request_context["model"]
+        num_parameters = count_model_parameters(served_model)
+        self.logger.info(f"Served model '{type(served_model).__name__}' with {num_parameters} parameters in {processing_time} seconds.")
 
-    async def receive_task(self, reader : asyncio.StreamReader, writer : asyncio.StreamWriter) -> None:
-        input_data = await reader.read()
-
-        model_name, partition = decode_offload_request(input_data)
+    async def handle_request(self, input_data : dict, context : dict) -> dict:
+        model_name, partition = input_data["model_name"], input_data["partition"]
 
         model, loss_fn, optimizer = self.model_repository.get_model(model_name, partition)
 
-        writer.write(encode_model_reply(model, loss_fn, optimizer))
-        await writer.drain()
-        writer.close()
+        return { "model": model, "loss_fn": loss_fn, "optimizer": optimizer }, { "model" : model }
 
-        num_parameters = count_model_parameters(model)
-        self.logger.info(f"Served model '{type(model).__name__}' with {num_parameters} parameters.")
-
-    async def serve(self):
-        server = await asyncio.start_server(self.receive_task, self.listen_address, self.listen_port)
-        self.logger.info(f"Model server listening on {self.listen_address}:{self.listen_port}")
-        await server.serve_forever()
-
-    def start(self):
-        asyncio.run(self.serve())
