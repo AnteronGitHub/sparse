@@ -18,14 +18,16 @@ class ModelExecutor(TaskExecutor):
         """Initialize executor by transferring the model to the processor memory."""
         super().start()
 
-        model_loader = ModelLoader(self.node.config_manager.model_server_address,
-                                   self.node.config_manager.model_server_port)
+        self.model_loader = ModelLoader(self.node.config_manager.model_server_address,
+                                        self.node.config_manager.model_server_port)
 
-        self.model, self.loss_fn, self.optimizer = model_loader.load_model(self.model_name,
-                                                                           self.partition)
+        self.model, self.loss_fn, self.optimizer = self.model_loader.load_model(self.model_name, self.partition)
         self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}'")
 
         num_parameters = count_model_parameters(self.model)
         self.logger.info(f"Model executor using model '{type(self.model).__name__}' with {num_parameters} parameters using {self.device} for processing")
         self.model.to(self.device)
 
+    async def save_model(self):
+        await self.model_loader.save_model(self.model.to("cpu"), self.model_name, self.partition)
+        self.logger.info(f"Saved model '{self.model_name}' partition '{self.partition}'")

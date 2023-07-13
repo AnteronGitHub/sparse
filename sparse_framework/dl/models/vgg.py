@@ -32,7 +32,7 @@ VGG_LAYERS = {
 }
 
 class VGG(ModuleQueue):
-    def __init__(self, variant="A", start=0, end=-1, num_classes=1000, init_weights=False, wrap_layers=False):
+    def __init__(self, variant="A", start=0, end=-1, num_classes=1000, state_path = None, init_weights=False, wrap_layers=False):
         if wrap_layers:
             partitions = nn.Sequential(*make_layers(variant, start, end))
         else:
@@ -41,7 +41,11 @@ class VGG(ModuleQueue):
             partitions.append(VGGClassifier(num_classes))
         super(VGG, self).__init__(partitions)
 
-        if init_weights:
+        if state_path is not None:
+            print(f"Loading model parameters from '{state_path}'")
+            self.load_state_dict(torch.load(state_path))
+        elif init_weights:
+            print(f"Initializing model parameters")
             self._initialize_weights()
 
     def _initialize_weights(self):
@@ -80,9 +84,9 @@ class VGG_unsplit(VGG):
         super().__init__()
 
 class VGG_server(VGG):
-    def __init__(self):
-        super().__init__(start = 4)
+    def __init__(self, **args):
+        super().__init__(start = 4, **args)
 
 class VGG_client(VGG):
-    def __init__(self):
-        super().__init__(end = 4)
+    def __init__(self, **args):
+        super().__init__(end = 4, **args)

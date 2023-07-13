@@ -19,6 +19,7 @@ class SplitNNClient(Master):
         Master.__init__(self, benchmark=benchmark)
 
         self.device = get_device()
+        self.model_loader = None
 
         self.dataset = dataset
         self.model_name = model_name
@@ -27,11 +28,10 @@ class SplitNNClient(Master):
         self.warmed_up = False
 
     def load_model(self):
-        model_loader = ModelLoader(self.config_manager.model_server_address,
-                                   self.config_manager.model_server_port)
+        self.model_loader = ModelLoader(self.config_manager.model_server_address,
+                                        self.config_manager.model_server_port)
 
-        self.model, self.loss_fn, self.optimizer = model_loader.load_model(self.model_name,
-                                                                           self.partition)
+        self.model, self.loss_fn, self.optimizer = self.model_loader.load_model(self.model_name, self.partition)
         self.model = self.model.to(self.device)
         self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}'.")
         if self.is_learning():
@@ -95,6 +95,8 @@ class SplitNNClient(Master):
             self.monitor_client.stop_benchmark()
             self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
+
+        await self.model_loader.save_model(self.model, self.model_name, self.partition)
 
 if __name__ == '__main__':
     args = parse_arguments()

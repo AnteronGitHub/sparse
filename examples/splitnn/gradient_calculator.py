@@ -32,5 +32,7 @@ class GradientCalculator(ModelExecutor):
             self.optimizer.step()
             loss = loss.item()
 
+        await self.save_model()
+
         return { "gradient": split_layer.grad.to("cpu").detach(), "loss": loss }
 
