@@ -30,7 +30,7 @@ class ModelTrainingRepository(ModelRepository):
                 model = VGG_client(state_path = state_path)
             else:
                 from sparse_framework.dl.models import VGG_unsplit
-                model = VGG_unsplit()
+                model = VGG_unsplit(state_path = state_path)
 
             loss_fn = nn.CrossEntropyLoss()
             optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)

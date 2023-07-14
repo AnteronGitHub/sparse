@@ -80,8 +80,8 @@ def make_layers(variant, start, end, batch_norm=True):
     return layers
 
 class VGG_unsplit(VGG):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, **args):
+        super().__init__(**args)
 
 class VGG_server(VGG):
     def __init__(self, **args):
