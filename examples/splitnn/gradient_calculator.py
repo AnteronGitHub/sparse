@@ -21,7 +21,7 @@ class GradientCalculator(ModelExecutor):
         pred = self.model(split_layer)
 
         if self.task_deployer:
-            response_data = await self.task_deployer.deploy_task({ 'activation': pred.to("cpu").detach(), 'labels': y })
+            response_data = await self.task_deployer.deploy_task({ 'activation': pred.to("cpu").detach(), 'labels': labels })
             split_grad, loss = response_data['gradient'], response_data['loss']
             split_grad = split_grad.to(self.device)
 
