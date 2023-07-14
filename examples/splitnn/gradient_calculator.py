@@ -7,9 +7,13 @@ class GradientCalculator(ModelExecutor):
         super().start()
         self.model.train()
         self.logger.info(f"Training the model.")
+        self.delayed_save = None
 
     async def execute_task(self, input_data: dict) -> dict:
         """Execute a single gradient computation for the offloaded layers."""
+        if self.delayed_save is not None and not self.delayed_save.done():
+            self.delayed_save.cancel()
+
         split_layer, labels = input_data['activation'], input_data['labels']
         split_layer = Variable(split_layer, requires_grad=True).to(self.device)
         split_layer.retain_grad()
@@ -32,7 +36,7 @@ class GradientCalculator(ModelExecutor):
             self.optimizer.step()
             loss = loss.item()
 
-        await self.save_model()
+        self.delayed_save = self.node.add_timeout(self.save_model)
 
         return { "gradient": split_layer.grad.to("cpu").detach(), "loss": loss }
 

@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import sys
 
@@ -17,3 +18,10 @@ class Node:
         else:
             self.logger.info(f"Not benchmarking execution")
             self.monitor_client = None
+
+    async def delay_coro(self, coro, delay : float):
+        await asyncio.sleep(delay)
+        await coro()
+
+    def add_timeout(self, coro, delay : float = 10):
+        return asyncio.create_task(self.delay_coro(coro, delay))
