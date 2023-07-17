@@ -34,7 +34,7 @@ class ModelServer(TCPServer):
             self.logger.info(f"Served model '{type(served_model).__name__}' with {num_parameters} parameters in {processing_time} seconds.")
         elif request_context["method"] == "save_model":
             saved_model = request_context["model"]
-            num_parameters = count_model_parameters(served_model)
+            num_parameters = count_model_parameters(saved_model)
             self.logger.info(f"Saved model '{type(saved_model).__name__}' with {num_parameters} parameters in {processing_time} seconds.")
 
     async def handle_request(self, input_data : dict, context : dict) -> dict:

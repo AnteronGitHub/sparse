@@ -39,13 +39,9 @@ class VGG(ModuleQueue):
             partitions = make_layers(variant, start, end)
         if end < 0 or end > len(VGG_LAYERS[variant]):
             partitions.append(VGGClassifier(num_classes))
-        super(VGG, self).__init__(partitions)
+        ModuleQueue.__init__(self, partitions, start)
 
-        if state_path is not None:
-            print(f"Loading model parameters from '{state_path}'")
-            self.load_state_dict(torch.load(state_path))
-        elif init_weights:
-            print(f"Initializing model parameters")
+        if not self.load_parameters(state_path, "VGG"):
             self._initialize_weights()
 
     def _initialize_weights(self):
@@ -64,18 +60,26 @@ class VGG(ModuleQueue):
 def make_layers(variant, start, end, batch_norm=True):
     layers = []
     in_channels = 3
-    for i, v in enumerate(VGG_LAYERS[variant]):
+    num_layers = end - start
+    traversed_layers = 0
+    for v in VGG_LAYERS[variant]:
         if v == 'M':
-            if i >= start and (i < end or end < 0):
-                layers += [nn.MaxPool2d(kernel_size=2, stride=2)]
+            new_layers = [nn.MaxPool2d(kernel_size=2, stride=2)]
         else:
             conv2d = nn.Conv2d(in_channels, v, kernel_size=3, padding=1)
-            if i >= start and (i < end or end < 0):
-                if batch_norm:
-                    layers += [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
-                else:
-                    layers += [conv2d, nn.ReLU(inplace=True)]
+            if batch_norm:
+                new_layers = [conv2d, nn.BatchNorm2d(v), nn.ReLU(inplace=True)]
+            else:
+                new_layers = [conv2d, nn.ReLU(inplace=True)]
             in_channels = v
+
+        if traversed_layers >= start:
+            layers += new_layers
+
+        if end > 0 and len(layers) >= num_layers:
+            break
+        else:
+            traversed_layers += len(new_layers)
 
     return layers
 
@@ -85,8 +89,8 @@ class VGG_unsplit(VGG):
 
 class VGG_server(VGG):
     def __init__(self, **args):
-        super().__init__(start = 4, **args)
+        super().__init__(start = 8, **args)
 
 class VGG_client(VGG):
     def __init__(self, **args):
-        super().__init__(end = 4, **args)
+        super().__init__(end = 8, **args)
