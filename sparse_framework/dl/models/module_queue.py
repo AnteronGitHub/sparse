@@ -18,8 +18,11 @@ class ModuleQueue(Module):
         self.partitions.append(module)
 
     def pop(self):
+        """Removes the first module in the queue, increasing the start index by one.
+        """
         module = self.partitions.__getitem__(0)
         self.partitions.__delitem__(0)
+        self.start += 1
         return module
 
     def load_parameters(self, data_path : str, model_name : str):

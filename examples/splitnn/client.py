@@ -11,14 +11,14 @@ class SplitNNClient(SplitNNDataSource):
     def __init__(self, model_name : str, partition : str, **args):
         SplitNNDataSource.__init__(self, **args)
 
-        self.task_executor = GradientCalculator(model_name, partition)
+        self.task_executor = GradientCalculator(capacity = 1, model_name=model_name, partition=partition)
         self.task_executor.set_logger(self.logger)
         self.task_executor.set_node(self)
         self.task_executor.task_deployer = self.task_deployer
         self.task_executor.start()
 
     async def process_sample(self, features, labels):
-        result_data = await self.task_executor.execute_task({ 'activation': features, 'labels': labels })
+        result_data = await self.task_executor.execute_task({ 'activation': features, 'labels': labels, 'capacity': 0 })
 
         return result_data['loss']
 
