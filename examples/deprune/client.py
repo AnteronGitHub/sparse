@@ -98,14 +98,7 @@ class DepruneClient(Master):
                                 input_data = encode_offload_inference_request(pred.to("cpu").detach())
 
                         # Offloaded layers
-                        while True:
-                            result_data = await self.task_deployer.deploy_task(input_data)
-                            if result_data is None:
-                                self.logger.error(f"Broken pipe error. Re-executing...")
-                                if self.monitor_client is not None:
-                                    self.monitor_client.broken_pipe_error()
-                            else:
-                                break
+                        result_data = await self.task_deployer.deploy_task(input_data)
 
                         if self.is_learning():
                             split_grad, loss = decode_offload_response(result_data)

@@ -6,6 +6,7 @@ class MonitorClient():
     def __init__(self, socket_path = '/run/sparse/sparse-benchmark.sock'):
         self.socket_path = socket_path
         self.active_tasks = set()
+        self.benchmark_id = None
 
     async def _send_message(self, message):
         try:
@@ -30,24 +31,34 @@ class MonitorClient():
                                    "log_file_prefix": log_file_prefix })
 
     def stop_benchmark(self):
+        if self.benchmark_id is None:
+            return None
         return self.submit_event({ "benchmark_id": self.benchmark_id,
                                    "event": "stop_benchmark" })
 
     def batch_processed(self, batch_size : int, loss : float = None):
+        if self.benchmark_id is None:
+            return None
         return self.submit_event({ "benchmark_id": self.benchmark_id,
                                    "event": "batch_processed",
                                    "batch_size": batch_size,
                                    "loss": loss })
 
     def task_processed(self):
+        if self.benchmark_id is None:
+            return None
         return self.submit_event({ "benchmark_id": self.benchmark_id,
                                    "event": "task_processed" })
 
     def connection_timeout(self):
+        if self.benchmark_id is None:
+            return None
         return self.submit_event({ "benchmark_id": self.benchmark_id,
                                    "event": "connection_timeout" })
 
     def broken_pipe_error(self):
+        if self.benchmark_id is None:
+            return None
         return self.submit_event({ "benchmark_id": self.benchmark_id,
                                    "event": "broken_pipe_error" })
 

@@ -5,75 +5,75 @@ from tqdm import tqdm
 from sparse_framework import Master
 from sparse_framework.dl import DatasetRepository
 
-from serialization import encode_offload_request, encode_offload_inference_request, decode_offload_response, decode_offload_inference_response
-
 from utils import parse_arguments, _get_benchmark_log_file_prefix
 
 class SplitNNDataSource(Master):
     def __init__(self, application, dataset, classes, benchmark = True):
-        super().__init__(benchmark=benchmark)
+        Master.__init__(self, benchmark=benchmark)
         self.application = application
         self.dataset = dataset
         self.classes = classes
         self.warmed_up = False
 
-    def is_learning(self):
-        return self.application == 'learning'
+        self.progress_bar = None
 
-    async def start(self, batch_size, batches, epochs, log_file_prefix, verbose = False):
+    async def loop_starting(self, batch_size, batches, epochs, verbose):
         if verbose:
-            progress_bar = tqdm(total=batch_size*batches*epochs,
-                                unit='samples',
-                                unit_scale=True)
-        else:
-            progress_bar = None
+            self.progress_bar = tqdm(total=batch_size*batches*epochs,
+                                     unit='samples',
+                                     unit_scale=True)
 
-        for t in range(epochs):
-            offset = 0 if t == 0 else 1
-            for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
-                if self.is_learning():
-                    input_data = encode_offload_request(X, y)
-                else:
-                    input_data = encode_offload_request(X, y)
-
-                while True:
-                    result_data = await self.task_deployer.deploy_task(input_data)
-                    if result_data is None:
-                        self.logger.error(f"Broken pipe error. Re-executing...")
-                        if self.monitor_client is not None:
-                            self.monitor_client.broken_pipe_error()
-                    else:
-                        break
-                if self.is_learning():
-                    split_grad, loss = decode_offload_response(result_data)
-                else:
-                    prediction = decode_offload_inference_response(result_data)
-                    loss = None
-
-                # Logging
-                if progress_bar is not None:
-                    progress_bar.update(len(X))
-                else:
-                    self.logger.info(f"Processed batch of {len(X)} samples. Loss: {loss}")
-
-                # Benchmarks
-                if self.monitor_client is not None:
-                    if self.warmed_up:
-                        self.monitor_client.batch_processed(len(X), loss)
-                    else:
-                        self.warmed_up = True
-                        self.monitor_client.start_benchmark(log_file_prefix)
-
-                if batch + offset >= batches:
-                    break
-
-        if progress_bar is not None:
-            progress_bar.close()
+    async def loop_completed(self):
+        if self.progress_bar is not None:
+            self.progress_bar.close()
 
         if self.monitor_client is not None:
             self.monitor_client.stop_benchmark()
             self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
+
+    async def task_completed(self, samples_processed, loss, log_file_prefix):
+        # Logging
+        if self.progress_bar is not None:
+            self.progress_bar.update(samples_processed)
+        else:
+            self.logger.info(f"Processed batch of {samples_processed} samples. Loss: {loss}")
+
+        # Benchmarks
+        if self.monitor_client is not None:
+            if self.warmed_up:
+                self.monitor_client.batch_processed(samples_processed, loss)
+            else:
+                self.warmed_up = True
+                self.monitor_client.start_benchmark(log_file_prefix)
+
+    async def process_sample(self, features, labels):
+        result_data = await self.task_deployer.deploy_task({ 'activation': features, 'labels': labels })
+        if self.is_learning():
+            split_grad, loss = result_data['gradient'], result_data['loss']
+        else:
+            prediction = result_data['prediction']
+            loss = None
+
+        return loss
+
+    async def start(self, batch_size, batches, epochs, log_file_prefix, verbose = False):
+        await self.loop_starting(batch_size, batches, epochs, verbose)
+
+        for t in range(epochs):
+            offset = 0 if t == 0 else 1
+            for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
+                loss = await self.process_sample(X, y)
+
+                await self.task_completed(len(X), loss, log_file_prefix)
+
+                if batch + offset >= batches:
+                    break
+
+        await self.loop_completed()
+
+    def is_learning(self):
+        return self.application == 'learning'
 
 if __name__ == '__main__':
     args = parse_arguments()

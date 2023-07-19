@@ -23,5 +23,5 @@ class TaskExecutor:
     def set_node(self, node):
         self.node = node
 
-    async def execute_task(self, input_data : bytes) -> bytes:
+    async def execute_task(self, input_data : dict) -> dict:
         raise "Task executor not implemented! See documentation on how to implement your own executor"

@@ -22,6 +22,9 @@ spec:
       - name: splitnn-aio
         image: sparse/splitnn
         imagePullPolicy: IfNotPresent
+        env:
+        - name: SPARSE_MODEL_SERVER_ADDRESS
+          value: "model-server"
         command: ["python3"]
         args:
         - "aio.py"
