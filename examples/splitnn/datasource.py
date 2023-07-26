@@ -1,4 +1,5 @@
 import asyncio
+import time
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -32,12 +33,12 @@ class SplitNNDataSource(Master):
             self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
 
-    async def task_completed(self, samples_processed, loss, log_file_prefix):
+    async def task_completed(self, samples_processed, loss, log_file_prefix, processing_time : float):
         # Logging
         if self.progress_bar is not None:
             self.progress_bar.update(samples_processed)
         else:
-            self.logger.info(f"Processed batch of {samples_processed} samples. Loss: {loss}")
+            self.logger.info(f"Processed batch of {samples_processed} samples in {processing_time} seconds. Loss: {loss}")
 
         # Benchmarks
         if self.monitor_client is not None:
@@ -63,9 +64,10 @@ class SplitNNDataSource(Master):
         for t in range(epochs):
             offset = 0 if t == 0 else 1
             for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
+                task_started_at = time.time()
                 loss = await self.process_sample(X, y)
 
-                await self.task_completed(len(X), loss, log_file_prefix)
+                await self.task_completed(len(X), loss, log_file_prefix, processing_time=time.time() - task_started_at)
 
                 if batch + offset >= batches:
                     break
