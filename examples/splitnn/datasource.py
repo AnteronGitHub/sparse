@@ -4,7 +4,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from sparse_framework import Master
-from sparse_framework.dl import DatasetRepository
+from sparse_framework.dl import DatasetRepository, ModelMetaData
 
 from utils import parse_arguments, _get_benchmark_log_file_prefix
 
@@ -12,6 +12,7 @@ class SplitNNDataSource(Master):
     def __init__(self, application, dataset, classes, benchmark = True):
         Master.__init__(self, benchmark=benchmark)
         self.application = application
+        self.model_meta_data = model_meta_data
         self.dataset = dataset
         self.classes = classes
         self.warmed_up = False
@@ -49,7 +50,10 @@ class SplitNNDataSource(Master):
                 self.monitor_client.start_benchmark(log_file_prefix)
 
     async def process_sample(self, features, labels):
-        result_data = await self.task_deployer.deploy_task({ 'activation': features, 'labels': labels, 'capacity': 0 })
+        result_data = await self.task_deployer.deploy_task({ 'activation': features,
+                                                             'labels': labels,
+                                                             'model_meta_data': self.model_meta_data,
+                                                             'capacity': 0 })
         if self.is_learning():
             split_grad, loss = result_data['gradient'], result_data['loss']
         else:
@@ -80,6 +84,7 @@ class SplitNNDataSource(Master):
 if __name__ == '__main__':
     args = parse_arguments()
 
+    model_meta_data = ModelMetaData(args.model_name)
     dataset, classes = DatasetRepository().get_dataset(args.dataset)
     log_file_prefix = _get_benchmark_log_file_prefix(args, "datasource")
     asyncio.run(SplitNNDataSource(args.application, dataset, classes).start(batch_size=args.batch_size,

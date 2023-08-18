@@ -1,10 +1,11 @@
 from .model_executor import ModelExecutor
-from .model_loader import ModelLoader
-from .model_repository import ModelRepository, ModelTrainingRepository
+from .tcp_model_loader import TCPModelLoader
+from .model_meta_data import ModelMetaData
+from .model_repository import DiskModelRepository
 from .model_server import ModelServer
 
 __all__ = ["ModelExecutor",
-           "ModelLoader",
-           "ModelRepository",
+           "TCPModelLoader",
+           "ModelMetaData",
            "ModelServer",
-           "ModelTrainingRepository"]
+           "DiskModelRepository"]

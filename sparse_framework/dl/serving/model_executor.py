@@ -1,32 +1,19 @@
-import torch
-
 from sparse_framework.task_executor import TaskExecutor
 
-from .model_loader import ModelLoader
-from ..utils import count_model_parameters, get_device
+from .model_repository import InMemoryModelRepository
+from ..utils import get_device
 
 class ModelExecutor(TaskExecutor):
-    def __init__(self, model_name : str, partition : str):
+    def __init__(self):
         super().__init__()
-        self.device = get_device()
-        self.model_name = model_name
-        self.partition = partition
 
-        self.model = None
+        self.device = get_device()
+        self.model_repository = None
 
     def start(self):
-        """Initialize executor by transferring the model to the processor memory."""
         super().start()
 
-        self.model_loader = ModelLoader(self.node.config_manager.model_server_address,
-                                        self.node.config_manager.model_server_port)
-
-        self.model, self.loss_fn, self.optimizer = self.model_loader.load_model(self.model_name, self.partition)
-        self.logger.info(f"Downloaded model '{self.model_name}' partition '{self.partition}'")
-
-        num_parameters = count_model_parameters(self.model)
-        self.logger.info(f"Model executor using model '{type(self.model).__name__}' with {num_parameters} parameters using {self.device} for processing")
-        self.model.to(self.device)
+        self.model_repository = InMemoryModelRepository(self.node, self.device)
 
     async def save_model(self):
         await self.model_loader.save_model(self.model.to("cpu"), self.model_name, self.partition)

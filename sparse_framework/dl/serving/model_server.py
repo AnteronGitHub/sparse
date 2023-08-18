@@ -1,29 +1,27 @@
-from torch.nn import Module
-
 from sparse_framework.networking import TCPServer
 
 from ..utils import count_model_parameters
-from .model_repository import ModelRepository
+from .model_repository import DiskModelRepository
 
 class ModelServer(TCPServer):
     """TCP server for deploying models with latest trained parameters.
     """
-    def __init__(self, model_repository : ModelRepository, **args):
+    def __init__(self, model_repository : DiskModelRepository, **args):
         super().__init__(**args)
 
         self.model_repository = model_repository
 
     def get_model(self, input_data : dict, context : dict):
-        model_name, partition = input_data["model_name"], input_data["partition"]
+        model_meta_data = input_data["model_meta_data"]
 
-        model, loss_fn, optimizer = self.model_repository.get_model(model_name, partition)
+        model, loss_fn, optimizer = self.model_repository.get_model(model_meta_data)
 
         return { "model": model, "loss_fn": loss_fn, "optimizer": optimizer }, { "method": "get_model", "model" : model }
 
     def save_model(self, input_data : dict, context : dict):
-        model, model_name, partition = input_data["model"], input_data["model_name"], input_data["partition"]
+        model, model_meta_data = input_data["model"], input_data["model_meta_data"]
 
-        self.model_repository.save_model(model, model_name, partition)
+        self.model_repository.save_model(model, model_meta_data)
 
         return { "status": "ok" }, { "method": "save_model", "model" : model }
 
