@@ -49,7 +49,7 @@ class SplitNNDataSource(Master):
                 self.monitor_client.start_benchmark(log_file_prefix)
 
     async def process_sample(self, features, labels):
-        result_data = await self.task_deployer.deploy_task({ 'activation': features, 'labels': labels })
+        result_data = await self.task_deployer.deploy_task({ 'activation': features, 'labels': labels, 'capacity': 0 })
         if self.is_learning():
             split_grad, loss = result_data['gradient'], result_data['loss']
         else:
