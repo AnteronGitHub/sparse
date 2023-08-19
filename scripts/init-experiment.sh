@@ -27,6 +27,9 @@ init_environment () {
   read -p "How many data sources to run (default 1): " SPARSE_NO_DATASOURCES
   export SPARSE_NO_DATASOURCES=${SPARSE_NO_DATASOURCES:-1}
 
+  read -p "How many models to serve (default 1): " SPARSE_NO_MODELS
+  export SPARSE_NO_MODELS=${SPARSE_NO_MODELS:-1}
+
   read -p "Specify the data source cpu limitation (default 400m): " SPARSE_DATASOURCE_CPU_LIMIT
   export SPARSE_DATASOURCE_CPU_LIMIT=${SPARSE_DATASOURCE_CPU_LIMIT:-400m}
 

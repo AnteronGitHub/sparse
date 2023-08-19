@@ -10,6 +10,8 @@ def parse_arguments():
     parser.add_argument('--batch-size', default=64, type=int)
     parser.add_argument('--epochs', default=1, type=int)
     parser.add_argument('--application', default='learning', type=str)
+    parser.add_argument('--no-datasources', default=1, type=int)
+    parser.add_argument('--no-models', default=1, type=int)
 
     return parser.parse_args()
 

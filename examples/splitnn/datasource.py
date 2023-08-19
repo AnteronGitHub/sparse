@@ -2,6 +2,7 @@ import asyncio
 import time
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+import uuid
 
 from sparse_framework import Master
 from sparse_framework.dl import DatasetRepository, ModelMetaData
@@ -9,17 +10,20 @@ from sparse_framework.dl import DatasetRepository, ModelMetaData
 from utils import parse_arguments, _get_benchmark_log_file_prefix
 
 class SplitNNDataSource(Master):
-    def __init__(self, application, dataset, classes, benchmark = True):
+    def __init__(self, application, model_meta_data, dataset, classes, benchmark = True):
         Master.__init__(self, benchmark=benchmark)
         self.application = application
         self.model_meta_data = model_meta_data
         self.dataset = dataset
         self.classes = classes
+
+        self.id = str(uuid.uuid4())
         self.warmed_up = False
 
         self.progress_bar = None
 
     async def loop_starting(self, batch_size, batches, epochs, verbose):
+        self.logger.info(f"Starting data source {self.id}")
         if verbose:
             self.progress_bar = tqdm(total=batch_size*batches*epochs,
                                      unit='samples',
@@ -39,7 +43,7 @@ class SplitNNDataSource(Master):
         if self.progress_bar is not None:
             self.progress_bar.update(samples_processed)
         else:
-            self.logger.info(f"Processed batch of {samples_processed} samples in {processing_time} seconds. Loss: {loss}")
+            self.logger.info(f"{self.id}: Processed batch of {samples_processed} samples in {processing_time} seconds. Loss: {loss}")
 
         # Benchmarks
         if self.monitor_client is not None:
@@ -81,14 +85,24 @@ class SplitNNDataSource(Master):
     def is_learning(self):
         return self.application == 'learning'
 
+async def run_datasources(args):
+    tasks = []
+    for i in range(args.no_datasources):
+        model_id = str(i % args.no_models)
+        model_meta_data = ModelMetaData(model_id, args.model_name)
+        dataset, classes = DatasetRepository().get_dataset(args.dataset)
+        log_file_prefix = _get_benchmark_log_file_prefix(args, "datasource")
+        tasks.append(SplitNNDataSource(args.application,
+                                       model_meta_data,
+                                       dataset,
+                                       classes).start(batch_size=args.batch_size,
+                                                      batches=args.batches,
+                                                      epochs=int(args.epochs),
+                                                      log_file_prefix=log_file_prefix))
+
+    await asyncio.gather(*tasks)
+
 if __name__ == '__main__':
     args = parse_arguments()
-
-    model_meta_data = ModelMetaData(args.model_name)
-    dataset, classes = DatasetRepository().get_dataset(args.dataset)
-    log_file_prefix = _get_benchmark_log_file_prefix(args, "datasource")
-    asyncio.run(SplitNNDataSource(args.application, dataset, classes).start(batch_size=args.batch_size,
-                                                                            batches=args.batches,
-                                                                            epochs=int(args.epochs),
-                                                                            log_file_prefix=log_file_prefix))
+    asyncio.run(run_datasources(args))
 

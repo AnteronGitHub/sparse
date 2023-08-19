@@ -56,7 +56,7 @@ class GradientCalculator(ModelExecutor):
         else:
             piggyback_module = None
 
-        self.delayed_save = self.node.add_timeout(self.save_model)
+        self.delayed_save = self.node.add_timeout(self.save_model, model, model_meta_data)
 
         return { "gradient": split_layer.grad.to("cpu").detach(), "loss": loss, "piggyback_module": piggyback_module }
 

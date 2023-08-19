@@ -7,7 +7,6 @@ metadata:
   labels:
     app: splitnn-datasource
 spec:
-  parallelism: $SPARSE_NO_DATASOURCES
   template:
     spec:
       affinity:
@@ -32,6 +31,10 @@ spec:
         command: ["python3"]
         args:
         - "datasource.py"
+        - "--no-datasources"
+        - "$SPARSE_NO_DATASOURCES"
+        - "--no-models"
+        - "$SPARSE_NO_MODELS"
         - "--application"
         - "$SPARSE_APPLICATION"
         - "--suite"
