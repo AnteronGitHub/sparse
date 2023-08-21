@@ -15,6 +15,6 @@ class ModelExecutor(TaskExecutor):
 
         self.model_repository = InMemoryModelRepository(self.node, self.device)
 
-    async def save_model(self, model, model_meta_data):
-        await self.model_repository.save_model(model.to("cpu"), model_meta_data)
+    async def save_model(self, model_meta_data):
+        await self.model_repository.save_model(model_meta_data)
         self.logger.info(f"Saved model '{model_meta_data.model_name}'.")
