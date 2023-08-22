@@ -66,7 +66,7 @@ class SplitNNDataSource(Master):
 
         return loss
 
-    async def start(self, batch_size, batches, epochs, log_file_prefix, verbose = False):
+    async def start(self, batch_size, batches, epochs, log_file_prefix, verbose = False, time_window = 5):
         await self.loop_starting(batch_size, batches, epochs, verbose)
 
         for t in range(epochs):
@@ -75,7 +75,9 @@ class SplitNNDataSource(Master):
                 task_started_at = time.time()
                 loss = await self.process_sample(X, y)
 
-                await self.task_completed(len(X), loss, log_file_prefix, processing_time=time.time() - task_started_at)
+                processing_time = time.time() - task_started_at
+                await self.task_completed(len(X), loss, log_file_prefix, processing_time=processing_time)
+                await asyncio.sleep(time_window - processing_time)
 
                 if batch + offset >= batches:
                     break
@@ -87,18 +89,21 @@ class SplitNNDataSource(Master):
 
 async def run_datasources(args):
     tasks = []
+    dataset, classes = DatasetRepository().get_dataset(args.dataset)
     for i in range(args.no_datasources):
         model_id = str(i % args.no_models)
         model_meta_data = ModelMetaData(model_id, args.model_name)
-        dataset, classes = DatasetRepository().get_dataset(args.dataset)
-        log_file_prefix = _get_benchmark_log_file_prefix(args, "datasource")
-        tasks.append(SplitNNDataSource(args.application,
+        log_file_prefix = _get_benchmark_log_file_prefix(args, f"datasource{i}")
+        datasource = SplitNNDataSource(args.application,
                                        model_meta_data,
                                        dataset,
-                                       classes).start(batch_size=args.batch_size,
-                                                      batches=args.batches,
-                                                      epochs=int(args.epochs),
-                                                      log_file_prefix=log_file_prefix))
+                                       classes)
+        tasks.append(datasource.delay_coro(datasource.start,
+                                           args.batch_size,
+                                           args.batches,
+                                           int(args.epochs),
+                                           log_file_prefix,
+                                           delay=i))
 
     await asyncio.gather(*tasks)
 
