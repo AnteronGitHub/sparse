@@ -10,45 +10,46 @@ from sparse_framework.dl import DatasetRepository, ModelMetaData
 from utils import parse_arguments, _get_benchmark_log_file_prefix
 
 class SplitNNDataSource(Master):
-    def __init__(self, application, model_meta_data, dataset, classes, benchmark = True):
+    def __init__(self, application, model_meta_data, dataset, classes, data_source_id : str = str(uuid.uuid4()), benchmark = True):
         Master.__init__(self, benchmark=benchmark)
         self.application = application
         self.model_meta_data = model_meta_data
         self.dataset = dataset
         self.classes = classes
 
-        self.id = str(uuid.uuid4())
+        self.id = data_source_id
         self.warmed_up = False
 
         self.progress_bar = None
 
-    async def loop_starting(self, batch_size, batches, epochs, verbose):
-        self.logger.info(f"Starting data source {self.id}")
+    async def loop_starting(self, batches, epochs, verbose):
+        self.logger.info(f"Starting data source {self.id}.")
         if verbose:
-            self.progress_bar = tqdm(total=batch_size*batches*epochs,
+            self.progress_bar = tqdm(total=batches*epochs,
                                      unit='samples',
                                      unit_scale=True)
 
     async def loop_completed(self):
+        self.logger.info(f"Stopping data source {self.id}.")
         if self.progress_bar is not None:
             self.progress_bar.close()
 
         if self.monitor_client is not None:
             self.monitor_client.stop_benchmark()
-            self.logger.info("Waiting for the benchmark client to finish sending messages")
+            self.logger.debug("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
 
-    async def task_completed(self, samples_processed, loss, log_file_prefix, processing_time : float):
+    async def task_completed(self, loss, log_file_prefix, processing_time : float):
         # Logging
         if self.progress_bar is not None:
-            self.progress_bar.update(samples_processed)
+            self.progress_bar.update(1)
         else:
-            self.logger.info(f"{self.id}: Processed batch of {samples_processed} samples in {processing_time} seconds. Loss: {loss}")
+            self.logger.info(f"{self.id}: Processed a sample in {processing_time} seconds. Loss: {loss}")
 
         # Benchmarks
         if self.monitor_client is not None:
             if self.warmed_up:
-                self.monitor_client.batch_processed(samples_processed, loss)
+                self.monitor_client.batch_processed(1, loss)
             else:
                 self.warmed_up = True
                 self.monitor_client.start_benchmark(log_file_prefix)
@@ -66,17 +67,17 @@ class SplitNNDataSource(Master):
 
         return loss
 
-    async def start(self, batch_size, batches, epochs, log_file_prefix, verbose = False, time_window = 5):
-        await self.loop_starting(batch_size, batches, epochs, verbose)
+    async def start(self, batches, epochs, log_file_prefix, verbose = False, time_window = 5):
+        await self.loop_starting(batches, epochs, verbose)
 
         for t in range(epochs):
             offset = 0 if t == 0 else 1
-            for batch, (X, y) in enumerate(DataLoader(self.dataset, batch_size)):
+            for batch, (X, y) in enumerate(DataLoader(self.dataset, 1)):
                 task_started_at = time.time()
                 loss = await self.process_sample(X, y)
 
                 processing_time = time.time() - task_started_at
-                await self.task_completed(len(X), loss, log_file_prefix, processing_time=processing_time)
+                await self.task_completed(loss, log_file_prefix, processing_time=processing_time)
                 await asyncio.sleep(time_window - processing_time)
 
                 if batch + offset >= batches:
@@ -97,9 +98,9 @@ async def run_datasources(args):
         datasource = SplitNNDataSource(args.application,
                                        model_meta_data,
                                        dataset,
-                                       classes)
+                                       classes,
+                                       data_source_id=f"datasource{i}")
         tasks.append(datasource.delay_coro(datasource.start,
-                                           args.batch_size,
                                            args.batches,
                                            int(args.epochs),
                                            log_file_prefix,
