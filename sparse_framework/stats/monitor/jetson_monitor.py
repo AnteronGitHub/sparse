@@ -1,9 +1,9 @@
 from jtop import jtop
 from jtop.core.exceptions import JtopException
 
-from . import Monitor
+from .base_monitor import BaseMonitor
 
-class JetsonMonitor(Monitor):
+class JetsonMonitor(BaseMonitor):
     def get_metrics(self):
         return ['GPU1', 'RAM', 'SWAP', 'power_cur']
 

@@ -22,4 +22,4 @@ RUN pip3 install -r requirements.txt
 WORKDIR $INSTALL_LOCATION/sparse_framework
 COPY sparse_framework $INSTALL_LOCATION/sparse_framework
 
-CMD ["python3", "run_monitor_server.py"]
+CMD ["python3", "-m", "sparse_framework.stats"]

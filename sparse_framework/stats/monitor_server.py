@@ -1,78 +1,74 @@
 import asyncio
-import json
 import logging
 import os
-import socket
-import time
 
-from .benchmark import Benchmark
+from sparse_framework.daemons import ClockedLoop
+from sparse_framework.networking import UnixSocketServer
 
-class MonitorServer():
+from .benchmark import ClientBenchmark, MonitorBenchmark
+from .monitor import NodeMonitor
+
+class MonitorServer(UnixSocketServer, ClockedLoop):
     def __init__(self,
                  update_frequency_ps = 8,
-                 socket_path = '/run/sparse/sparse-benchmark.sock'):
+                 socket_path = '/run/sparse/sparse-benchmark.sock',
+                 benchmark_timeout = 30):
+        UnixSocketServer.__init__(self, socket_path)
+        ClockedLoop.__init__(self, update_frequency_ps)
+
+        self.benchmark_timeout = benchmark_timeout
 
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=logging.INFO)
         self.logger = logging.getLogger("sparse")
-        self.update_frequency_ps = update_frequency_ps
-        self.socket_path = socket_path
         self.nic = os.environ.get('SPARSE_MONITOR_NIC') or ''
 
-        self.benchmarks = set()
-        self.stopped_benchmarks = set()
+        nic_name = self.nic or 'all'
+        self.logger.info(f"Monitoring NIC '{nic_name}'")
 
-    def log_stats(self):
-        for benchmark in self.benchmarks:
+        self.client_benchmarks = set()
+        self.monitor_benchmarks = set()
+
+    def loop_task(self):
+        for benchmark in self.monitor_benchmarks:
             benchmark.log_stats()
-        for benchmark in self.stopped_benchmarks:
-            self.benchmarks.discard(benchmark)
-            self.logger.info(f"Stopped benchmark '{benchmark.benchmark_id}'")
-        self.stopped_benchmarks.clear()
 
-    def start_benchmark(self, benchmark_id, log_file_prefix):
-        self.benchmarks.add(Benchmark(benchmark_id,
-                                      log_file_prefix,
-                                      self.nic,
-                                      self.stopped_benchmarks.add))
-        nic_name = self.nic or "all"
-        self.logger.info(f"Started a new benchmark '{benchmark_id}' with log prefix '{log_file_prefix}' monitoring nic '{nic_name}'")
+    def start_benchmark(self, request_data : dict):
+        if request_data['benchmark_type'] == 'ClientBenchmark':
+            benchmark = ClientBenchmark(request_data['benchmark_id'],
+                                        request_data['log_file_prefix'],
+                                        self.client_benchmarks.discard,
+                                        self.logger,
+                                        self.benchmark_timeout)
+            self.client_benchmarks.add(benchmark)
+            benchmark.start()
+        elif request_data['benchmark_type'] == 'MonitorBenchmark':
+            benchmark = MonitorBenchmark(request_data['benchmark_id'],
+                                         request_data['log_file_prefix'],
+                                         self.monitor_benchmarks.discard,
+                                         self.logger,
+                                         self.benchmark_timeout,
+                                         monitor_container=NodeMonitor(nic=self.nic))
+            self.monitor_benchmarks.add(benchmark)
+            benchmark.start()
+        self.logger.info(f"Started benchmark '{request_data['benchmark_id']}' with log prefix '{request_data['log_file_prefix']}'.")
 
-    async def run_monitor(self):
-        self.logger.info("Starting monitor")
-        while True:
-            start_time = time.time()
-            self.log_stats()
-            time_elapsed = time.time() - start_time
-            await asyncio.sleep(1.0/self.update_frequency_ps - time_elapsed)
+    def handle_request(self, request_data : dict) -> None:
+        if request_data['event'] == 'start':
+            try:
+                self.start_benchmark(request_data)
+            except Exception as e:
+                self.logger.error(f"Unable to start benchmark from message {request_data}")
+                self.logger.error(e)
+        else:
+            for benchmark in self.client_benchmarks:
+                if benchmark.benchmark_id == request_data['benchmark_id']:
+                    benchmark.receive_message(request_data)
+                    return
 
-    async def receive_message(self, reader : asyncio.StreamReader, writer : asyncio.StreamWriter) -> None:
-        input_data = await reader.read()
-        writer.write("ACK".encode())
-        writer.write_eof()
-        writer.close()
+            for benchmark in self.monitor_benchmarks:
+                if benchmark.benchmark_id == request_data['benchmark_id']:
+                    benchmark.receive_message(request_data)
+                    return
 
-        payload = json.loads(input_data.decode())
-        for benchmark in self.benchmarks:
-            if benchmark.benchmark_id == payload['benchmark_id']:
-                benchmark.receive_message(payload)
-                return
-        try:
-            self.start_benchmark(payload['benchmark_id'], payload['log_file_prefix'])
-        except Exception as e:
-            self.logger.error(f"Unable to start benchmark from message {payload}")
-            self.logger.error(e)
-
-    async def run_server(self):
-        self.logger.info(f"Starting the monitoring server on '{self.socket_path}'")
-        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        server = await asyncio.start_unix_server(self.receive_message, path=self.socket_path)
-        await server.serve_forever()
-
-    async def run(self):
-        await asyncio.gather(self.run_server(), self.run_monitor())
-
-    def start(self):
-        asyncio.run(self.run())
-
-if __name__ == '__main__':
-    MonitorServer().start()
+    async def start(self):
+        await asyncio.gather(self.run_unix_server(), self.run_clocked_loop())

@@ -8,7 +8,7 @@ class FileLogger():
         benchmark_id_formatted = benchmark_id.replace("-", "_")
         self.filepath = os.path.join(data_dir, f'{file_prefix}-{experiment_time}-{benchmark_id_formatted}.csv')
 
-    def log_row(self, stats):
+    def log_row(self, stats : list):
         row = ','.join([str(v) for v in stats])
 
         with open(self.filepath, 'a') as f:

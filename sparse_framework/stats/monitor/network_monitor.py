@@ -1,8 +1,8 @@
 import psutil
 
-from . import Monitor
+from .base_monitor import BaseMonitor
 
-class NetworkMonitor(Monitor):
+class NetworkMonitor(BaseMonitor):
     def __init__(self, nic = ""):
         self.initial_bytes_sent = None
         self.initial_bytes_recv = None

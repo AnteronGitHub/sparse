@@ -1,64 +1,62 @@
-import asyncio
-import json
 import uuid
 
-class MonitorClient():
+from sparse_framework.networking import UnixSocketClient
+
+class MonitorClient(UnixSocketClient):
     def __init__(self, socket_path = '/run/sparse/sparse-benchmark.sock'):
-        self.socket_path = socket_path
-        self.active_tasks = set()
-        self.benchmark_id = None
+        UnixSocketClient.__init__(self, socket_path)
 
-    async def _send_message(self, message):
-        try:
-            reader, writer = await asyncio.open_unix_connection(self.socket_path)
-            writer.write(message)
-            writer.write_eof()
-            writer.close()
-        except Exception as e:
-            pass
+        self.monitor_benchmark_id = None
+        self.client_benchmark_id = None
 
-    def submit_event(self, task_payload):
-        task = asyncio.create_task(self._send_message(json.dumps(task_payload).encode()))
-        self.active_tasks.add(task)
-        task.add_done_callback(self.active_tasks.discard)
+    def start_benchmark(self, log_file_prefix = 'benchmark_sparse', benchmark_type = 'MonitorBenchmark'):
+        if benchmark_type == "MonitorBenchmark" and self.monitor_benchmark_id:
+            return
+        if benchmark_type == "ClientBenchmark" and self.client_benchmark_id:
+            return
 
-        return task
+        benchmark_id = str(uuid.uuid4())
+        if benchmark_type == "MonitorBenchmark":
+            self.monitor_benchmark_id = benchmark_id
+        elif benchmark_type == "ClientBenchmark":
+            self.client_benchmark_id = benchmark_id
 
-    def start_benchmark(self, log_file_prefix = 'benchmark_sparse'):
-        self.benchmark_id = str(uuid.uuid4())
-        return self.submit_event({ "benchmark_id": self.benchmark_id,
-                                   "event": "start",
-                                   "log_file_prefix": log_file_prefix })
+        self.submit_event({ "benchmark_id": benchmark_id,
+                            "event": "start",
+                            "benchmark_type": benchmark_type,
+                            "log_file_prefix": log_file_prefix })
 
     def stop_benchmark(self):
-        if self.benchmark_id is None:
-            return None
-        return self.submit_event({ "benchmark_id": self.benchmark_id,
-                                   "event": "stop_benchmark" })
+        if self.monitor_benchmark_id:
+            self.submit_event({ "benchmark_id": self.monitor_benchmark_id,
+                                "event": "stop_benchmark" })
+        if self.client_benchmark_id:
+            self.submit_event({ "benchmark_id": self.client_benchmark_id,
+                                "event": "stop_benchmark" })
 
     def batch_processed(self, batch_size : int, loss : float = None):
-        if self.benchmark_id is None:
-            return None
-        return self.submit_event({ "benchmark_id": self.benchmark_id,
-                                   "event": "batch_processed",
-                                   "batch_size": batch_size,
-                                   "loss": loss })
+        if self.monitor_benchmark_id:
+            self.submit_event({ "benchmark_id": self.monitor_benchmark_id,
+                                "event": "batch_processed",
+                                "batch_size": batch_size,
+                                "loss": loss })
 
-    def task_processed(self):
-        if self.benchmark_id is None:
-            return None
-        return self.submit_event({ "benchmark_id": self.benchmark_id,
-                                   "event": "task_processed" })
+    def task_completed(self, processing_time : float = None):
+        if self.monitor_benchmark_id:
+            self.submit_event({ "benchmark_id": self.monitor_benchmark_id,
+                                "event": "task_completed" })
+        if self.client_benchmark_id:
+            self.submit_event({ "benchmark_id": self.client_benchmark_id,
+                                "event": "task_completed",
+                                "processing_time": processing_time })
 
     def connection_timeout(self):
-        if self.benchmark_id is None:
-            return None
-        return self.submit_event({ "benchmark_id": self.benchmark_id,
-                                   "event": "connection_timeout" })
+        if self.monitor_benchmark_id:
+            self.submit_event({ "benchmark_id": self.monitor_benchmark_id,
+                                "event": "connection_timeout" })
 
     def broken_pipe_error(self):
-        if self.benchmark_id is None:
-            return None
-        return self.submit_event({ "benchmark_id": self.benchmark_id,
-                                   "event": "broken_pipe_error" })
+        if self.monitor_benchmark_id:
+            self.submit_event({ "benchmark_id": self.monitor_benchmark_id,
+                                "event": "broken_pipe_error" })
 

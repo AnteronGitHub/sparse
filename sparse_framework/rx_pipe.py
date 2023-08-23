@@ -9,7 +9,7 @@ class RXPipe(TCPServer):
     the framework. Currently only one such implementation exists, namely this class.
     """
 
-    def __init__(self, benchmark_log_file_prefix = 'benchmark_sparse', benchmark_timeout = 30, **args):
+    def __init__(self, benchmark_log_file_prefix = 'benchmark_sparse', benchmark_timeout = 60, **args):
         super().__init__(**args)
 
         self.task_executor = None
@@ -33,8 +33,9 @@ class RXPipe(TCPServer):
     def request_processed(self, request_context : dict, processing_time : float):
         if self.node.monitor_client is not None:
             if self.warmed_up and (processing_time < self.benchmark_timeout):
-                self.node.monitor_client.task_processed()
+                self.node.monitor_client.task_completed(processing_time)
             else:
-                self.node.monitor_client.start_benchmark(self.benchmark_log_file_prefix)
+                self.node.monitor_client.start_benchmark(f"{self.benchmark_log_file_prefix}-monitor")
+                self.node.monitor_client.start_benchmark(f"{self.benchmark_log_file_prefix}-tasks", benchmark_type="ClientBenchmark")
                 self.warmed_up = True
         self.logger.info(f"Processed offloaded task in {processing_time} seconds.")

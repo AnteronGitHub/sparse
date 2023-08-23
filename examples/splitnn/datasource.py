@@ -36,7 +36,7 @@ class SplitNNDataSource(Master):
 
         if self.monitor_client is not None:
             self.monitor_client.stop_benchmark()
-            self.logger.debug("Waiting for the benchmark client to finish sending messages")
+            self.logger.info("Waiting for the benchmark client to finish sending messages")
             await asyncio.sleep(1)
 
     async def task_completed(self, loss, log_file_prefix, processing_time : float):
@@ -49,10 +49,11 @@ class SplitNNDataSource(Master):
         # Benchmarks
         if self.monitor_client is not None:
             if self.warmed_up:
-                self.monitor_client.batch_processed(1, loss)
+                self.monitor_client.task_completed(processing_time)
             else:
                 self.warmed_up = True
-                self.monitor_client.start_benchmark(log_file_prefix)
+                self.monitor_client.start_benchmark(f"{log_file_prefix}-monitor")
+                self.monitor_client.start_benchmark(f"{log_file_prefix}-tasks", benchmark_type="ClientBenchmark")
 
     async def process_sample(self, features, labels):
         result_data = await self.task_deployer.deploy_task({ 'activation': features,

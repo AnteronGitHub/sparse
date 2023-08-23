@@ -1,8 +1,8 @@
 from time import time
 
-from . import Monitor
+from .base_monitor import BaseMonitor
 
-class TimeMonitor(Monitor):
+class TimeMonitor(BaseMonitor):
     def __init__(self):
         self.initial_time = None
 
