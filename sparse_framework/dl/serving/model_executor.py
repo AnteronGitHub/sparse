@@ -13,6 +13,7 @@ class ModelExecutor(TaskExecutor):
     def start(self):
         super().start()
 
+        self.logger.info(f"Starting model executor using '{self.device}' for tensor processing.")
         self.model_repository = InMemoryModelRepository(self.node, self.device)
 
     async def save_model(self, model_meta_data):
