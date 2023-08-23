@@ -1,0 +1,3 @@
+tqdm~=4.62.3
+psutil~=5.8.0
+python-dotenv~=1.0.0

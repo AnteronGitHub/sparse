@@ -9,12 +9,17 @@ docker_build_file := .DOCKER
 
 ifneq (,$(shell uname -a | grep tegra))
 	docker_base_image=nvcr.io/nvidia/l4t-pytorch:r34.1.0-pth1.12-py3
+	docker_py_requirements=requirements_jetson.txt
 else
 	docker_base_image=pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime
+	docker_py_requirements=requirements.txt
 endif
 
 $(docker_build_file): $(sparse_py) $(dockerfile)
-	docker build . --no-cache --build-arg BASE_IMAGE=$(docker_base_image) -t $(docker_image)
+	docker build . --no-cache \
+                 --build-arg BASE_IMAGE=$(docker_base_image) \
+								 --build-arg PY_REQUIREMENTS=$(docker_py_requirements) \
+								 -t $(docker_image)
 	touch $(docker_build_file)
 
 .PHONY: docker clean run-experiment clean-experiment
