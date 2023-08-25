@@ -68,7 +68,7 @@ class SplitNNDataSource(Master):
 
         return loss
 
-    async def start(self, batches, epochs, log_file_prefix, verbose = False, time_window = 5):
+    async def start(self, batches, epochs, log_file_prefix, verbose = False, time_window = 0):
         await self.loop_starting(batches, epochs, verbose)
 
         for t in range(epochs):
@@ -79,10 +79,12 @@ class SplitNNDataSource(Master):
 
                 processing_time = time.time() - task_started_at
                 await self.task_completed(loss, log_file_prefix, processing_time=processing_time)
-                await asyncio.sleep(time_window - processing_time)
 
                 if batch + offset >= batches:
                     break
+
+                if processing_time < time_window:
+                    await asyncio.sleep(time_window - processing_time)
 
         await self.loop_completed()
 
@@ -105,7 +107,7 @@ async def run_datasources(args):
                                            args.batches,
                                            int(args.epochs),
                                            log_file_prefix,
-                                           delay=i))
+                                           delay=0))
 
     await asyncio.gather(*tasks)
 
