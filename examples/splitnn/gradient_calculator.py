@@ -14,8 +14,8 @@ class GradientCalculator(ModelExecutor):
 
     async def execute_task(self, input_data: dict) -> dict:
         """Execute a single gradient computation for the offloaded layers."""
-        if self.delayed_save is not None and not self.delayed_save.done():
-            self.delayed_save.cancel()
+        #if self.delayed_save is not None and not self.delayed_save.done():
+        #    self.delayed_save.cancel()
 
         split_layer, labels, model_meta_data, client_capacity = input_data['activation'], \
                                                                 input_data['labels'], \
@@ -61,7 +61,7 @@ class GradientCalculator(ModelExecutor):
         else:
             piggyback_module = None
 
-        self.delayed_save = self.node.add_timeout(self.save_model, model_meta_data)
+        #self.delayed_save = self.node.add_timeout(self.save_model, model_meta_data)
 
         gradient = None if split_layer.grad is None else split_layer.grad.to("cpu").detach()
 
