@@ -1,4 +1,5 @@
 import asyncio
+import logging
 
 from sparse_framework import Node
 
@@ -11,7 +12,7 @@ from .base_model_repository import BaseModelRepository
 class InMemoryModelRepository(BaseModelRepository):
     def __init__(self, node : Node, device : str):
         self.node = node
-        self.logger = self.node.logger
+        self.logger = logging.getLogger("sparse")
         self.model_loader = TCPModelLoader(self.node.config_manager.model_server_address,
                                            self.node.config_manager.model_server_port)
 

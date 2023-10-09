@@ -1,6 +1,6 @@
 from sparse_framework import Worker
 
-from batched_rx_pipe import BatchedRXPipe
+from batched_rx_pipe import BatchedRXPipe, ModelPipe
 from utils import parse_arguments, _get_benchmark_log_file_prefix
 
 class SplitNNWorker(Worker):
@@ -14,7 +14,7 @@ class SplitNNWorker(Worker):
         if use_batching:
             rx_pipe = BatchedRXPipe(benchmark_log_file_prefix = benchmark_log_file_prefix)
         else:
-            rx_pipe = None
+            rx_pipe = ModelPipe(benchmark_log_file_prefix = benchmark_log_file_prefix)
 
         Worker.__init__(self,
                         task_executor,

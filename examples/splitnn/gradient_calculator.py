@@ -17,15 +17,15 @@ class GradientCalculator(ModelExecutor):
         #if self.delayed_save is not None and not self.delayed_save.done():
         #    self.delayed_save.cancel()
 
-        split_layer, labels, model_meta_data, client_capacity = input_data['activation'], \
-                                                                input_data['labels'], \
-                                                                input_data['model_meta_data'], \
-                                                                input_data['capacity']
+        split_layer, labels, model, loss_fn, optimizer = input_data['activation'], \
+                                                         input_data['labels'], \
+                                                         input_data['model'], \
+                                                         input_data['loss_fn'], \
+                                                         input_data['optimizer']
+
         split_layer = Variable(split_layer, requires_grad=True).to(self.device)
         split_layer.retain_grad()
 
-        model, loss_fn, optimizer = await self.model_repository.get_model(model_meta_data)
-        model.train()
         pred = model(split_layer)
 
         if self.task_deployer:
@@ -54,16 +54,16 @@ class GradientCalculator(ModelExecutor):
             optimizer.step()
             loss = loss.item()
 
-        if client_capacity > 0:
-            piggyback_module = model.pop()
-            num_parameters = count_model_parameters(model)
-            self.logger.info(f"Sending piggyback module. {num_parameters} local parameters.")
-        else:
-            piggyback_module = None
+        #if client_capacity > 0:
+        #    piggyback_module = model.pop()
+        #    num_parameters = count_model_parameters(model)
+        #    self.logger.info(f"Sending piggyback module. {num_parameters} local parameters.")
+        #else:
+        #    piggyback_module = None
 
         #self.delayed_save = self.node.add_timeout(self.save_model, model_meta_data)
 
         gradient = None if split_layer.grad is None else split_layer.grad.to("cpu").detach()
 
-        return { "gradient": gradient, "loss": loss, "piggyback_module": piggyback_module }
+        return { "gradient": gradient, "loss": loss }
 
