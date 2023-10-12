@@ -8,20 +8,15 @@ class TaskExecutor:
     is possible to implement custom initialization code by overriding optional start() hook.
     """
     def __init__(self):
+        self.logger = logging.getLogger("sparse")
         self.task_deployer = None
         self.node = None
 
-    def start(self):
-        self.logger.debug("Starting task executor")
+    def submit_task(self):
+        pass
 
     def set_benchmark(self, benchmark):
         self.benchmark = benchmark
-
-    def set_logger(self, logger : logging.Logger = logging.getLogger("sparse")):
-        self.logger = logger
-
-    def set_node(self, node):
-        self.node = node
 
     async def execute_task(self, input_data : dict) -> dict:
         raise "Task executor not implemented! See documentation on how to implement your own executor"

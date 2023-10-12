@@ -1,4 +1,24 @@
+import asyncio
+import logging
+import pickle
+
 from sparse_framework.networking import TCPClient
+
+class EchoClientProtocol(asyncio.Protocol):
+    def __init__(self, input_data : dict, on_con_lost, on_done):
+        self.input_data = input_data
+        self.on_con_lost = on_con_lost
+        self.on_done = on_done
+        self.logger = logging.getLogger("sparse")
+
+    def connection_made(self, transport):
+        transport.write(pickle.dumps(self.input_data))
+
+    def data_received(self, data):
+        self.on_done(pickle.loads(data))
+
+    def connection_lost(self, exc):
+        self.on_con_lost.set_result(True)
 
 class TaskDeployer(TCPClient):
     """Class that handles network connections to available worker nodes.
@@ -8,7 +28,7 @@ class TaskDeployer(TCPClient):
         super().__init__(server_address = None, server_port = None)
 
         self.node = None
-        self.logger = None
+        self.logger = logging.getLogger("sparse")
 
     def set_node(self, node):
         self.node = node
@@ -22,5 +42,22 @@ class TaskDeployer(TCPClient):
         if self.node.monitor_client is not None:
             self.node.monitor_client.broken_pipe_error()
 
+    def on_result(self, result_data):
+        self.result_data = result_data
+
     async def deploy_task(self, input_data : dict) -> dict:
-        return await self._create_request(input_data)
+        loop = asyncio.get_running_loop()
+
+        on_con_lost = loop.create_future()
+
+        transport, protocol = await loop.create_connection(
+            lambda: EchoClientProtocol(input_data, on_con_lost, self.on_result),
+            self.server_address,
+            self.server_port)
+
+        try:
+            await on_con_lost
+        finally:
+            transport.close()
+
+        return self.result_data

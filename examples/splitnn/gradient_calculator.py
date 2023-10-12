@@ -1,22 +1,27 @@
+import asyncio
+
 from torch.autograd import Variable
 
+from sparse_framework import TaskExecutor
 from sparse_framework.dl import count_model_parameters, ModelExecutor
 
-class GradientCalculator(ModelExecutor):
-    def __init__(self, capacity = 0, **args):
+class GradientCalculator(TaskExecutor):
+    def __init__(self, device, capacity = 0, **args):
         super().__init__(**args)
         self.capacity = capacity
-        self.delayed_save = None
+        self.device = device
+        self.tasks = set()
 
-    def start(self):
-        super().start()
-        self.logger.info(f"Training the model.")
+    def submit_task(self, input_data, callback):
+        executor_task = asyncio.create_task(self.execute_task(input_data, callback))
+        self.tasks.add(executor_task)
+        executor_task.add_done_callback(self.tasks.discard)
 
-    async def execute_task(self, input_data: dict) -> dict:
+        self.logger.debug(f"Created executor task.")
+
+    async def execute_task(self, input_data: dict, callback) -> dict:
         """Execute a single gradient computation for the offloaded layers."""
-        #if self.delayed_save is not None and not self.delayed_save.done():
-        #    self.delayed_save.cancel()
-
+        self.logger.debug(f"Executing task.")
         split_layer, labels, model, loss_fn, optimizer = input_data['activation'], \
                                                          input_data['labels'], \
                                                          input_data['model'], \
@@ -54,16 +59,7 @@ class GradientCalculator(ModelExecutor):
             optimizer.step()
             loss = loss.item()
 
-        #if client_capacity > 0:
-        #    piggyback_module = model.pop()
-        #    num_parameters = count_model_parameters(model)
-        #    self.logger.info(f"Sending piggyback module. {num_parameters} local parameters.")
-        #else:
-        #    piggyback_module = None
-
-        #self.delayed_save = self.node.add_timeout(self.save_model, model_meta_data)
-
         gradient = None if split_layer.grad is None else split_layer.grad.to("cpu").detach()
 
-        return { "gradient": gradient, "loss": loss }
+        callback({ "gradient": gradient, "loss": loss })
 
