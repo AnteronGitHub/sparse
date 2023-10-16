@@ -6,8 +6,9 @@ from time import time
 from sparse_framework import RXPipe
 
 class ModelPipe(asyncio.Protocol):
-    def __init__(self, task_executor, model_repository):
+    def __init__(self, queue, task_executor, model_repository):
         self.logger = logging.getLogger("sparse")
+        self.queue = queue
         self.task_executor = task_executor
         self.model_repository = model_repository
 
@@ -20,7 +21,7 @@ class ModelPipe(asyncio.Protocol):
                 'loss_fn': loss_fn,
                 'optimizer': optimizer
         }
-        self.task_executor.submit_task(task_data, self.send_result)
+        self.queue.put_nowait((task_data, self.send_result))
 
     def send_result(self, result):
         self.transport.write(pickle.dumps(result))
@@ -35,6 +36,7 @@ class ModelPipe(asyncio.Protocol):
         self.logger.debug(f"Received connection from {peername}.")
 
     def data_received(self, data):
+        self.logger.info(f"Received request.")
         self.received_at = time()
         input_data = pickle.loads(data)
         split_layer, labels, model_meta_data = input_data['activation'], \

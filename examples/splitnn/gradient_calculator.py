@@ -19,6 +19,14 @@ class GradientCalculator(TaskExecutor):
 
         self.logger.debug(f"Created executor task.")
 
+    async def start(self, queue):
+        self.logger.info("Dispatching queue")
+        while True:
+            input_data, callback = await queue.get()
+            self.logger.info("Dispatched request")
+            await self.execute_task(input_data, callback)
+            queue.task_done()
+
     async def execute_task(self, input_data: dict, callback) -> dict:
         """Execute a single gradient computation for the offloaded layers."""
         self.logger.debug(f"Executing task.")
