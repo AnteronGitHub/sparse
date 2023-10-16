@@ -21,7 +21,12 @@ class ModelPipe(asyncio.Protocol):
                 'loss_fn': loss_fn,
                 'optimizer': optimizer
         }
-        self.queue.put_nowait((task_data, self.send_result))
+        self.queue.put_nowait(("forward_propagate", task_data, lambda result: self.forward_propagated(task_data, result)))
+
+    def forward_propagated(self, task_data, result):
+        self.send_result(result)
+        task_data["pred"] = result["pred"]
+        #self.queue.put_nowait(("backward_propagate", task_data, self.send_result))
 
     def send_result(self, result):
         self.transport.write(pickle.dumps(result))

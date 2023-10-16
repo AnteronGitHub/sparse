@@ -5,14 +5,13 @@ import pickle
 from sparse_framework.networking import TCPClient
 
 class EchoClientProtocol(asyncio.Protocol):
-    def __init__(self, input_data : dict, on_con_lost, on_done):
-        self.input_data = input_data
+    def __init__(self, on_con_lost, on_done):
         self.on_con_lost = on_con_lost
         self.on_done = on_done
         self.logger = logging.getLogger("sparse")
 
     def connection_made(self, transport):
-        transport.write(pickle.dumps(self.input_data))
+        self.transport = transport
 
     def data_received(self, data):
         self.on_done(pickle.loads(data))
@@ -51,11 +50,9 @@ class TaskDeployer(TCPClient):
         on_con_lost = loop.create_future()
 
         transport, protocol = await loop.create_connection(
-            lambda: EchoClientProtocol(input_data, on_con_lost, self.on_result),
-            self.server_address,
-            self.server_port)
-
+            lambda: EchoClientProtocol(on_con_lost, self.on_result), self.server_address, self.server_port)
         try:
+            transport.write(pickle.dumps(input_data))
             await on_con_lost
         finally:
             transport.close()

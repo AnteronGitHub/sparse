@@ -60,11 +60,14 @@ class SplitNNDataSource(Master):
                                                              'labels': labels,
                                                              'model_meta_data': self.model_meta_data,
                                                              'capacity': 0 })
-        if self.is_learning():
-            split_grad, loss = result_data['gradient'], result_data['loss']
+#        if self.is_learning():
+#            split_grad, loss = result_data['gradient'], result_data['loss']
+#        else:
+        if 'pred' in result_data:
+            pred = result_data['pred']
         else:
-            prediction = result_data['prediction']
-            loss = None
+            self.logger.info(f"Did not receive prediction in response {result_data}")
+        loss = None
 
         return loss
 
