@@ -1,35 +1,29 @@
 import asyncio
+import functools
+from concurrent.futures import ThreadPoolExecutor
 
 from torch.autograd import Variable
 
 from sparse_framework import TaskExecutor
-from sparse_framework.dl import count_model_parameters, ModelExecutor
+from sparse_framework.dl import count_model_parameters, get_device, ModelExecutor
 
 class GradientCalculator(TaskExecutor):
-    def __init__(self, device, capacity = 0, **args):
+    def __init__(self, **args):
         super().__init__(**args)
-        self.capacity = capacity
-        self.device = device
-        self.tasks = set()
-
-    def submit_task(self, input_data, callback):
-        executor_task = asyncio.create_task(self.execute_task(input_data, callback))
-        self.tasks.add(executor_task)
-        executor_task.add_done_callback(self.tasks.discard)
-
-        self.logger.debug(f"Created executor task.")
+        self.device = get_device()
+        self.executor = ThreadPoolExecutor()
 
     async def start(self, queue):
-        self.logger.info("Dispatching queue")
+        self.logger.info(f"Task executor using {self.device} for tensor processing.")
+
+        loop = asyncio.get_running_loop()
         while True:
             input_data, callback = await queue.get()
-            self.logger.info("Dispatched request")
-            await self.execute_task(input_data, callback)
+            await loop.run_in_executor(self.executor, functools.partial(self.execute_task, input_data, callback))
             queue.task_done()
 
-    async def execute_task(self, input_data: dict, callback) -> dict:
+    def execute_task(self, input_data: dict, callback) -> dict:
         """Execute a single gradient computation for the offloaded layers."""
-        self.logger.debug(f"Executing task.")
         split_layer, labels, model, loss_fn, optimizer = input_data['activation'], \
                                                          input_data['labels'], \
                                                          input_data['model'], \
@@ -41,33 +35,37 @@ class GradientCalculator(TaskExecutor):
 
         pred = model(split_layer)
 
-        if self.task_deployer:
-            response_data = await self.task_deployer.deploy_task({ 'activation': pred.to("cpu").detach(),
-                                                                   'labels': labels,
-                                                                   'model_meta_data': model_meta_data,
-                                                                   'capacity' : self.capacity })
-            split_grad, loss = response_data['gradient'], response_data['loss']
+        self.backpropagate(pred, input_data, callback)
 
-            if optimizer is not None:
-                split_grad = split_grad.to(self.device)
-                optimizer.zero_grad()
-                pred.backward(split_grad)
-                optimizer.step()
+    def backpropagate(self, pred, input_data: dict, callback) -> dict:
+        split_layer, labels, model, loss_fn, optimizer = input_data['activation'], \
+                                                         input_data['labels'], \
+                                                         input_data['model'], \
+                                                         input_data['loss_fn'], \
+                                                         input_data['optimizer']
 
-            if response_data['piggyback_module'] is not None:
-                model.append(response_data['piggyback_module'])
-                self.capacity = 0
-                num_parameters = count_model_parameters(model)
-                self.logger.info(f"Received piggyback module. {num_parameters} local parameters.")
-        else:
-            loss = loss_fn(pred, labels.to(self.device))
+        loss = loss_fn(pred, labels.to(self.device))
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            loss = loss.item()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+        loss = loss.item()
 
         gradient = None if split_layer.grad is None else split_layer.grad.to("cpu").detach()
 
         callback({ "gradient": gradient, "loss": loss })
 
+    def backpropagate_split(self, response_data, input_data: dict, callback) -> dict:
+        split_layer, labels, model, loss_fn, optimizer = input_data['activation'], \
+                                                         input_data['labels'], \
+                                                         input_data['model'], \
+                                                         input_data['loss_fn'], \
+                                                         input_data['optimizer']
+        split_grad, loss = response_data['gradient'], response_data['loss']
+
+        split_grad = split_grad.to(self.device)
+        optimizer.zero_grad()
+        pred.backward(split_grad)
+        optimizer.step()
+
+        callback({ "gradient": gradient, "loss": loss })

@@ -2,7 +2,7 @@ import asyncio
 import pickle
 
 from sparse_framework import Worker, TCPServer, ConfigManager
-from sparse_framework.dl import InMemoryModelRepository, ModelPipe, get_device
+from sparse_framework.dl import get_device, InMemoryModelRepository, ModelPipe
 
 from batched_rx_pipe import BatchedRXPipe
 from utils import parse_arguments, _get_benchmark_log_file_prefix
@@ -11,7 +11,7 @@ class SplitNNWorker(Worker):
     def __init__(self, application, benchmark_log_file_prefix, use_batching = True):
         if application == 'learning':
             from gradient_calculator import GradientCalculator
-            task_executor = GradientCalculator(get_device(), capacity = 0)
+            task_executor = GradientCalculator()
         else:
             from inference_calculator import InferenceCalculator
             task_executor = InferenceCalculator()

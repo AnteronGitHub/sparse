@@ -9,14 +9,6 @@ class TaskExecutor:
     """
     def __init__(self):
         self.logger = logging.getLogger("sparse")
-        self.task_deployer = None
-        self.node = None
 
-    def submit_task(self):
-        pass
-
-    def set_benchmark(self, benchmark):
-        self.benchmark = benchmark
-
-    async def execute_task(self, input_data : dict) -> dict:
+    def execute_task(self, input_data : dict) -> dict:
         raise "Task executor not implemented! See documentation on how to implement your own executor"

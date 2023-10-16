@@ -36,9 +36,16 @@ class ModelPipe(asyncio.Protocol):
         self.logger.debug(f"Received connection from {peername}.")
 
     def data_received(self, data):
-        self.logger.info(f"Received request.")
+        self.logger.debug(f"Received request.")
         self.received_at = time()
-        input_data = pickle.loads(data)
+
+        try:
+            input_data = pickle.loads(data)
+        except pickle.UnpicklingError:
+            self.logger.error("Unpickling error occurred")
+            self.send_result({ "gradient": None, "loss": None })
+            return
+
         split_layer, labels, model_meta_data = input_data['activation'], \
                                                input_data['labels'], \
                                                input_data['model_meta_data']
