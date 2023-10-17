@@ -19,7 +19,7 @@ class TaskDeployer(TCPClient):
         self.server_address = self.node.config_manager.upstream_host
         self.server_port = self.node.config_manager.upstream_port
 
-        self.logger.info(f"Task deployer using upstream {self.server_address}:{self.server_port}")
+        self.logger.debug(f"Task deployer using upstream {self.server_address}:{self.server_port}")
 
     def broken_pipe_error(self):
         if self.node.monitor_client is not None:

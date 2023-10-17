@@ -12,24 +12,36 @@ class ModelPipe(asyncio.Protocol):
         self.task_executor = task_executor
         self.model_repository = model_repository
 
-    def model_loaded(self, load_task, split_layer, labels):
+        self.model_meta_data = None
+
+    def initialize_stream(self, input_data):
+        self.model_meta_data = input_data['model_meta_data']
+        load_task = self.model_repository.get_load_task(self.model_meta_data)
+        if load_task is None:
+            self.model_repository.load_model(self.model_meta_data, self.model_loaded)
+        elif not load_task.done():
+            load_task.add_done_callback(self.model_loaded)
+        else:
+            self.model_loaded(load_task)
+
+    def model_loaded(self, load_task):
+        self.send_result({ "statusCode": 200 })
+
+    def offload_task(self, input_data):
+        split_layer = input_data['activation']
+        load_task = self.model_repository.get_load_task(self.model_meta_data)
         model, loss_fn, optimizer = load_task.result()
         task_data = {
                 'activation': split_layer,
-                'labels': labels,
-                'model': model,
-                'loss_fn': loss_fn,
-                'optimizer': optimizer
+                'model': model
         }
-        self.queue.put_nowait(("forward_propagate", task_data, lambda result: self.forward_propagated(task_data, result)))
+        self.queue.put_nowait(("forward_propagate", task_data, self.forward_propagated))
 
-    def forward_propagated(self, task_data, result):
+    def forward_propagated(self, result):
         self.send_result({ "pred": result["pred"] }, task_latency=result["latency"])
-        #self.queue.put_nowait(("backward_propagate", task_data, self.send_result))
 
     def send_result(self, result, task_latency=0):
         self.transport.write(pickle.dumps(result))
-#        self.transport.write_eof()
 
         latency = time() - self.received_at
         self.logger.info(f"E2E lat./Task lat./Ratio: {1000.0*latency:.2f} ms / {1000.0*task_latency:.2f} ms / {100.0*task_latency/latency:.2f} %.")
@@ -50,15 +62,7 @@ class ModelPipe(asyncio.Protocol):
             self.send_result({ "pred": None })
             return
 
-        split_layer, labels, model_meta_data = input_data['activation'], \
-                                               input_data['labels'], \
-                                               input_data['model_meta_data']
-
-        load_task = self.model_repository.get_load_task(model_meta_data)
-        if load_task is None:
-            self.model_repository.load_model(model_meta_data,
-                                             lambda task: self.model_loaded(task, split_layer, labels))
-        elif not load_task.done():
-            load_task.add_done_callback(lambda task: self.model_loaded(task, split_layer, labels))
+        if input_data["op"] == "initialize_stream":
+            self.initialize_stream(input_data)
         else:
-            self.model_loaded(load_task, split_layer, labels)
+            self.offload_task(input_data)

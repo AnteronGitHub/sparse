@@ -21,8 +21,41 @@ class ModelClientProtocol(asyncio.Protocol):
         self.logger = logging.getLogger(f"sparse datasource {data_source_id}")
         self.processing_started = None
         self.last_sent_at = None
+
         self.latencies = []
         self.request_latencies = []
+
+    def initialize_stream(self):
+        self.processing_started = time()
+        self.transport.write(pickle.dumps({ 'op': "initialize_stream", 'model_meta_data': self.model_meta_data }))
+        self.last_sent_at = time()
+
+    def stream_initialized(self, result_data):
+        latency = time() - self.processing_started
+        self.logger.info(f"Initialized stream in {latency:.2f} seconds.")
+        self.offload_task()
+
+    def offload_task(self):
+        self.processing_started = time()
+        self.no_samples -= 1
+        for batch, (X, y) in enumerate(DataLoader(self.dataset, 1)):
+            self.transport.write(pickle.dumps({ 'op': 'offload_task',
+                                                'activation': X,
+                                                'labels': y,
+                                                'model_meta_data': self.model_meta_data }))
+            self.last_sent_at = time()
+            break
+
+    def offload_task_completed(self, result_data):
+        latency = time() - self.processing_started
+        request_latency = time() - self.last_sent_at
+        self.latencies.append(latency)
+        self.request_latencies.append(request_latency)
+
+        if (self.no_samples > 0):
+            self.offload_task()
+        else:
+            self.transport.close()
 
     def print_statistics(self):
         no_requests = len(self.latencies)
@@ -31,33 +64,21 @@ class ModelClientProtocol(asyncio.Protocol):
         else:
             avg_latency = sum(self.latencies)/len(self.latencies)
             avg_request_latency = sum(self.request_latencies)/len(self.request_latencies)
-            self.logger.info(f"Connection closed, {no_requests} requests served, statistics: avg E2E lat. / avg Req lat.: {1000*avg_latency:.2f} ms / {1000*avg_request_latency:.2f} ms.")
-
-    def process_sample(self):
-        self.processing_started = time()
-        for batch, (X, y) in enumerate(DataLoader(self.dataset, 1)):
-            self.logger.debug("Sending data")
-            self.transport.write(pickle.dumps({ 'activation': X,
-                'labels': y,
-                'model_meta_data': self.model_meta_data }))
-            self.last_sent_at = time()
-            break
+            self.logger.info(f"{no_requests} offloaded tasks, avg E2E lat. / avg Req lat.: {1000*avg_latency:.2f} ms / {1000*avg_request_latency:.2f} ms.")
 
     def connection_made(self, transport):
-        self.logger.info("Connected to downstream host.")
+        peername = transport.get_extra_info('peername')
+        self.logger.info(f"Connected to downstream host on '{peername}'.")
         self.transport = transport
-        self.process_sample()
+        self.initialize_stream()
 
     def data_received(self, data):
-        latency = time() - self.processing_started
-        request_latency = time() - self.last_sent_at
-        self.latencies.append(latency)
-        self.request_latencies.append(request_latency)
-        if (self.no_samples > 0):
-            self.process_sample()
-            self.no_samples -= 1
+        result_data = pickle.loads(data)
+
+        if "statusCode" in result_data.keys():
+            self.stream_initialized(result_data)
         else:
-            self.transport.close()
+            self.offload_task_completed(result_data)
 
     def connection_lost(self, exc):
         self.print_statistics()
@@ -84,12 +105,10 @@ async def run_datasources(args):
     dataset, classes = DatasetRepository().get_dataset(args.dataset)
     for i in range(args.no_datasources):
         model_id = str(i % args.no_models)
-        model_meta_data = ModelMetaData(model_id, args.model_name)
-        log_file_prefix = _get_benchmark_log_file_prefix(args, f"datasource{i}")
         datasource = SplitNNDataSource(str(i))
         tasks.append(datasource.delay_coro(datasource.start,
                                            dataset,
-                                           model_meta_data,
+                                           ModelMetaData(model_id, args.model_name),
                                            args.batches*int(args.epochs),
                                            delay=0))
 
