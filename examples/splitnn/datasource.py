@@ -11,12 +11,15 @@ from sparse_framework.dl import DatasetRepository, ModelMetaData
 
 from utils import parse_arguments, _get_benchmark_log_file_prefix
 
+TARGET_FPS = 5.0
+
 class ModelClientProtocol(asyncio.Protocol):
-    def __init__(self, data_source_id, dataset, model_meta_data, on_con_lost, no_samples = 64):
+    def __init__(self, data_source_id, dataset, model_meta_data, on_con_lost, no_samples = 64, target_rate = 1/TARGET_FPS):
         self.dataset = dataset
         self.model_meta_data = model_meta_data
         self.on_con_lost = on_con_lost
         self.no_samples = no_samples
+        self.target_rate = target_rate
 
         self.logger = logging.getLogger(f"sparse datasource {data_source_id}")
         self.processing_started = None
@@ -32,7 +35,7 @@ class ModelClientProtocol(asyncio.Protocol):
 
     def stream_initialized(self, result_data):
         latency = time() - self.processing_started
-        self.logger.info(f"Initialized stream in {latency:.2f} seconds.")
+        self.logger.info(f"Initialized stream in {latency:.2f} seconds with {1.0/self.target_rate:.2f} FPS target rate.")
         self.offload_task()
 
     def offload_task(self):
@@ -53,7 +56,8 @@ class ModelClientProtocol(asyncio.Protocol):
         self.request_latencies.append(request_latency)
 
         if (self.no_samples > 0):
-            self.offload_task()
+            loop = asyncio.get_running_loop()
+            loop.call_later( self.target_rate-latency if self.target_rate-latency > 0 else 0, self.offload_task)
         else:
             self.transport.close()
 
@@ -64,7 +68,7 @@ class ModelClientProtocol(asyncio.Protocol):
         else:
             avg_latency = sum(self.latencies)/len(self.latencies)
             avg_request_latency = sum(self.request_latencies)/len(self.request_latencies)
-            self.logger.info(f"{no_requests} offloaded tasks, avg E2E lat. / avg Req lat.: {1000*avg_latency:.2f} ms / {1000*avg_request_latency:.2f} ms.")
+            self.logger.info(f"{no_requests} offloaded tasks, avg framerate / avg req lat.: {1.0/avg_latency:.2f} FPS / {1000*avg_request_latency:.2f} ms.")
 
     def connection_made(self, transport):
         peername = transport.get_extra_info('peername')
