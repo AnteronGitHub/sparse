@@ -41,10 +41,8 @@ class GradientCalculator(TaskExecutor):
         split_layer.retain_grad()
 
         pred = model(split_layer)
-        latency = time() - started_at
-        self.logger.info(f"Forward propagated in {latency} seconds.")
 
-        callback({ "pred": pred })
+        callback({ "pred": pred, "latency": time() - started_at })
 
     def backward_propagate(self, input_data: dict, callback) -> dict:
         split_layer, labels, model, loss_fn, optimizer, pred = input_data['activation'], \

@@ -13,10 +13,10 @@ class Node:
         self.config_manager.load_config()
 
         if benchmark:
-            self.logger.info(f"Benchmarking execution")
+            self.logger.debug(f"Benchmarking execution")
             self.monitor_client = MonitorClient()
         else:
-            self.logger.info(f"Not benchmarking execution")
+            self.logger.debug(f"Not benchmarking execution")
             self.monitor_client = None
 
     async def delay_coro(self, coro, *args, delay : float):

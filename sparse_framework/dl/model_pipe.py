@@ -24,21 +24,20 @@ class ModelPipe(asyncio.Protocol):
         self.queue.put_nowait(("forward_propagate", task_data, lambda result: self.forward_propagated(task_data, result)))
 
     def forward_propagated(self, task_data, result):
-        self.send_result(result)
-        task_data["pred"] = result["pred"]
+        self.send_result({ "pred": result["pred"] }, task_latency=result["latency"])
         #self.queue.put_nowait(("backward_propagate", task_data, self.send_result))
 
-    def send_result(self, result):
+    def send_result(self, result, task_latency=0):
         self.transport.write(pickle.dumps(result))
-        self.transport.close()
+#        self.transport.write_eof()
 
         latency = time() - self.received_at
-        self.logger.info(f"Processed request in {latency} seconds.")
+        self.logger.info(f"E2E lat./Task lat./Ratio: {1000.0*latency:.2f} ms / {1000.0*task_latency:.2f} ms / {100.0*task_latency/latency:.2f} %.")
 
     def connection_made(self, transport):
         peername = transport.get_extra_info('peername')
         self.transport = transport
-        self.logger.debug(f"Received connection from {peername}.")
+        self.logger.info(f"Received connection from {peername}.")
 
     def data_received(self, data):
         self.logger.debug(f"Received request.")
@@ -48,7 +47,7 @@ class ModelPipe(asyncio.Protocol):
             input_data = pickle.loads(data)
         except pickle.UnpicklingError:
             self.logger.error("Unpickling error occurred")
-            self.send_result({ "gradient": None, "loss": None })
+            self.send_result({ "pred": None })
             return
 
         split_layer, labels, model_meta_data = input_data['activation'], \

@@ -1,5 +1,7 @@
 import asyncio
-import time
+import logging
+from time import time
+import pickle
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import uuid
@@ -9,90 +11,73 @@ from sparse_framework.dl import DatasetRepository, ModelMetaData
 
 from utils import parse_arguments, _get_benchmark_log_file_prefix
 
-class SplitNNDataSource(Master):
-    def __init__(self, application, model_meta_data, dataset, classes, data_source_id : str = str(uuid.uuid4()), benchmark = True):
-        Master.__init__(self, benchmark=benchmark)
-        self.application = application
-        self.model_meta_data = model_meta_data
+class ModelClientProtocol(asyncio.Protocol):
+    def __init__(self, data_source_id, dataset, model_meta_data, on_con_lost, no_samples = 64):
         self.dataset = dataset
-        self.classes = classes
+        self.model_meta_data = model_meta_data
+        self.on_con_lost = on_con_lost
+        self.no_samples = no_samples
 
+        self.logger = logging.getLogger(f"sparse datasource {data_source_id}")
+        self.processing_started = None
+        self.last_sent_at = None
+        self.latencies = []
+        self.request_latencies = []
+
+    def print_statistics(self):
+        no_requests = len(self.latencies)
+        if no_requests == 0:
+            self.logger.info(f"Connection closed || No requests made during connection.")
+        else:
+            avg_latency = sum(self.latencies)/len(self.latencies)
+            avg_request_latency = sum(self.request_latencies)/len(self.request_latencies)
+            self.logger.info(f"Connection closed, {no_requests} requests served, statistics: avg E2E lat. / avg Req lat.: {1000*avg_latency:.2f} ms / {1000*avg_request_latency:.2f} ms.")
+
+    def process_sample(self):
+        self.processing_started = time()
+        for batch, (X, y) in enumerate(DataLoader(self.dataset, 1)):
+            self.logger.debug("Sending data")
+            self.transport.write(pickle.dumps({ 'activation': X,
+                'labels': y,
+                'model_meta_data': self.model_meta_data }))
+            self.last_sent_at = time()
+            break
+
+    def connection_made(self, transport):
+        self.logger.info("Connected to downstream host.")
+        self.transport = transport
+        self.process_sample()
+
+    def data_received(self, data):
+        latency = time() - self.processing_started
+        request_latency = time() - self.last_sent_at
+        self.latencies.append(latency)
+        self.request_latencies.append(request_latency)
+        if (self.no_samples > 0):
+            self.process_sample()
+            self.no_samples -= 1
+        else:
+            self.transport.close()
+
+    def connection_lost(self, exc):
+        self.print_statistics()
+        self.on_con_lost.set_result(True)
+
+class SplitNNDataSource(Master):
+    def __init__(self, data_source_id : str = str(uuid.uuid4()), benchmark = True):
+        Master.__init__(self, benchmark=benchmark)
         self.id = data_source_id
-        self.warmed_up = False
 
-        self.progress_bar = None
-
-    async def loop_starting(self, batches, epochs, verbose):
-        self.logger.info(f"Starting data source {self.id}.")
-        if verbose:
-            self.progress_bar = tqdm(total=batches*epochs,
-                                     unit='samples',
-                                     unit_scale=True)
-
-    async def loop_completed(self):
-        self.logger.info(f"Stopping data source {self.id}.")
-        if self.progress_bar is not None:
-            self.progress_bar.close()
-
-        if self.monitor_client is not None:
-            self.monitor_client.stop_benchmark()
-            self.logger.info("Waiting for the benchmark client to finish sending messages")
-            await asyncio.sleep(1)
-
-    async def task_completed(self, loss, log_file_prefix, processing_time : float):
-        # Logging
-        if self.progress_bar is not None:
-            self.progress_bar.update(1)
-        else:
-            self.logger.info(f"{self.id}: Processed a sample in {processing_time} seconds. Loss: {loss}")
-
-        # Benchmarks
-        if self.monitor_client is not None:
-            if self.warmed_up:
-                self.monitor_client.task_completed(processing_time)
-            else:
-                self.warmed_up = True
-                self.monitor_client.start_benchmark(f"{log_file_prefix}-monitor")
-                self.monitor_client.start_benchmark(f"{log_file_prefix}-tasks", benchmark_type="ClientBenchmark")
-
-    async def process_sample(self, features, labels):
-        result_data = await self.task_deployer.deploy_task({ 'activation': features,
-                                                             'labels': labels,
-                                                             'model_meta_data': self.model_meta_data,
-                                                             'capacity': 0 })
-#        if self.is_learning():
-#            split_grad, loss = result_data['gradient'], result_data['loss']
-#        else:
-        if 'pred' in result_data:
-            pred = result_data['pred']
-        else:
-            self.logger.info(f"Did not receive prediction in response {result_data}")
-        loss = None
-
-        return loss
-
-    async def start(self, batches, epochs, log_file_prefix, verbose = False, time_window = 0):
-        await self.loop_starting(batches, epochs, verbose)
-
-        for t in range(epochs):
-            offset = 0 if t == 0 else 1
-            for batch, (X, y) in enumerate(DataLoader(self.dataset, 1)):
-                task_started_at = time.time()
-                loss = await self.process_sample(X, y)
-
-                processing_time = time.time() - task_started_at
-                await self.task_completed(loss, log_file_prefix, processing_time=processing_time)
-
-                if batch + offset >= batches:
-                    break
-
-                if processing_time < time_window:
-                    await asyncio.sleep(time_window - processing_time)
-
-        await self.loop_completed()
-
-    def is_learning(self):
-        return self.application == 'learning'
+    async def start(self, dataset, model_meta_data, no_samples):
+        loop = asyncio.get_running_loop()
+        on_con_lost = loop.create_future()
+        transport, protocol = await loop.create_connection(lambda: ModelClientProtocol(self.id,
+                                                                                       dataset,
+                                                                                       model_meta_data,
+                                                                                       on_con_lost),
+                                                           self.config_manager.upstream_host,
+                                                           self.config_manager.upstream_port)
+        await on_con_lost
 
 async def run_datasources(args):
     tasks = []
@@ -101,15 +86,11 @@ async def run_datasources(args):
         model_id = str(i % args.no_models)
         model_meta_data = ModelMetaData(model_id, args.model_name)
         log_file_prefix = _get_benchmark_log_file_prefix(args, f"datasource{i}")
-        datasource = SplitNNDataSource(args.application,
-                                       model_meta_data,
-                                       dataset,
-                                       classes,
-                                       data_source_id=f"datasource{i}")
+        datasource = SplitNNDataSource(str(i))
         tasks.append(datasource.delay_coro(datasource.start,
-                                           args.batches,
-                                           int(args.epochs),
-                                           log_file_prefix,
+                                           dataset,
+                                           model_meta_data,
+                                           args.batches*int(args.epochs),
                                            delay=0))
 
     await asyncio.gather(*tasks)
