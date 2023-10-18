@@ -1,10 +1,8 @@
 import asyncio
 from time import time
 
-from torch.autograd import Variable
-
 from sparse_framework import TaskExecutor
-from sparse_framework.dl import count_model_parameters, get_device, ModelExecutor
+from sparse_framework.dl import count_model_parameters, get_device
 
 class TensorExecutor(TaskExecutor):
     def __init__(self, *args, **kwargs):
@@ -27,8 +25,6 @@ class TensorExecutor(TaskExecutor):
         """Execute a single gradient computation for the offloaded layers."""
         started_at = time()
         split_layer, model = input_data['activation'], input_data['model']
-
-        split_layer = Variable(split_layer).to(self.device)
 
         pred = model(split_layer)
 

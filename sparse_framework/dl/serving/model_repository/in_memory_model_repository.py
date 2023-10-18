@@ -1,6 +1,8 @@
 import asyncio
 import logging
 
+from torch.autograd import Variable
+
 from sparse_framework import Node
 
 from ...models import ModuleQueue
@@ -18,6 +20,12 @@ class InMemoryModelRepository(BaseModelRepository):
 
         self.device = device
         self.models = {}
+
+    def transferToDevice(self, tensor):
+        return tensor.to(self.device)
+
+    def transferToHost(self, tensor):
+        return tensor.to("cpu")
 
     def get_load_task(self, model_meta_data : ModelMetaData):
         if model_meta_data.model_id not in self.models.keys():

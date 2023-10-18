@@ -30,13 +30,13 @@ class ModelServeServerProtocol(asyncio.Protocol):
         load_task = self.model_repository.get_load_task(self.model_meta_data)
         model, loss_fn, optimizer = load_task.result()
         task_data = {
-                'activation': split_layer,
+                'activation': self.model_repository.transferToDevice(split_layer),
                 'model': model
         }
         self.queue.put_nowait(("forward_propagate", task_data, self.forward_propagated))
 
     def forward_propagated(self, result):
-        self.send_result({ "pred": result["pred"] }, task_latency=result["latency"])
+        self.send_result({ "pred": self.model_repository.transferToHost(result["pred"]) }, task_latency=result["latency"])
 
     def send_result(self, result, task_latency=0):
         self.transport.write(pickle.dumps(result))

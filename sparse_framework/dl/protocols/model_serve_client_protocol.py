@@ -50,7 +50,7 @@ class ModelServeClientProtocol(asyncio.Protocol):
 
         if (self.no_samples > 0):
             loop = asyncio.get_running_loop()
-            loop.call_later( self.target_rate-latency if self.target_rate-latency > 0 else 0, self.offload_task)
+            loop.call_later( self.target_rate-latency if self.target_rate > latency else 0, self.offload_task)
         else:
             self.transport.close()
 
