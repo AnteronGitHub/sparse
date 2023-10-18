@@ -1,14 +1,18 @@
 import asyncio
 import logging
+import uuid
 import sys
 
 from .config_manager import ConfigManager
 from ..stats.monitor_client import MonitorClient
 
 class Node:
-    def __init__(self, benchmark = True, log_level : int = logging.INFO):
+    def __init__(self, node_id : str = str(uuid.uuid4()), benchmark = True, log_level : int = logging.INFO):
+        self.node_id = node_id
+
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=log_level)
         self.logger = logging.getLogger("sparse")
+
         self.config_manager = ConfigManager()
         self.config_manager.load_config()
 
