@@ -10,7 +10,7 @@ class RequestStatistics():
     def count_statistics(self):
         no_requests = len(self.request_records)
         if no_requests == 0:
-            return 0, 0, 0
+            return 0, 0, 0, 0
 
         avg_latency = 0
         avg_offload_latency = 0

@@ -1,6 +1,4 @@
 import asyncio
-import functools
-from concurrent.futures import ThreadPoolExecutor
 from time import time
 
 from torch.autograd import Variable
@@ -9,19 +7,13 @@ from sparse_framework import TaskExecutor
 from sparse_framework.dl import count_model_parameters, get_device, ModelExecutor
 
 class TensorExecutor(TaskExecutor):
-    def __init__(self, **args):
-        super().__init__(**args)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.device = get_device()
-        self.executor = ThreadPoolExecutor()
 
-    async def start(self, queue):
+    async def start(self):
         self.logger.info(f"Task executor using {self.device} for tensor processing.")
-
-        loop = asyncio.get_running_loop()
-        while True:
-            task_type, input_data, callback = await queue.get()
-            await loop.run_in_executor(self.executor, functools.partial(self.execute_task, task_type, input_data, callback))
-            queue.task_done()
+        await super().start()
 
     def execute_task(self, fn_name, input_data: dict, callback) -> dict:
         if fn_name == "forward_propagate":
@@ -34,11 +26,9 @@ class TensorExecutor(TaskExecutor):
     def forward_propagate(self, input_data: dict, callback) -> dict:
         """Execute a single gradient computation for the offloaded layers."""
         started_at = time()
-        split_layer, model = input_data['activation'], \
-                             input_data['model']
+        split_layer, model = input_data['activation'], input_data['model']
 
-        split_layer = Variable(split_layer, requires_grad=True).to(self.device)
-        split_layer.retain_grad()
+        split_layer = Variable(split_layer).to(self.device)
 
         pred = model(split_layer)
 
