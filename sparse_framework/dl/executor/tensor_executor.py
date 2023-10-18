@@ -8,7 +8,7 @@ from torch.autograd import Variable
 from sparse_framework import TaskExecutor
 from sparse_framework.dl import count_model_parameters, get_device, ModelExecutor
 
-class GradientCalculator(TaskExecutor):
+class TensorExecutor(TaskExecutor):
     def __init__(self, **args):
         super().__init__(**args)
         self.device = get_device()

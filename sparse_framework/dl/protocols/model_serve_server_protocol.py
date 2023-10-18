@@ -3,9 +3,7 @@ import logging
 import pickle
 from time import time
 
-from sparse_framework import RXPipe
-
-class ModelPipe(asyncio.Protocol):
+class ModelServeServerProtocol(asyncio.Protocol):
     def __init__(self, queue, task_executor, model_repository):
         self.logger = logging.getLogger("sparse")
         self.queue = queue
