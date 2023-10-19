@@ -44,7 +44,6 @@ delete_pods () {
   esac
 
   delete_sparse_resource "model_server"
-  delete_sparse_resource "sparse_monitor"
 }
 
 delete_pods

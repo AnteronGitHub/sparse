@@ -63,6 +63,8 @@ spec:
           mountPath: /data
         - name: sparse-run
           mountPath: /run/sparse
+        - name: sparse-stats
+          mountPath: /data/stats
       restartPolicy: Never
       volumes:
       - name: app-code
@@ -77,3 +79,6 @@ spec:
       - name: sparse-run
         hostPath:
           path: /run/sparse
+      - name: sparse-stats
+        hostPath:
+          path: /var/lib/sparse/stats

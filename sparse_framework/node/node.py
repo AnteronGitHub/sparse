@@ -1,10 +1,10 @@
 import asyncio
 import logging
 import uuid
-import sys
 
 from .config_manager import ConfigManager
 from ..stats.monitor_client import MonitorClient
+from ..stats import MonitorDaemon
 
 class Node:
     def __init__(self, node_id : str = str(uuid.uuid4()), benchmark = True, log_level : int = logging.INFO):
@@ -16,16 +16,12 @@ class Node:
         self.config_manager = ConfigManager()
         self.config_manager.load_config()
 
-        if benchmark:
-            self.logger.debug(f"Benchmarking execution")
-            self.monitor_client = MonitorClient()
-        else:
-            self.logger.debug(f"Not benchmarking execution")
-            self.monitor_client = None
+        self.stats_queue = None
 
-    async def delay_coro(self, coro, *args, delay : float):
-        await asyncio.sleep(delay)
-        await coro(*args)
+    def get_futures(self):
+        self.stats_queue = asyncio.Queue()
+        self.monitor_daemon = MonitorDaemon(self.stats_queue)
+        return [self.monitor_daemon.start()]
 
-    def add_timeout(self, coro, *args, delay : float = 10):
-        return asyncio.create_task(self.delay_coro(coro, *args, delay=delay))
+    async def start(self):
+        await asyncio.gather(*self.get_futures())

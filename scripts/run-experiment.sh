@@ -18,7 +18,6 @@ wait_for_deployment () {
 }
 
 deploy_nodes () {
-  deploy_sparse_resource "sparse_monitor"
   deploy_sparse_resource "model_server"
 
   case $SPARSE_SUITE in

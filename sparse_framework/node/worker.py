@@ -16,11 +16,16 @@ class Worker(Node):
         if isinstance(self, Master):
             self.task_executor.task_deployer = self.task_deployer
 
-    async def start(self):
+    def get_futures(self):
+        futures = super().get_futures()
+
         task_queue = asyncio.Queue()
         task_executor = self.task_executor(task_queue)
         rx_pipe = TCPServer(self.config_manager.listen_address, self.config_manager.listen_port)
-        await asyncio.gather(task_executor.start(),
-                             rx_pipe.serve(lambda: self.rx_protocol(task_queue,
-                                                                    task_executor,
-                                                                    self.model_repository)))
+        rx_protocol_factory = lambda: self.rx_protocol(task_queue, task_executor, self.model_repository)
+
+        futures.append(task_executor.start())
+        futures.append(rx_pipe.serve(rx_protocol_factory))
+
+        return futures
+

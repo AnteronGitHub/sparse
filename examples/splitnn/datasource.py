@@ -8,12 +8,11 @@ async def run_datasources(args):
     tasks = []
     dataset, classes = DatasetRepository().get_dataset(args.dataset)
     for i in range(args.no_datasources):
-        datasource = ModelServeClient(node_id=str(i))
-        tasks.append(datasource.delay_coro(datasource.start,
-                                           dataset,
-                                           ModelMetaData(model_id=str(i % args.no_models), model_name=args.model_name),
-                                           args.batches*int(args.epochs),
-                                           delay=0))
+        datasource = ModelServeClient(dataset,
+                                      ModelMetaData(model_id=str(i % args.no_models), model_name=args.model_name),
+                                      args.batches*int(args.epochs),
+                                      node_id=str(i))
+        tasks.append(datasource.start())
 
     await asyncio.gather(*tasks)
 
