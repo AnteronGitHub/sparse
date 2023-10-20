@@ -2,7 +2,7 @@ from datetime import datetime
 import logging
 import os
 
-from .request_statistics_record import RequestStatisticsRecord
+from .request_statistics import RequestStatisticsRecord
 
 class FileLogger():
     def __init__(self, data_dir = '/data/stats'):
@@ -13,16 +13,17 @@ class FileLogger():
 
         self.files = {}
 
-    def get_log_file(self, statistics : str):
+    def get_log_file(self, record):
+        statistics = type(record).__name__
         log_file_name = f"{statistics}.csv"
         if statistics not in self.files.keys():
             self.files[statistics] = os.path.join(self.data_dir, log_file_name)
             with open(self.files[statistics], 'a') as f:
-                f.write(RequestStatisticsRecord.csv_header())
+                f.write(record.csv_header())
         return self.files[statistics]
 
     def log_record(self, record):
-        file_path = self.get_log_file(type(record).__name__)
+        file_path = self.get_log_file(record)
         if file_path is not None:
             with open(file_path, 'a') as f:
                 f.write(record.to_csv())

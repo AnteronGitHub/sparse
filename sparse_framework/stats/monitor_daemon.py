@@ -4,7 +4,7 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 
 from .file_logger import FileLogger
-from .request_statistics_record import RequestStatisticsRecord
+from .request_statistics import RequestStatisticsRecord
 
 class MonitorDaemon:
     def __init__(self, queue):

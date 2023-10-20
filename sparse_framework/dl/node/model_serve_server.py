@@ -7,9 +7,14 @@ from ..utils import get_device
 
 class ModelServeServer(Worker):
     def __init__(self):
-        Worker.__init__(self, task_executor=TensorExecutor, rx_protocol=ModelServeServerProtocol)
+        rx_protocol_factory = lambda task_queue, stats_queue: \
+                                    lambda: ModelServeServerProtocol(self, task_queue, stats_queue)
+        super().__init__(rx_protocol_factory, task_executor=TensorExecutor)
 
-    async def start(self):
-        self.model_repository = InMemoryModelRepository(self, get_device())
-        await super().start()
+        self.model_repository = None
+
+    def get_model_repository(self):
+        if (self.model_repository is None):
+            self.model_repository = InMemoryModelRepository(self, get_device())
+        return self.model_repository
 

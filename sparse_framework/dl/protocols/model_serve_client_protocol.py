@@ -4,7 +4,7 @@ import pickle
 
 from torch.utils.data import DataLoader
 
-from sparse_framework.stats import RequestStatistics
+from sparse_framework.stats import ClientRequestStatistics
 
 TARGET_FPS = 5.0
 
@@ -18,7 +18,7 @@ class ModelServeClientProtocol(asyncio.Protocol):
 
         self.logger = logging.getLogger(f"sparse datasource {data_source_id}")
 
-        self.statistics = RequestStatistics(data_source_id, stats_queue)
+        self.statistics = ClientRequestStatistics(data_source_id, stats_queue)
 
     def initialize_stream(self):
         self.statistics.task_started("initialize_stream")
@@ -65,6 +65,6 @@ class ModelServeClientProtocol(asyncio.Protocol):
             self.offload_task_completed(result_data)
 
     def connection_lost(self, exc):
-        self.logger.info(self.statistics.print_statistics())
+        self.logger.info(self.statistics)
         self.on_con_lost.set_result(True)
 
