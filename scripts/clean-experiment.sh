@@ -9,6 +9,7 @@ delete_resource () {
 }
 
 delete_pods () {
+  SPARSE_EXAMPLE="splitnn"
   case $SPARSE_SUITE in
     "edge_offloading")
       delete_resource $SPARSE_EXAMPLE "datasource"

@@ -35,25 +35,16 @@ spec:
         - "$SPARSE_NO_DATASOURCES"
         - "--no-models"
         - "$SPARSE_NO_MODELS"
-        - "--application"
-        - "$SPARSE_APPLICATION"
         - "--suite"
         - "$SPARSE_SUITE"
         - "--model"
         - "$SPARSE_MODEL"
         - "--dataset"
         - "$SPARSE_DATASET"
-        - "--batch-size"
-        - "$SPARSE_BATCH_SIZE"
         - "--batches"
         - "$SPARSE_BATCHES"
         - "--epochs"
         - "$SPARSE_EPOCHS"
-        resources:
-          limits:
-            cpu: "$SPARSE_DATASOURCE_CPU_LIMIT"
-              # Adding memory limitations restrics using swap
-              #            memory: "$SPARSE_DATASOURCE_MEMORY_LIMIT"
         volumeMounts:
         - name: app-code
           mountPath: /app

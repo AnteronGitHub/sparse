@@ -40,20 +40,12 @@ spec:
         command: ["python3"]
         args:
         - "worker.py"
-        - "--application"
-        - "$SPARSE_APPLICATION"
         - "--suite"
         - "$SPARSE_SUITE"
         - "--model"
         - "$SPARSE_MODEL"
         - "--dataset"
         - "$SPARSE_DATASET"
-        - "--batch-size"
-        - "$SPARSE_BATCH_SIZE"
-        - "--batches"
-        - "$SPARSE_BATCHES"
-        - "--epochs"
-        - "$SPARSE_EPOCHS"
         volumeMounts:
         - name: app-code
           mountPath: /app
