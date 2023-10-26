@@ -9,7 +9,7 @@ from sparse_framework.stats import ClientRequestStatistics
 TARGET_FPS = 5.0
 
 class ModelServeClientProtocol(asyncio.Protocol):
-    def __init__(self, data_source_id, dataset, model_meta_data, on_con_lost, no_samples = 64, target_rate = 1/TARGET_FPS, stats_queue = None):
+    def __init__(self, data_source_id, dataset, model_meta_data, on_con_lost, no_samples, target_rate = 1/TARGET_FPS, stats_queue = None):
         self.dataloader = DataLoader(dataset, 1)
         self.model_meta_data = model_meta_data
         self.on_con_lost = on_con_lost
@@ -57,12 +57,15 @@ class ModelServeClientProtocol(asyncio.Protocol):
         self.initialize_stream()
 
     def data_received(self, data):
-        result_data = pickle.loads(data)
-
-        if "statusCode" in result_data.keys():
-            self.stream_initialized(result_data)
-        else:
-            self.offload_task_completed(result_data)
+        try:
+            result_data = pickle.loads(data)
+            if "statusCode" in result_data.keys():
+                self.stream_initialized(result_data)
+            else:
+                self.offload_task_completed(result_data)
+        except:
+            self.logger.error("Unable to parse response, retrying task")
+            self.offload_task()
 
     def connection_lost(self, exc):
         self.logger.info(self.statistics)

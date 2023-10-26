@@ -7,7 +7,7 @@ from ..protocols import ModelServeClientProtocol
 class ModelServeClient(Master):
     def __init__(self, dataset, model_meta_data, no_samples, **kwargs):
         super().__init__(**kwargs)
-        self.protocol_factory = lambda on_con_lost, stats_queue: lambda: ModelServeClientProtocol(self.node_id, dataset, model_meta_data, on_con_lost, stats_queue=stats_queue)
+        self.protocol_factory = lambda on_con_lost, stats_queue: lambda: ModelServeClientProtocol(self.node_id, dataset, model_meta_data, on_con_lost, no_samples, stats_queue=stats_queue)
 
     def get_futures(self):
         futures = super().get_futures()
