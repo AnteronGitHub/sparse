@@ -44,7 +44,7 @@ class InMemoryModelRepository(BaseModelRepository):
 
     def model_loaded(self, model_meta_data : ModelMetaData, load_task, callback):
         model, loss_fn, optimizer = load_task.result()
-        self.models[model_meta_data.model_id]["model"] = model
+        self.models[model_meta_data.model_id]["model"] = model.to(self.device)
         self.models[model_meta_data.model_id]["loss_fn"] = loss_fn
         self.models[model_meta_data.model_id]["optimizer"] = optimizer
         callback(load_task)
