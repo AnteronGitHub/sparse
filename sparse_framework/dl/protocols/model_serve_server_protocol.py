@@ -1,4 +1,5 @@
 import asyncio
+import io
 import logging
 import pickle
 from time import time
@@ -13,6 +14,7 @@ class ModelServeServerProtocol(asyncio.Protocol):
         self.model_repository = node.get_model_repository()
 
         self.model_meta_data = None
+        self.input_buffer = io.BytesIO()
         self.statistics = ServerRequestStatistics(node.node_id, stats_queue)
 
     def initialize_stream(self, input_data):
@@ -62,12 +64,16 @@ class ModelServeServerProtocol(asyncio.Protocol):
         self.logger.info(f"Received connection from {peername}.")
 
     def data_received(self, data):
+        initial_buffer_len = self.input_buffer.getbuffer().nbytes
+        self.input_buffer.write(data)
         try:
-            input_data = pickle.loads(data)
-        except pickle.UnpicklingError:
-            self.logger.error("Unpickling error occurred")
-            # TODO: implement better handling
-            self.send_result({ "pred": None })
+            input_data = pickle.loads(self.input_buffer.getvalue())
+            self.input_buffer = io.BytesIO()
+            if initial_buffer_len > 0:
+                self.logger.error(f"Reassembled payload from chunks.")
+        except:
+            # TODO: Handle buffer overflow
+            self.logger.error(f"Deserialization error. {self.input_buffer.getbuffer().nbytes} bytes buffered.")
             return
 
         if input_data["op"] == "initialize_stream":
