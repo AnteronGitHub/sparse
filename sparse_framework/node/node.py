@@ -3,7 +3,6 @@ import logging
 import uuid
 
 from .config_manager import ConfigManager
-from ..stats.monitor_client import MonitorClient
 from ..stats import MonitorDaemon
 
 class Node:
