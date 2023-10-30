@@ -22,7 +22,7 @@ $(docker_build_file): $(sparse_py) $(dockerfile)
 								 -t $(docker_image)
 	touch $(docker_build_file)
 
-.PHONY: docker clean run-experiment clean-experiment
+.PHONY: docker clean run run-experiment clean-experiment
 
 docker: $(docker_build_file)
 	make -C examples/splitnn docker
@@ -35,7 +35,7 @@ clean:
 	docker image prune -f
 	sudo rm -rf $(pycache) $(docker_build_file)
 
-run-experiment:
+run run-experiment:
 	scripts/run-experiment.sh
 
 clean-experiment:

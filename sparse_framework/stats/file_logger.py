@@ -17,9 +17,11 @@ class FileLogger():
         statistics = type(record).__name__
         log_file_name = f"{statistics}.csv"
         if statistics not in self.files.keys():
-            self.files[statistics] = os.path.join(self.data_dir, log_file_name)
-            with open(self.files[statistics], 'a') as f:
-                f.write(record.csv_header())
+            filepath = os.path.join(self.data_dir, log_file_name)
+            self.files[statistics] = filepath
+            if not os.path.exists(filepath):
+                with open(self.files[statistics], 'a') as f:
+                    f.write(record.csv_header())
         return self.files[statistics]
 
     def log_record(self, record):
