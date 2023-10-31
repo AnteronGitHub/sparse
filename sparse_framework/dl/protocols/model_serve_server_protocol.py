@@ -1,21 +1,16 @@
-import asyncio
-import io
-import logging
-import pickle
-from time import time
-
+from sparse_framework.networking.protocols import SparseProtocol
 from sparse_framework.stats import ServerRequestStatistics
 
-class ModelServeServerProtocol(asyncio.Protocol):
+class ModelServeServerProtocol(SparseProtocol):
     def __init__(self, node, queue, stats_queue):
-        self.logger = logging.getLogger("sparse")
+        super().__init__()
+
         self.queue = queue
         self.stats_queue = stats_queue
         self.model_repository = node.get_model_repository()
+        self.statistics = ServerRequestStatistics(node.node_id, stats_queue)
 
         self.model_meta_data = None
-        self.input_buffer = io.BytesIO()
-        self.statistics = ServerRequestStatistics(node.node_id, stats_queue)
 
     def initialize_stream(self, input_data):
         self.statistics.task_started("initialize_stream")
@@ -31,7 +26,7 @@ class ModelServeServerProtocol(asyncio.Protocol):
         self.statistics.current_record.queued()
 
     def model_loaded(self, load_task):
-        self.send_result({ "statusCode": 200 })
+        self.send_payload({ "statusCode": 200 })
 
     def offload_task(self, input_data):
         self.statistics.task_started("offload_task")
@@ -50,36 +45,25 @@ class ModelServeServerProtocol(asyncio.Protocol):
         task_latency = result["latency"]
         self.statistics.current_record.set_task_latency(task_latency)
 
-        self.send_result({ "pred": self.model_repository.transferToHost(result["pred"]) })
+        self.send_payload({ "pred": self.model_repository.transferToHost(result["pred"]) })
 
-    def send_result(self, result):
-        self.transport.write(pickle.dumps(result))
-
-        self.statistics.task_completed()
+    def payload_received(self, payload):
+        if payload["op"] == "initialize_stream":
+            self.initialize_stream(payload)
+        else:
+            self.offload_task(payload)
 
     def connection_made(self, transport):
         self.statistics.connected()
-        peername = transport.get_extra_info('peername')
-        self.transport = transport
-        self.logger.info(f"Received connection from {peername}.")
 
-    def data_received(self, data):
-        initial_buffer_len = self.input_buffer.getbuffer().nbytes
-        self.input_buffer.write(data)
-        try:
-            input_data = pickle.loads(self.input_buffer.getvalue())
-            self.input_buffer = io.BytesIO()
-            if initial_buffer_len > 0:
-                self.logger.error(f"Reassembled payload from chunks.")
-        except:
-            # TODO: Handle buffer overflow
-            self.logger.error(f"Deserialization error. {self.input_buffer.getbuffer().nbytes} bytes buffered.")
-            return
-
-        if input_data["op"] == "initialize_stream":
-            self.initialize_stream(input_data)
-        else:
-            self.offload_task(input_data)
+        super().connection_made(transport)
 
     def connection_lost(self, exc):
         self.logger.info(self.statistics)
+
+        super().connection_lost(exc)
+
+    def send_payload(self, payload):
+        super().send_payload(payload)
+
+        self.statistics.task_completed()

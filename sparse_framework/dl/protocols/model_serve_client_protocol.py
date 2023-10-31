@@ -1,28 +1,24 @@
 import asyncio
-import logging
-import pickle
 
 from torch.utils.data import DataLoader
 
+from sparse_framework.networking.protocols import SparseProtocol
 from sparse_framework.stats import ClientRequestStatistics
 
 TARGET_FPS = 5.0
 
-class ModelServeClientProtocol(asyncio.Protocol):
+class ModelServeClientProtocol(SparseProtocol):
     def __init__(self, data_source_id, dataset, model_meta_data, on_con_lost, no_samples, target_rate = 1/TARGET_FPS, stats_queue = None):
+        super().__init__(on_con_lost)
         self.dataloader = DataLoader(dataset, 1)
         self.model_meta_data = model_meta_data
-        self.on_con_lost = on_con_lost
         self.no_samples = no_samples
         self.target_rate = target_rate
-
-        self.logger = logging.getLogger(f"sparse datasource {data_source_id}")
-
         self.statistics = ClientRequestStatistics(data_source_id, stats_queue)
 
     def initialize_stream(self):
         self.statistics.task_started("initialize_stream")
-        self.transport.write(pickle.dumps({ 'op': "initialize_stream", 'model_meta_data': self.model_meta_data }))
+        self.send_payload({ 'op': "initialize_stream", 'model_meta_data': self.model_meta_data })
         self.statistics.request_sent()
 
     def stream_initialized(self, result_data):
@@ -34,10 +30,10 @@ class ModelServeClientProtocol(asyncio.Protocol):
         self.statistics.task_started("offload_task")
         self.no_samples -= 1
         features, labels = next(iter(self.dataloader))
-        self.transport.write(pickle.dumps({ 'op': 'offload_task',
-                                            'activation': features,
-                                            'labels': labels,
-                                            'model_meta_data': self.model_meta_data }))
+        self.send_payload({ 'op': 'offload_task',
+                            'activation': features,
+                            'labels': labels,
+                            'model_meta_data': self.model_meta_data })
         self.statistics.request_sent()
 
     def offload_task_completed(self, result_data):
@@ -51,23 +47,18 @@ class ModelServeClientProtocol(asyncio.Protocol):
 
     def connection_made(self, transport):
         self.statistics.connected()
-        (addr, port) = transport.get_extra_info('peername')
-        self.logger.info(f"Connected to downstream host on {addr}:{port}.")
-        self.transport = transport
+
+        super().connection_made(transport)
+
         self.initialize_stream()
 
-    def data_received(self, data):
-        try:
-            result_data = pickle.loads(data)
-            if "statusCode" in result_data.keys():
-                self.stream_initialized(result_data)
-            else:
-                self.offload_task_completed(result_data)
-        except:
-            self.logger.error("Unable to parse response, retrying task")
-            self.offload_task()
+    def payload_received(self, payload):
+        if "statusCode" in payload.keys():
+            self.stream_initialized(payload)
+        else:
+            self.offload_task_completed(payload)
 
     def connection_lost(self, exc):
-        self.logger.info(self.statistics)
-        self.on_con_lost.set_result(True)
+        super().connection_lost(exc)
 
+        self.logger.info(self.statistics)
