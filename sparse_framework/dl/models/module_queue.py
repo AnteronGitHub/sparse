@@ -1,29 +1,28 @@
 import torch
-from torch.nn import Module, ModuleList
+from torch.nn import ModuleList
 
 import os
 
-class ModuleQueue(Module):
+class ModuleQueue(ModuleList):
     def __init__(self, partitions = [], start = 0):
-        super().__init__()
-        self.partitions = ModuleList(partitions)
+        super().__init__(partitions)
         self.start = start
 
     def forward(self, x):
-        for p in self.partitions:
+        for p in self:
             x = p(x)
         return x
 
-    def append(self, module):
-        self.partitions.append(module)
-
     def pop(self):
-        module = self.partitions.__getitem__(0)
-        self.partitions.__delitem__(0)
+        """Removes the first module in the queue, increasing the start index by one.
+        """
+        module = self.__getitem__(0)
+        self.__delitem__(0)
+        self.start += 1
         return module
 
     def load_parameters(self, data_path : str, model_name : str):
-        for i, p in enumerate(self.partitions):
+        for i, p in enumerate(self):
             filepath = os.path.join(data_path, f"{model_name}_{self.start+i}.pt")
             if not os.path.exists(filepath):
                 return False
@@ -32,6 +31,6 @@ class ModuleQueue(Module):
         return True
 
     def save_parameters(self, data_path : str, model_name : str):
-        for i, p in enumerate(self.partitions):
+        for i, p in enumerate(self):
             filepath = os.path.join(data_path, f"{model_name}_{self.start+i}.pt")
             torch.save(p.state_dict(), filepath)

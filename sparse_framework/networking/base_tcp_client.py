@@ -21,12 +21,12 @@ class BaseTCPClient():
         while True:
             try:
                 task = asyncio.open_connection(self.server_address, self.server_port)
-                reader, writer = await asyncio.wait_for(task, timeout=5)
+                reader, writer = await asyncio.wait_for(task, timeout=30)
                 break
             except ConnectionRefusedError:
                 self.logger.error(f"Unable to connect to TCP server on {self.server_address}:{self.server_port}. Trying again in 5 seconds...")
                 await asyncio.sleep(5)
-            except TimeoutError:
+            except asyncio.exceptions.TimeoutError:
                 self.logger.error("Connection to TCP server on {self.server_address}:{self.server_port} timed out. Retrying...")
 
         writer.write(request_payload)

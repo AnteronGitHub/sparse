@@ -7,4 +7,10 @@ else:
     from .tcp_client_legacy import TCPClientLegacy as TCPClient
     from .tcp_server_legacy import TCPServerLegacy as TCPServer
 
-__all__ = ["TCPClient", "TCPServer"]
+from .unix_socket_client import UnixSocketClient
+from .unix_socket_server import UnixSocketServer
+
+__all__ = [ "TCPClient",
+            "TCPServer",
+            "UnixSocketClient",
+            "UnixSocketServer" ]

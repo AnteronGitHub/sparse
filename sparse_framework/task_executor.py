@@ -1,4 +1,8 @@
+import asyncio
+import functools
 import logging
+
+from concurrent.futures import ThreadPoolExecutor
 
 class TaskExecutor:
     """Common base class for task execution logic. This class implements potentially hardware-accelerated computations
@@ -7,21 +11,17 @@ class TaskExecutor:
     User is expected to implement the computation logic by defining a custom execute_task() function. Additionally it
     is possible to implement custom initialization code by overriding optional start() hook.
     """
-    def __init__(self):
-        self.task_deployer = None
-        self.node = None
+    def __init__(self, queue):
+        self.logger = logging.getLogger("sparse")
+        self.executor = ThreadPoolExecutor()
+        self.queue = queue
 
-    def start(self):
-        self.logger.debug("Starting task executor")
+    async def start(self):
+        loop = asyncio.get_running_loop()
+        while True:
+            task_type, input_data, callback = await self.queue.get()
+            await loop.run_in_executor(self.executor, functools.partial(self.execute_task, task_type, input_data, callback))
+            self.queue.task_done()
 
-    def set_benchmark(self, benchmark):
-        self.benchmark = benchmark
-
-    def set_logger(self, logger : logging.Logger = logging.getLogger("sparse")):
-        self.logger = logger
-
-    def set_node(self, node):
-        self.node = node
-
-    async def execute_task(self, input_data : dict) -> dict:
+    def execute_task(self, input_data : dict) -> dict:
         raise "Task executor not implemented! See documentation on how to implement your own executor"

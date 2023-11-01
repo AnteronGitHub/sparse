@@ -40,20 +40,12 @@ spec:
         command: ["python3"]
         args:
         - "worker.py"
-        - "--application"
-        - "$SPARSE_APPLICATION"
         - "--suite"
         - "$SPARSE_SUITE"
         - "--model"
         - "$SPARSE_MODEL"
         - "--dataset"
         - "$SPARSE_DATASET"
-        - "--batch-size"
-        - "$SPARSE_BATCH_SIZE"
-        - "--batches"
-        - "$SPARSE_BATCHES"
-        - "--epochs"
-        - "$SPARSE_EPOCHS"
         volumeMounts:
         - name: app-code
           mountPath: /app
@@ -61,6 +53,8 @@ spec:
           mountPath: /usr/lib/sparse_framework
         - name: sparse-run
           mountPath: /run/sparse
+        - name: sparse-stats
+          mountPath: /data/stats
       volumes:
       - name: app-code
         hostPath:
@@ -71,3 +65,6 @@ spec:
       - name: sparse-run
         hostPath:
           path: /run/sparse
+      - name: sparse-stats
+        hostPath:
+          path: /var/lib/sparse/stats

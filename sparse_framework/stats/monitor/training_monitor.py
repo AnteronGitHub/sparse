@@ -1,8 +1,6 @@
-from importlib.util import find_spec
+from .base_monitor import BaseMonitor
 
-from . import Monitor
-
-class TrainingMonitor(Monitor):
+class TrainingMonitor(BaseMonitor):
     def __init__(self):
         self.processed_samples = 0
         self.processed_tasks = 0

@@ -1,31 +1,32 @@
-from torch.nn import Module
+import asyncio
+import logging
+import pickle
 
 from sparse_framework.networking import TCPServer
 
 from ..utils import count_model_parameters
-from .model_repository import ModelRepository
+from .model_repository import DiskModelRepository
 
-class ModelServer(TCPServer):
+class ModelServer(asyncio.Protocol):
     """TCP server for deploying models with latest trained parameters.
     """
-    def __init__(self, model_repository : ModelRepository, **args):
-        super().__init__(**args)
-
+    def __init__(self, model_repository : DiskModelRepository):
+        self.logger = logging.getLogger("sparse")
         self.model_repository = model_repository
 
-    def get_model(self, input_data : dict, context : dict):
-        model_name, partition = input_data["model_name"], input_data["partition"]
+    def get_model(self, input_data : dict):
+        model_meta_data = input_data["model_meta_data"]
 
-        model, loss_fn, optimizer = self.model_repository.get_model(model_name, partition)
+        model, loss_fn, optimizer = self.model_repository.get_model(model_meta_data)
 
-        return { "model": model, "loss_fn": loss_fn, "optimizer": optimizer }, { "method": "get_model", "model" : model }
+        return { "model": model, "loss_fn": loss_fn, "optimizer": optimizer }
 
-    def save_model(self, input_data : dict, context : dict):
-        model, model_name, partition = input_data["model"], input_data["model_name"], input_data["partition"]
+    def save_model(self, input_data : dict):
+        model, model_meta_data = input_data["model"], input_data["model_meta_data"]
 
-        self.model_repository.save_model(model, model_name, partition)
+        self.model_repository.save_model(model, model_meta_data)
 
-        return { "status": "ok" }, { "method": "save_model", "model" : model }
+        return { "status": "ok" }
 
     def request_processed(self, request_context : dict, processing_time : float):
         if request_context["method"] == "get_model":
@@ -37,15 +38,21 @@ class ModelServer(TCPServer):
             num_parameters = count_model_parameters(saved_model)
             self.logger.info(f"Saved model '{type(saved_model).__name__}' with {num_parameters} parameters in {processing_time} seconds.")
 
-    async def handle_request(self, input_data : dict, context : dict) -> dict:
+    def connection_made(self, transport):
+        peername = transport.get_extra_info('peername')
+        self.logger.info('Connection from {}'.format(peername))
+        self.transport = transport
+
+    def data_received(self, data):
+        input_data = pickle.loads(data)
         method = input_data["method"]
-        context["method"] = method
 
         if method == "get_model":
-            return self.get_model(input_data, context)
+            self.transport.write(pickle.dumps(self.get_model(input_data)))
         elif method == "save_model":
-            return self.save_model(input_data, context)
+            self.transport.write(pickle.dumps(self.save_model(input_data)))
         else:
             self.logger.error(f"Received unreckognized method '{method}'.")
-            return input_data, context
-
+            self.transport.write(f"Received unreckognized method '{method}'.")
+        self.transport.close()
+        self.logger.info(f"Processed request.")

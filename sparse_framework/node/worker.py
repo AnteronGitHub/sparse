@@ -1,25 +1,38 @@
+import asyncio
+
 from .node import Node
 from .master import Master
 
-from ..rx_pipe import RXPipe
 from ..task_executor import TaskExecutor
 
 class Worker(Node):
-    def __init__(self, task_executor : TaskExecutor, rx_pipe : RXPipe = None, benchmark_log_file_prefix = 'benchmark_sparse'):
+    def __init__(self, rx_protocol_factory, task_executor = TaskExecutor):
         Node.__init__(self)
+
         self.task_executor = task_executor
-        self.task_executor.set_logger(self.logger)
-        self.task_executor.set_node(self)
+        self.rx_protocol_factory = rx_protocol_factory
 
-        if rx_pipe:
-            self.rx_pipe = rx_pipe
-        else:
-            self.rx_pipe = RXPipe(benchmark_log_file_prefix = benchmark_log_file_prefix)
-        self.rx_pipe.set_node(self)
+        self.task_queue = None
 
-        if isinstance(self, Master):
-            self.task_executor.task_deployer = self.task_deployer
+    async def start_task_executor(self):
+        await self.task_executor(self.task_queue).start()
 
-    def start(self):
-        self.task_executor.start()
-        self.rx_pipe.start()
+    async def start_rx_pipe(self):
+        loop = asyncio.get_running_loop()
+
+        server = await loop.create_server(self.rx_protocol_factory(self.task_queue, self.stats_queue), \
+                                          self.config_manager.listen_address, \
+                                          self.config_manager.listen_port)
+        async with server:
+            await server.serve_forever()
+
+    def get_futures(self):
+        futures = super().get_futures()
+
+        self.task_queue = asyncio.Queue()
+
+        futures.append(self.start_task_executor())
+        futures.append(self.start_rx_pipe())
+
+        return futures
+
