@@ -2,9 +2,7 @@ import asyncio
 import logging
 import pickle
 
-from sparse_framework.networking import TCPClient
-
-class TaskDeployer(TCPClient):
+class TaskDeployer:
     """Class that handles network connections to available worker nodes.
     """
 
