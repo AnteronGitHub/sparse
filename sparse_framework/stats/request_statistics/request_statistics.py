@@ -14,7 +14,7 @@ class RequestStatistics():
     def connected(self):
         self.connected_at = time()
 
-    def task_started(self, task_op):
+    def create_record(self, task_op):
         self.current_record = RequestStatisticsRecord(self.node_id, task_op, self.connected_at)
 
     def task_completed(self):
@@ -48,7 +48,7 @@ class RequestStatistics():
             return f"{no_requests} tasks / {1.0/avg_latency:.2f} avg FPS."
 
 class ServerRequestStatistics(RequestStatistics):
-    def task_started(self, task_op):
+    def create_record(self, task_op):
         self.current_record = ServerRequestStatisticsRecord(self.node_id, task_op, self.connected_at)
 
     def count_statistics(self):
@@ -79,7 +79,7 @@ class ServerRequestStatistics(RequestStatistics):
             return f"{no_requests} tasks / {1.0/avg_latency:.2f} avg FPS / {1000*avg_queuing_time:.2f} ms avg queuing time / {1000*avg_task_latency:.2f} ms avg task latency"
 
 class ClientRequestStatistics(RequestStatistics):
-    def task_started(self, task_op):
+    def create_record(self, task_op):
         self.current_record = ClientRequestStatisticsRecord(self.node_id, task_op, self.connected_at)
 
     def request_sent(self):

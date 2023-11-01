@@ -17,7 +17,7 @@ class ModelServeClientProtocol(SparseProtocol):
         self.statistics = ClientRequestStatistics(data_source_id, stats_queue)
 
     def initialize_stream(self):
-        self.statistics.task_started("initialize_stream")
+        self.statistics.create_record("initialize_stream")
         self.send_payload({ 'op': "initialize_stream", 'model_meta_data': self.model_meta_data })
         self.statistics.request_sent()
 
@@ -27,14 +27,13 @@ class ModelServeClientProtocol(SparseProtocol):
         self.offload_task()
 
     def offload_task(self):
-        self.statistics.task_started("offload_task")
+        self.statistics.create_record("offload_task")
         self.no_samples -= 1
         features, labels = next(iter(self.dataloader))
         self.send_payload({ 'op': 'offload_task',
                             'activation': features,
                             'labels': labels,
                             'model_meta_data': self.model_meta_data })
-        self.statistics.request_sent()
 
     def offload_task_completed(self, result_data):
         latency = self.statistics.task_completed()
@@ -57,6 +56,11 @@ class ModelServeClientProtocol(SparseProtocol):
             self.stream_initialized(payload)
         else:
             self.offload_task_completed(payload)
+
+    def send_payload(self, payload):
+        super().send_payload(payload)
+
+        self.statistics.request_sent()
 
     def connection_lost(self, exc):
         super().connection_lost(exc)

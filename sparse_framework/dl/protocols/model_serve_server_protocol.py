@@ -13,7 +13,7 @@ class ModelServeServerProtocol(SparseProtocol):
         self.model_meta_data = None
 
     def initialize_stream(self, input_data):
-        self.statistics.task_started("initialize_stream")
+        self.statistics.create_record("initialize_stream")
         self.model_meta_data = input_data['model_meta_data']
         load_task = self.model_repository.get_load_task(self.model_meta_data)
         if load_task is None:
@@ -29,7 +29,7 @@ class ModelServeServerProtocol(SparseProtocol):
         self.send_payload({ "statusCode": 200 })
 
     def offload_task(self, input_data):
-        self.statistics.task_started("offload_task")
+        self.statistics.create_record("offload_task")
 
         load_task = self.model_repository.get_load_task(self.model_meta_data)
         model, loss_fn, optimizer = load_task.result()
