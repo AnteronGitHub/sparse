@@ -1,3 +1,5 @@
+from time import time
+
 from sparse_framework.networking.protocols import SparseProtocol
 from sparse_framework.stats import ServerRequestStatistics
 
@@ -29,7 +31,7 @@ class ModelServeServerProtocol(SparseProtocol):
         self.send_payload({ "statusCode": 200 })
 
     def offload_task(self, input_data):
-        self.statistics.create_record("offload_task")
+        deserialization_started = time()
 
         load_task = self.model_repository.get_load_task(self.model_meta_data)
         model, loss_fn, optimizer = load_task.result()
@@ -38,16 +40,26 @@ class ModelServeServerProtocol(SparseProtocol):
                 'model': model
         }
 
-        self.statistics.current_record.queued()
+        deserialization_latency = time() - deserialization_started
+
         self.queue.put_nowait(("forward_propagate", task_data, self.forward_propagated))
+        self.statistics.current_record.queued(deserialization_latency)
 
     def forward_propagated(self, result):
-        task_latency = result["latency"]
-        self.statistics.current_record.set_task_latency(task_latency)
-
+        serialization_started = time()
         self.send_payload({ "pred": self.model_repository.transferToHost(result["pred"]) })
+        serialization_latency = time() - serialization_started
+
+        self.statistics.current_record.set_task_latency(result["latency"])
+        self.statistics.current_record.set_serialization_latency(serialization_latency)
 
     def payload_received(self, payload):
+        if "op" not in payload.keys():
+            self.logger.error(f"Received unknown payload {payload}")
+            return
+
+        self.statistics.create_record(payload["op"])
+
         if payload["op"] == "initialize_stream":
             self.initialize_stream(payload)
         else:

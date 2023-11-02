@@ -55,28 +55,34 @@ class ServerRequestStatistics(RequestStatistics):
         records = [r for r in self.request_records if r.request_op != "initialize_stream"]
         no_requests = len(records)
         if no_requests == 0:
-            return 0, 0, 0, 0
+            return 0, 0, 0, 0, 0, 0
 
-        avg_latency = 0
-        avg_queuing_time = 0
-        avg_task_latency = 0
+        avg_latency = 0.0
+        avg_queuing_time = 0.0
+        avg_task_latency = 0.0
+        avg_serialization_latency = 0.0
+        avg_deserialization_latency = 0.0
         for record in records:
             avg_latency += record.get_latency()
             avg_queuing_time += record.get_queuing_time()
             avg_task_latency += record.task_latency
+            avg_serialization_latency += record.serialization_latency
+            avg_deserialization_latency += record.deserialization_latency
 
         avg_latency /= no_requests
         avg_queuing_time /= no_requests
         avg_task_latency /= no_requests
+        avg_serialization_latency /= no_requests
+        avg_deserialization_latency /= no_requests
 
-        return no_requests, avg_latency, avg_queuing_time, avg_task_latency
+        return no_requests, avg_latency, avg_queuing_time, avg_task_latency, avg_serialization_latency, avg_deserialization_latency
 
     def __str__(self):
         if len(self.request_records) == 0:
             return "No requests made during connection."
         else:
-            no_requests, avg_latency, avg_queuing_time, avg_task_latency = self.count_statistics()
-            return f"{no_requests} tasks / {1.0/avg_latency:.2f} avg FPS / {1000*avg_queuing_time:.2f} ms avg queuing time / {1000*avg_task_latency:.2f} ms avg task latency"
+            no_requests, avg_latency, avg_queuing_time, avg_task_latency, avg_serialization_latency, avg_deserialization_latency = self.count_statistics()
+            return f"{no_requests} tasks / {1000.0*avg_latency:.2f} ms avg e2e lat / {1000*avg_task_latency:.2f} ms avg task latency / {1000*avg_queuing_time:.2f} ms avg queuing / {1000.0*avg_serialization_latency:.2f} ms serialization / {1000.0*avg_deserialization_latency:.2f} ms deserialization"
 
 class ClientRequestStatistics(RequestStatistics):
     def create_record(self, task_op):

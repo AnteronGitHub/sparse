@@ -25,12 +25,18 @@ class ServerRequestStatisticsRecord(RequestStatisticsRecord):
         super().__init__(*args)
         self.task_queued = None
         self.task_latency = 0.0
+        self.serialization_latency = 0.0
+        self.deserialization_latency = 0.0
 
-    def queued(self):
+    def queued(self, deserialization_latency = 0.0):
         self.task_queued = time() - self.connection_made_at
+        self.deserialization_latency = deserialization_latency
 
     def set_task_latency(self, task_latency):
         self.task_latency = task_latency
+
+    def set_serialization_latency(self, serialization_latency):
+        self.serialization_latency = serialization_latency
 
     def get_queuing_time(self):
         return self.completed_at - self.task_queued - self.task_latency

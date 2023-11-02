@@ -16,12 +16,12 @@ class ModelServeClientProtocol(SparseProtocol):
         self.target_rate = target_rate
         self.statistics = ClientRequestStatistics(data_source_id, stats_queue)
 
-    def initialize_stream(self):
+    def start_stream(self):
         self.statistics.create_record("initialize_stream")
         self.send_payload({ 'op': "initialize_stream", 'model_meta_data': self.model_meta_data })
         self.statistics.request_sent()
 
-    def stream_initialized(self, result_data):
+    def stream_started(self, result_data):
         latency = self.statistics.task_completed()
         self.logger.info(f"Initialized stream in {latency:.2f} seconds with {1.0/self.target_rate:.2f} FPS target rate.")
         self.offload_task()
@@ -49,11 +49,11 @@ class ModelServeClientProtocol(SparseProtocol):
 
         super().connection_made(transport)
 
-        self.initialize_stream()
+        self.start_stream()
 
     def payload_received(self, payload):
         if "statusCode" in payload.keys():
-            self.stream_initialized(payload)
+            self.stream_started(payload)
         else:
             self.offload_task_completed(payload)
 
