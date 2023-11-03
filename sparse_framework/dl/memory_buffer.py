@@ -6,15 +6,18 @@ from sparse_framework import Node
 
 from .utils import count_model_parameters
 from .serving import ModelMetaData, TCPModelLoader
+from .protocols import ModelDownloaderClientProtocol
 
 class MemoryBuffer:
     def __init__(self, node : Node, device : str):
         self.logger = logging.getLogger("sparse")
+        self.node = node
         self.model_loader = TCPModelLoader(node.config_manager.model_server_address,
                                            node.config_manager.model_server_port)
 
         self.device = device
         self.models = {}
+
 
     def transferToDevice(self, tensor):
         return tensor.to(self.device)
@@ -41,7 +44,7 @@ class MemoryBuffer:
         deserialization_started = time()
 
         load_task = self.get_load_task(model_meta_data)
-        model, loss_fn, optimizer = load_task.result()
+        model = load_task.result()
         task_data = { 'activation': self.transferToDevice(input_tensor), 'model': model }
 
         deserialization_latency = time() - deserialization_started
@@ -61,7 +64,11 @@ class MemoryBuffer:
         statistics.current_record.set_serialization_latency(serialization_latency)
 
     def load_model(self, model_meta_data : ModelMetaData, callback):
-        load_task = asyncio.create_task(self.model_loader.load_model(model_meta_data))
+        model_loader_protocol_factory = lambda on_con_lost, stats_queue: \
+                                            lambda: ModelDownloaderClientProtocol(model_meta_data, on_con_lost)
+        load_task = asyncio.create_task(self.node.run_tx_pipe(model_loader_protocol_factory, \
+                                                              self.node.config_manager.model_server_address, \
+                                                              self.node.config_manager.model_server_port))
         load_task.add_done_callback(lambda task: self.model_loaded(model_meta_data, task, callback))
         self.models[model_meta_data.model_id] = { "model_meta_data": model_meta_data,
                                                   "load_task": load_task }
@@ -70,10 +77,8 @@ class MemoryBuffer:
         return load_task
 
     def model_loaded(self, model_meta_data : ModelMetaData, load_task, callback):
-        model, loss_fn, optimizer = load_task.result()
+        model = load_task.result()
         self.models[model_meta_data.model_id]["model"] = model.to(self.device)
-        self.models[model_meta_data.model_id]["loss_fn"] = loss_fn
-        self.models[model_meta_data.model_id]["optimizer"] = optimizer
         callback(load_task)
 
     async def save_model(self, model_meta_data : ModelMetaData):

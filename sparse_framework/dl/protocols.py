@@ -6,15 +6,62 @@ from torch.utils.data import DataLoader
 from sparse_framework.networking.protocols import SparseProtocol
 from sparse_framework.stats import ServerRequestStatistics, ClientRequestStatistics
 
+from .serving.model_repository.disk_model_repository import DiskModelRepository
+
 __all__ = ["ModelServeClientProtocol", "ModelServeServerProtocol"]
 
 TARGET_FPS = 5.0
 
+class ModelDownloaderClientProtocol(SparseProtocol):
+    def __init__(self, model_meta_data, on_con_lost):
+        super().__init__()
+
+        self.model_meta_data = model_meta_data
+        self.on_con_lost = on_con_lost
+
+    def download_model(self):
+        self.send_payload({ 'method' : 'get_model', 'model_meta_data': self.model_meta_data })
+
+    def model_downloaded(self, model):
+        self.on_con_lost.set_result(model)
+
+    def payload_received(self, payload):
+        model = payload["model"]
+        loss_fn = payload["loss_fn"]
+        optimizer = payload["optimizer"]
+
+        if "model" in payload.keys():
+            self.model_downloaded(payload["model"])
+        else:
+            self.offload_task_completed(payload)
+
+    def connection_made(self, transport):
+        super().connection_made(transport)
+
+        self.download_model()
+
+class ModelDownloaderServerProtocol(SparseProtocol):
+    def __init__(self):
+        super().__init__()
+
+        self.model_repository = DiskModelRepository()
+
+    def payload_received(self, payload):
+        method = payload["method"]
+
+        if method == "get_model":
+            model_meta_data = payload["model_meta_data"]
+            model, loss_fn, optimizer = self.model_repository.get_model(model_meta_data)
+            self.send_payload({ "model": model, "loss_fn": loss_fn, "optimizer": optimizer })
+        else:
+            self.logger.error(f"Received request for unknown method '{method}'.")
+
 class ModelServeClientProtocol(SparseProtocol):
     def __init__(self, data_source_id, dataset, model_meta_data, on_con_lost, no_samples, target_rate = 1/TARGET_FPS, stats_queue = None):
-        super().__init__(on_con_lost)
+        super().__init__()
         self.dataloader = DataLoader(dataset, 1)
         self.model_meta_data = model_meta_data
+        self.on_con_lost = on_con_lost
         self.no_samples = no_samples
         self.target_rate = target_rate
         self.statistics = ClientRequestStatistics(data_source_id, stats_queue)
@@ -61,9 +108,7 @@ class ModelServeClientProtocol(SparseProtocol):
         self.start_stream()
 
     def connection_lost(self, exc):
-        super().connection_lost(exc)
-
-        self.logger.info(self.statistics)
+        self.on_con_lost.set_result(self.statistics)
 
     def send_payload(self, payload):
         super().send_payload(payload)

@@ -1,9 +1,9 @@
 import asyncio
 
-from sparse_framework import Master, Worker
+from sparse_framework import Master, Node, Worker
 
 from .executor import TensorExecutor
-from .protocols import ModelServeClientProtocol, ModelServeServerProtocol
+from .protocols import ModelServeClientProtocol, ModelServeServerProtocol, ModelDownloaderServerProtocol
 from .memory_buffer import MemoryBuffer
 from .utils import get_device
 
@@ -19,7 +19,10 @@ class ModelServeClient(Master):
                                                                  no_samples, \
                                                                  stats_queue=stats_queue)
 
-        super().__init__(protocol_factory, **kwargs)
+        super().__init__(protocol_factory, callback=self.result_callback, **kwargs)
+
+    def result_callback(self, result):
+        self.logger.info(result)
 
 class ModelServeServer(Worker):
     def __init__(self):
@@ -34,3 +37,12 @@ class ModelServeServer(Worker):
             self.memory_buffer = MemoryBuffer(self, get_device())
         return self.memory_buffer
 
+class ModelServer(Node):
+    def get_futures(self):
+        futures = super().get_futures()
+
+        futures.append(self.start_rx_pipe(lambda: ModelDownloaderServerProtocol(), \
+                                          self.config_manager.model_server_address, \
+                                          self.config_manager.model_server_port))
+
+        return futures

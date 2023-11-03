@@ -29,11 +29,11 @@ class ConfigManager:
         self.upstream_port = os.environ.get('MASTER_UPSTREAM_PORT') or 50007
         self.listen_address = os.environ.get('WORKER_LISTEN_ADDRESS') or '127.0.0.1'
         self.listen_port = os.environ.get('WORKER_LISTEN_PORT') or 50007
-        self.model_server_address = os.environ.get('SPARSE_MODEL_SERVER_ADDRESS') or '127.0.0.1'
+        self.model_server_address = os.environ.get('SPARSE_MODEL_SERVER_ADDRESS') or '0.0.0.0'
         self.model_server_port = os.environ.get('SPARSE_MODEL_SERVER_PORT') or 50006
 
 class Node:
-    def __init__(self, node_id : str = str(uuid.uuid4()), benchmark = True, log_level : int = logging.INFO):
+    def __init__(self, node_id : str = str(uuid.uuid4()), log_level : int = logging.INFO):
         self.node_id = node_id
 
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=log_level)
@@ -52,27 +52,39 @@ class Node:
     async def start(self):
         await asyncio.gather(*self.get_futures())
 
+    async def run_tx_pipe(self, protocol_factory, host, port, callback = None):
+        loop = asyncio.get_running_loop()
+        on_con_lost = loop.create_future()
+
+        await loop.create_connection(protocol_factory(on_con_lost, self.stats_queue), host, port)
+        result = await on_con_lost
+        if callback is not None:
+            callback(result)
+
+        return result
+
+    async def start_rx_pipe(self, protocol_factory, addr, port):
+        loop = asyncio.get_running_loop()
+
+        self.logger.info(f"Listening to '{addr}:{port}'")
+        server = await loop.create_server(protocol_factory, addr, port)
+        async with server:
+            await server.serve_forever()
+
 class Master(Node):
-    def __init__(self, tx_protocol_factory, **kwargs):
+    def __init__(self, tx_protocol_factory, callback = None, **kwargs):
         Node.__init__(self, **kwargs)
 
         self.tx_protocol_factory = tx_protocol_factory
-
-    async def start_tx_pipe(self, on_con_lost):
-        loop = asyncio.get_running_loop()
-        on_con_lost = loop.create_future()
-        await loop.create_connection(self.tx_protocol_factory(on_con_lost, self.stats_queue),
-                                     self.config_manager.upstream_host,
-                                     self.config_manager.upstream_port)
+        self.callback = callback
 
     def get_futures(self):
         futures = super().get_futures()
 
-        loop = asyncio.get_running_loop()
-        on_con_lost = loop.create_future()
-
-        futures.append(self.start_tx_pipe(on_con_lost))
-        futures.append(on_con_lost)
+        futures.append(self.run_tx_pipe(self.tx_protocol_factory,
+                                        self.config_manager.upstream_host,
+                                        self.config_manager.upstream_port,
+                                        self.callback))
 
         return futures
 
@@ -88,22 +100,15 @@ class Worker(Node):
     async def start_task_executor(self):
         await self.task_executor(self.task_queue).start()
 
-    async def start_rx_pipe(self):
-        loop = asyncio.get_running_loop()
-
-        server = await loop.create_server(self.rx_protocol_factory(self.task_queue, self.stats_queue), \
-                                          self.config_manager.listen_address, \
-                                          self.config_manager.listen_port)
-        async with server:
-            await server.serve_forever()
-
     def get_futures(self):
         futures = super().get_futures()
 
         self.task_queue = asyncio.Queue()
 
         futures.append(self.start_task_executor())
-        futures.append(self.start_rx_pipe())
+        futures.append(self.start_rx_pipe(self.rx_protocol_factory(self.task_queue, self.stats_queue), \
+                                          self.config_manager.listen_address, \
+                                          self.config_manager.listen_port))
 
         return futures
 

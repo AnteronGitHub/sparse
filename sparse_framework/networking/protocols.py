@@ -5,14 +5,13 @@ import pickle
 import struct
 
 class SparseProtocol(asyncio.Protocol):
-    def __init__(self, on_con_lost = None):
+    def __init__(self):
         self.logger = logging.getLogger("sparse")
         self.payload_buffer = io.BytesIO()
         self.transport = None
 
         self.receiving_payload = False
         self.payload_size = 0
-        self.on_con_lost = on_con_lost
 
     def send_payload(self, payload):
         payload_data = pickle.dumps(payload)
@@ -46,8 +45,4 @@ class SparseProtocol(asyncio.Protocol):
                 self.receiving_payload = False
             except pickle.UnpicklingError:
                 self.logger.error(f"Deserialization error. {len(payload_data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
-
-    def connection_lost(self, exc):
-        if self.on_con_lost:
-            self.on_con_lost.set_result(True)
 
