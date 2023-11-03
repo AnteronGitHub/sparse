@@ -2,7 +2,9 @@ import asyncio
 from time import time
 
 from sparse_framework import TaskExecutor
-from sparse_framework.dl import count_model_parameters, get_device
+from . import count_model_parameters, get_device
+
+__all__ = ["TensorExecutor"]
 
 class TensorExecutor(TaskExecutor):
     def __init__(self, *args, **kwargs):

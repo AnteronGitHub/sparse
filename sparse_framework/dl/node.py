@@ -1,8 +1,13 @@
 import asyncio
 
-from sparse_framework import Master
+from sparse_framework import Master, Worker
 
-from ..protocols import ModelServeClientProtocol
+from .executor import TensorExecutor
+from .protocols import ModelServeClientProtocol, ModelServeServerProtocol
+from .serving import InMemoryModelRepository
+from .utils import get_device
+
+__all__ = ["ModelServeClient", "ModelServeServer"]
 
 class ModelServeClient(Master):
     def __init__(self, dataset, model_meta_data, no_samples, **kwargs):
@@ -20,4 +25,17 @@ class ModelServeClient(Master):
         futures.append(on_con_lost)
 
         return futures
+
+class ModelServeServer(Worker):
+    def __init__(self):
+        rx_protocol_factory = lambda task_queue, stats_queue: \
+                                    lambda: ModelServeServerProtocol(self, task_queue, stats_queue)
+        super().__init__(rx_protocol_factory, task_executor=TensorExecutor)
+
+        self.model_repository = None
+
+    def get_model_repository(self):
+        if (self.model_repository is None):
+            self.model_repository = InMemoryModelRepository(self, get_device())
+        return self.model_repository
 
