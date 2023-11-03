@@ -4,7 +4,7 @@ from sparse_framework import Master, Worker
 
 from .executor import TensorExecutor
 from .protocols import ModelServeClientProtocol, ModelServeServerProtocol
-from .serving import InMemoryModelRepository
+from .memory_buffer import MemoryBuffer
 from .utils import get_device
 
 __all__ = ["ModelServeClient", "ModelServeServer"]
@@ -32,10 +32,10 @@ class ModelServeServer(Worker):
                                     lambda: ModelServeServerProtocol(self, task_queue, stats_queue)
         super().__init__(rx_protocol_factory, task_executor=TensorExecutor)
 
-        self.model_repository = None
+        self.memory_buffer = None
 
-    def get_model_repository(self):
-        if (self.model_repository is None):
-            self.model_repository = InMemoryModelRepository(self, get_device())
-        return self.model_repository
+    def get_memory_buffer(self) -> MemoryBuffer:
+        if (self.memory_buffer is None):
+            self.memory_buffer = MemoryBuffer(self, get_device())
+        return self.memory_buffer
 

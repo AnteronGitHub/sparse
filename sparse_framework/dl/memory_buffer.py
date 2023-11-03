@@ -1,19 +1,14 @@
 import asyncio
 import logging
-
-from torch.autograd import Variable
+from time import time
 
 from sparse_framework import Node
 
-from ...models import ModuleQueue
-from ...utils import count_model_parameters
-from ..tcp_model_loader import TCPModelLoader
-from ..model_meta_data import ModelMetaData
-from .base_model_repository import BaseModelRepository
+from .utils import count_model_parameters
+from .serving import ModelMetaData, TCPModelLoader
 
-class InMemoryModelRepository(BaseModelRepository):
+class MemoryBuffer:
     def __init__(self, node : Node, device : str):
-        self.node = node
         self.logger = logging.getLogger("sparse")
         self.model_loader = TCPModelLoader(node.config_manager.model_server_address,
                                            node.config_manager.model_server_port)
@@ -32,6 +27,38 @@ class InMemoryModelRepository(BaseModelRepository):
             return None
         else:
             return self.models[model_meta_data.model_id]['load_task']
+
+    def start_stream(self, model_meta_data, callback):
+        load_task = self.get_load_task(model_meta_data)
+        if load_task is None:
+            self.load_model(model_meta_data, callback)
+        elif not load_task.done():
+            load_task.add_done_callback(callback)
+        else:
+            callback(load_task)
+
+    def input_received(self, model_meta_data, input_tensor, task_queue, statistics, callback):
+        deserialization_started = time()
+
+        load_task = self.get_load_task(model_meta_data)
+        model, loss_fn, optimizer = load_task.result()
+        task_data = { 'activation': self.transferToDevice(input_tensor), 'model': model }
+
+        deserialization_latency = time() - deserialization_started
+
+        task_queue.put_nowait(("forward_propagate", task_data, lambda result: self.result_received(result, callback, statistics)))
+
+        statistics.current_record.queued(deserialization_latency)
+
+    def result_received(self, result, callback, statistics):
+        serialization_started = time()
+        transferred_result = self.transferToHost(result["pred"])
+        serialization_latency = time() - serialization_started
+
+        callback(transferred_result)
+
+        statistics.current_record.set_task_latency(result["latency"])
+        statistics.current_record.set_serialization_latency(serialization_latency)
 
     def load_model(self, model_meta_data : ModelMetaData, callback):
         load_task = asyncio.create_task(self.model_loader.load_model(model_meta_data))
