@@ -1,6 +1,6 @@
 import asyncio
 
-from sparse_framework import Master, Node, Worker
+from sparse_framework import SparseNode
 
 from .executor import TensorExecutor
 from .protocols import ModelServeClientProtocol, ModelServeServerProtocol, ModelDownloaderServerProtocol
@@ -9,26 +9,34 @@ from .utils import get_device
 
 __all__ = ["ModelServeClient", "ModelServeServer"]
 
-class ModelServeClient(Master):
+class ModelServeClient(SparseNode):
     def __init__(self, dataset, model_meta_data, no_samples, **kwargs):
-        protocol_factory = lambda on_con_lost, stats_queue: \
-                                lambda: ModelServeClientProtocol(self.node_id, \
-                                                                 dataset, \
-                                                                 model_meta_data, \
-                                                                 on_con_lost, \
-                                                                 no_samples, \
-                                                                 stats_queue=stats_queue)
+        super().__init__(**kwargs)
+        self.protocol_factory = lambda on_con_lost, stats_queue: \
+                                        lambda: ModelServeClientProtocol(self.node_id, \
+                                                                         dataset, \
+                                                                         model_meta_data, \
+                                                                         on_con_lost, \
+                                                                         no_samples, \
+                                                                         stats_queue=stats_queue)
 
-        super().__init__(protocol_factory, callback=self.result_callback, **kwargs)
+
+    def get_futures(self):
+        futures = super().get_futures()
+
+        futures.append(self.connect_to_server(self.protocol_factory,
+                                              self.config.upstream_host,
+                                              self.config.upstream_port,
+                                              self.result_callback))
+
+        return futures
 
     def result_callback(self, result):
         self.logger.info(result)
 
-class ModelServeServer(Worker):
+class ModelServeServer(SparseNode):
     def __init__(self):
-        rx_protocol_factory = lambda task_queue, stats_queue: \
-                                    lambda: ModelServeServerProtocol(self, task_queue, stats_queue)
-        super().__init__(rx_protocol_factory, task_executor=TensorExecutor)
+        super().__init__()
 
         self.memory_buffer = None
 
@@ -37,12 +45,24 @@ class ModelServeServer(Worker):
             self.memory_buffer = MemoryBuffer(self, get_device())
         return self.memory_buffer
 
-class ModelServer(Node):
     def get_futures(self):
         futures = super().get_futures()
 
-        futures.append(self.start_rx_pipe(lambda: ModelDownloaderServerProtocol(), \
-                                          self.config_manager.model_server_address, \
-                                          self.config_manager.model_server_port))
+        task_queue = asyncio.Queue()
+
+        futures.append(TensorExecutor(task_queue).start())
+        futures.append(self.start_server(lambda: ModelServeServerProtocol(self, task_queue, self.stats_queue), \
+                                         self.config.listen_address, \
+                                         self.config.listen_port))
+
+        return futures
+
+class ModelServer(SparseNode):
+    def get_futures(self):
+        futures = super().get_futures()
+
+        futures.append(self.start_server(lambda: ModelDownloaderServerProtocol(), \
+                                         self.config.model_server_address, \
+                                         self.config.model_server_port))
 
         return futures

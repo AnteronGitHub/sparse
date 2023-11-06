@@ -2,14 +2,14 @@ import asyncio
 import logging
 from time import time
 
-from sparse_framework import Node
+from sparse_framework import SparseNode
 
 from .utils import count_model_parameters
 from .model_meta_data import ModelMetaData
 from .protocols import ModelDownloaderClientProtocol
 
 class MemoryBuffer:
-    def __init__(self, node : Node, device : str):
+    def __init__(self, node : SparseNode, device : str):
         self.logger = logging.getLogger("sparse")
         self.node = node
 
@@ -64,9 +64,9 @@ class MemoryBuffer:
     def load_model(self, model_meta_data : ModelMetaData, callback):
         model_loader_protocol_factory = lambda on_con_lost, stats_queue: \
                                             lambda: ModelDownloaderClientProtocol(model_meta_data, on_con_lost)
-        load_task = asyncio.create_task(self.node.run_tx_pipe(model_loader_protocol_factory, \
-                                                              self.node.config_manager.model_server_address, \
-                                                              self.node.config_manager.model_server_port))
+        load_task = asyncio.create_task(self.node.connect_to_server(model_loader_protocol_factory, \
+                                                                    self.node.config.model_server_address, \
+                                                                    self.node.config.model_server_port))
         load_task.add_done_callback(lambda task: self.model_loaded(model_meta_data, task, callback))
         self.models[model_meta_data.model_id] = { "model_meta_data": model_meta_data,
                                                   "load_task": load_task }
