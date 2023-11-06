@@ -3,10 +3,10 @@ from time import time
 
 from torch.utils.data import DataLoader
 
-from sparse_framework.networking.protocols import SparseProtocol
+from sparse_framework import SparseProtocol
 from sparse_framework.stats import ServerRequestStatistics, ClientRequestStatistics
 
-from .serving.model_repository.disk_model_repository import DiskModelRepository
+from .model_repository import DiskModelRepository
 
 __all__ = ["ModelServeClientProtocol", "ModelServeServerProtocol"]
 
@@ -32,8 +32,6 @@ class ModelDownloaderClientProtocol(SparseProtocol):
 
         if "model" in payload.keys():
             self.model_downloaded(payload["model"])
-        else:
-            self.offload_task_completed(payload)
 
     def connection_made(self, transport):
         super().connection_made(transport)

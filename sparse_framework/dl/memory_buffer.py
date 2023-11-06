@@ -5,15 +5,13 @@ from time import time
 from sparse_framework import Node
 
 from .utils import count_model_parameters
-from .serving import ModelMetaData, TCPModelLoader
+from .model_meta_data import ModelMetaData
 from .protocols import ModelDownloaderClientProtocol
 
 class MemoryBuffer:
     def __init__(self, node : Node, device : str):
         self.logger = logging.getLogger("sparse")
         self.node = node
-        self.model_loader = TCPModelLoader(node.config_manager.model_server_address,
-                                           node.config_manager.model_server_port)
 
         self.device = device
         self.models = {}
@@ -83,4 +81,4 @@ class MemoryBuffer:
 
     async def save_model(self, model_meta_data : ModelMetaData):
         model = self.models[model_meta_data.model_id]['model']
-        await self.model_loader.save_model(model, model_meta_data)
+#        await self.model_loader.save_model(model, model_meta_data)

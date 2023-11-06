@@ -2,9 +2,9 @@
 from .node import *
 from .stats import *
 from .task_executor import TaskExecutor
-from .networking import *
+from .protocols import SparseProtocol
 
-__all__ = ["TaskExecutor",
+__all__ = ["SparseProtocol",
+           "TaskExecutor",
            node.__all__,
-           stats.__all__,
-           networking.__all__]
+           stats.__all__]
