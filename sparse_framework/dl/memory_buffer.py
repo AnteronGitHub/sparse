@@ -6,16 +6,21 @@ from sparse_framework import SparseNode
 
 from .utils import count_model_parameters
 from .model_meta_data import ModelMetaData
-from .protocols import ModelDownloaderClientProtocol
+from .protocols import ParameterClientProtocol
 
 class MemoryBuffer:
+    """Memory buffer for Node's task executor.
+
+    Buffer ensures that when a task is created for the executor, all of the needed data are available in the executor
+    device memory. After the executor task has been processed, memory buffer transfers the data to the network device
+    for result transmission.
+    """
     def __init__(self, node : SparseNode, device : str):
         self.logger = logging.getLogger("sparse")
         self.node = node
 
         self.device = device
         self.models = {}
-
 
     def transferToDevice(self, tensor):
         return tensor.to(self.device)
@@ -63,7 +68,7 @@ class MemoryBuffer:
 
     def load_model(self, model_meta_data : ModelMetaData, callback):
         model_loader_protocol_factory = lambda on_con_lost, stats_queue: \
-                                            lambda: ModelDownloaderClientProtocol(model_meta_data, on_con_lost)
+                                            lambda: ParameterClientProtocol(model_meta_data, on_con_lost)
         load_task = asyncio.create_task(self.node.connect_to_server(model_loader_protocol_factory, \
                                                                     self.node.config.model_server_address, \
                                                                     self.node.config.model_server_port))

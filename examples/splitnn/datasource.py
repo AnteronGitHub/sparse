@@ -1,6 +1,6 @@
 import asyncio
 
-from sparse_framework.dl import ModelServeClient, DatasetRepository, ModelMetaData
+from sparse_framework.dl import InferenceClient, DatasetRepository, ModelMetaData
 
 from utils import parse_arguments, _get_benchmark_log_file_prefix
 
@@ -8,10 +8,10 @@ async def run_datasources(args):
     tasks = []
     dataset, classes = DatasetRepository().get_dataset(args.dataset)
     for i in range(args.no_datasources):
-        datasource = ModelServeClient(dataset,
-                                      ModelMetaData(model_id=str(i % args.no_models), model_name=args.model_name),
-                                      args.batches*int(args.epochs),
-                                      node_id=str(i))
+        datasource = InferenceClient(dataset,
+                                     ModelMetaData(model_id=str(i % args.no_models), model_name=args.model_name),
+                                     args.batches*int(args.epochs),
+                                     node_id=str(i))
         tasks.append(datasource.start())
 
     await asyncio.gather(*tasks)

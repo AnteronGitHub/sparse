@@ -8,11 +8,13 @@ from sparse_framework.stats import ServerRequestStatistics, ClientRequestStatist
 
 from .model_repository import DiskModelRepository
 
-__all__ = ["ModelServeClientProtocol", "ModelServeServerProtocol"]
+__all__ = ["InferenceClientProtocol", "InferenceServerProtocol", "ParameterClientProtocol", "ParameterServerProtocol"]
 
 TARGET_FPS = 5.0
 
-class ModelDownloaderClientProtocol(SparseProtocol):
+class ParameterClientProtocol(SparseProtocol):
+    """Protocol for downloading model parameters over a TCP connection.
+    """
     def __init__(self, model_meta_data, on_con_lost):
         super().__init__()
 
@@ -38,7 +40,9 @@ class ModelDownloaderClientProtocol(SparseProtocol):
 
         self.download_model()
 
-class ModelDownloaderServerProtocol(SparseProtocol):
+class ParameterServerProtocol(SparseProtocol):
+    """Protocol for serving model parameters over a TCP connection.
+    """
     def __init__(self):
         super().__init__()
 
@@ -54,8 +58,17 @@ class ModelDownloaderServerProtocol(SparseProtocol):
         else:
             self.logger.error(f"Received request for unknown method '{method}'.")
 
-class ModelServeClientProtocol(SparseProtocol):
-    def __init__(self, data_source_id, dataset, model_meta_data, on_con_lost, no_samples, target_rate = 1/TARGET_FPS, stats_queue = None):
+class InferenceClientProtocol(SparseProtocol):
+    """Protocol for serving models over a TCP connection.
+    """
+    def __init__(self,
+                 data_source_id,
+                 dataset,
+                 model_meta_data,
+                 on_con_lost,
+                 no_samples,
+                 target_rate = 1/TARGET_FPS,
+                 stats_queue = None):
         super().__init__()
         self.dataloader = DataLoader(dataset, 1)
         self.model_meta_data = model_meta_data
@@ -113,7 +126,7 @@ class ModelServeClientProtocol(SparseProtocol):
 
         self.statistics.request_sent()
 
-class ModelServeServerProtocol(SparseProtocol):
+class InferenceServerProtocol(SparseProtocol):
     def __init__(self, node, task_queue, stats_queue):
         super().__init__()
 

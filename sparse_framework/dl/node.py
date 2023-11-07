@@ -3,22 +3,24 @@ import asyncio
 from sparse_framework import SparseNode
 
 from .executor import TensorExecutor
-from .protocols import ModelServeClientProtocol, ModelServeServerProtocol, ModelDownloaderServerProtocol
+from .protocols import InferenceClientProtocol, InferenceServerProtocol, ParameterServerProtocol
 from .memory_buffer import MemoryBuffer
 from .utils import get_device
 
-__all__ = ["ModelServeClient", "ModelServeServer"]
+__all__ = ["InferenceClient", "InferenceServer", "ParameterServer"]
 
-class ModelServeClient(SparseNode):
+class InferenceClient(SparseNode):
+    """A Node that iterates over a dataset and offloads the sample inference to specified server.
+    """
     def __init__(self, dataset, model_meta_data, no_samples, **kwargs):
         super().__init__(**kwargs)
         self.protocol_factory = lambda on_con_lost, stats_queue: \
-                                        lambda: ModelServeClientProtocol(self.node_id, \
-                                                                         dataset, \
-                                                                         model_meta_data, \
-                                                                         on_con_lost, \
-                                                                         no_samples, \
-                                                                         stats_queue=stats_queue)
+                                        lambda: InferenceClientProtocol(self.node_id, \
+                                                                        dataset, \
+                                                                        model_meta_data, \
+                                                                        on_con_lost, \
+                                                                        no_samples, \
+                                                                        stats_queue=stats_queue)
 
 
     def get_futures(self):
@@ -34,7 +36,11 @@ class ModelServeClient(SparseNode):
     def result_callback(self, result):
         self.logger.info(result)
 
-class ModelServeServer(SparseNode):
+class InferenceServer(SparseNode):
+    """A Node serves inference requests for models over a TCP connection.
+
+    Inference server runs the executor in a separate thread from the server, using an asynchronous queue.
+    """
     def __init__(self):
         super().__init__()
 
@@ -51,17 +57,19 @@ class ModelServeServer(SparseNode):
         task_queue = asyncio.Queue()
 
         futures.append(TensorExecutor(task_queue).start())
-        futures.append(self.start_server(lambda: ModelServeServerProtocol(self, task_queue, self.stats_queue), \
+        futures.append(self.start_server(lambda: InferenceServerProtocol(self, task_queue, self.stats_queue), \
                                          self.config.listen_address, \
                                          self.config.listen_port))
 
         return futures
 
-class ModelServer(SparseNode):
+class ParameterServer(SparseNode):
+    """A Node serves model parameters over a TCP connection.
+    """
     def get_futures(self):
         futures = super().get_futures()
 
-        futures.append(self.start_server(lambda: ModelDownloaderServerProtocol(), \
+        futures.append(self.start_server(lambda: ParameterServerProtocol(), \
                                          self.config.model_server_address, \
                                          self.config.model_server_port))
 
