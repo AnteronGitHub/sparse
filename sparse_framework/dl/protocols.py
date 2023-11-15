@@ -67,14 +67,16 @@ class InferenceClientProtocol(SparseProtocol):
                  model_meta_data,
                  on_con_lost,
                  no_samples,
-                 target_rate = 1/TARGET_FPS,
+                 use_scheduling,
+                 target_latency = 1/TARGET_FPS,
                  stats_queue = None):
         super().__init__()
         self.dataloader = DataLoader(dataset, 1)
         self.model_meta_data = model_meta_data
         self.on_con_lost = on_con_lost
         self.no_samples = no_samples
-        self.target_rate = target_rate
+        self.target_latency = target_latency
+        self.use_scheduling = use_scheduling
         self.statistics = ClientRequestStatistics(data_source_id, stats_queue)
 
     def start_stream(self):
@@ -84,7 +86,7 @@ class InferenceClientProtocol(SparseProtocol):
 
     def stream_started(self, result_data):
         latency = self.statistics.task_completed()
-        self.logger.info(f"Initialized stream in {latency:.2f} seconds with {1.0/self.target_rate:.2f} FPS target rate.")
+        self.logger.info(f"Initialized stream in {latency:.2f} seconds with {1.0/self.target_latency:.2f} FPS target rate (Scheduling: {self.use_scheduling}).")
         self.offload_task()
 
     def offload_task(self):
@@ -100,8 +102,12 @@ class InferenceClientProtocol(SparseProtocol):
         latency = self.statistics.task_completed()
 
         if (self.no_samples > 0):
+            if self.use_scheduling and 'sync' in result_data.keys():
+                sync = result_data['sync']
+            else:
+                sync = 0.0
             loop = asyncio.get_running_loop()
-            loop.call_later(self.target_rate-latency if self.target_rate > latency else 0, self.offload_task)
+            loop.call_later(self.target_latency-latency + sync if self.target_latency > latency else 0, self.offload_task)
         else:
             self.transport.close()
 
@@ -154,8 +160,8 @@ class InferenceServerProtocol(SparseProtocol):
                                           self.statistics,
                                           self.forward_propagated)
 
-    def forward_propagated(self, result):
-        self.send_payload({ "pred": result })
+    def forward_propagated(self, prediction, queuing_time):
+        self.send_payload({ "pred": prediction, "sync": queuing_time })
 
     def payload_received(self, payload):
         if "op" not in payload.keys():

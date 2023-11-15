@@ -41,10 +41,10 @@ spec:
         - "$SPARSE_MODEL"
         - "--dataset"
         - "$SPARSE_DATASET"
-        - "--batches"
-        - "$SPARSE_BATCHES"
-        - "--epochs"
-        - "$SPARSE_EPOCHS"
+        - "--no-samples"
+        - "$SPARSE_NO_SAMPLES"
+        - "--use-scheduling"
+        - "$SPARSE_USE_SCHEDULING"
         volumeMounts:
         - name: app-code
           mountPath: /app

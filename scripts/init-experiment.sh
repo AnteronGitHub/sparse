@@ -13,8 +13,8 @@ init_environment () {
   read -p "Dataset to be used (default CIFAR10): " SPARSE_DATASET
   export SPARSE_DATASET=${SPARSE_DATASET:-CIFAR10}
 
-  read -p "Number of batches to be used in training (default 64): " SPARSE_BATCHES
-  export SPARSE_BATCHES=${SPARSE_BATCHES:-64}
+  read -p "Number of samples per dataset (default 64): " SPARSE_NO_SAMPLES
+  export SPARSE_NO_SAMPLES=${SPARSE_NO_SAMPLES:-64}
 
   read -p "How many data sources to run (default 1): " SPARSE_NO_DATASOURCES
   export SPARSE_NO_DATASOURCES=${SPARSE_NO_DATASOURCES:-1}
@@ -22,9 +22,8 @@ init_environment () {
   read -p "How many models to serve (default 1): " SPARSE_NO_MODELS
   export SPARSE_NO_MODELS=${SPARSE_NO_MODELS:-1}
 
-  read -p "How many epochs to run training for (default '1'): " SPARSE_EPOCHS
-  export SPARSE_EPOCHS=${SPARSE_EPOCHS:-1}
-
+  read -p "Use scheduling (default 1): " SPARSE_USE_SCHEDULING
+  export SPARSE_USE_SCHEDULING=${SPARSE_USE_SCHEDULING:-1}
 
   # Deployment specs
   read -p "Use external link for data source (default 'no'): " SPARSE_DATASOURCE_USE_EXTERNAL_LINK

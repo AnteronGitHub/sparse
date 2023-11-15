@@ -61,7 +61,9 @@ class MemoryBuffer:
         transferred_result = self.transferToHost(result["pred"])
         serialization_latency = time() - serialization_started
 
-        callback(transferred_result)
+        queuing_time = time() - statistics.current_record.connection_made_at - statistics.current_record.task_queued
+
+        callback(transferred_result, queuing_time)
 
         statistics.current_record.set_task_latency(result["latency"])
         statistics.current_record.set_serialization_latency(serialization_latency)

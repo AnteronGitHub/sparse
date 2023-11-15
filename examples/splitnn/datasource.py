@@ -10,7 +10,8 @@ async def run_datasources(args):
     for i in range(args.no_datasources):
         datasource = InferenceClient(dataset,
                                      ModelMetaData(model_id=str(i % args.no_models), model_name=args.model_name),
-                                     args.batches*int(args.epochs),
+                                     int(args.no_samples),
+                                     int(args.use_scheduling)==1,
                                      node_id=str(i))
         tasks.append(datasource.start())
 
