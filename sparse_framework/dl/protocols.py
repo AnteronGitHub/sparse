@@ -1,9 +1,8 @@
 import asyncio
-from time import time
 
 from torch.utils.data import DataLoader
 
-from sparse_framework import SparseProtocol
+from sparse_framework import SparseNode, SparseProtocol
 from sparse_framework.stats import ServerRequestStatistics, ClientRequestStatistics
 
 from .model_repository import DiskModelRepository
@@ -133,12 +132,17 @@ class InferenceClientProtocol(SparseProtocol):
         self.statistics.request_sent()
 
 class InferenceServerProtocol(SparseProtocol):
-    def __init__(self, node, task_queue, stats_queue):
+    def __init__(self,
+                 node : SparseNode,
+                 use_scheduling : bool,
+                 task_queue,
+                 stats_queue):
         super().__init__()
 
         self.task_queue = task_queue
         self.stats_queue = stats_queue
         self.memory_buffer = node.get_memory_buffer()
+        self.use_scheduling = use_scheduling
         self.statistics = ServerRequestStatistics(node.node_id, stats_queue)
 
         self.model_meta_data = None
@@ -161,7 +165,10 @@ class InferenceServerProtocol(SparseProtocol):
                                           self.forward_propagated)
 
     def forward_propagated(self, prediction, queuing_time):
-        self.send_payload({ "pred": prediction, "sync": queuing_time })
+        payload = { "pred": prediction }
+        if self.use_scheduling:
+            payload["sync"] = queuing_time
+        self.send_payload(payload)
 
     def payload_received(self, payload):
         if "op" not in payload.keys():
