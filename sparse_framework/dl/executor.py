@@ -25,12 +25,16 @@ class TensorExecutor(TaskExecutor):
 
     def forward_propagate(self, input_data: dict, callback) -> dict:
         """Execute a single gradient computation for the offloaded layers."""
-        started_at = time()
-        split_layer, model = input_data['activation'], input_data['model']
+        split_layer, model, statistics_record = input_data['activation'], \
+                                                input_data['model'], \
+                                                input_data['statistics_record']
+        statistics_record.task_started()
 
         pred = model(split_layer)
 
-        callback({ "pred": pred, "latency": time() - started_at })
+        statistics_record.task_completed()
+
+        callback({ "pred": pred })
 
     def backward_propagate(self, input_data: dict, callback) -> dict:
         split_layer, labels, model, loss_fn, optimizer, pred = input_data['activation'], \

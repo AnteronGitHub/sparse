@@ -35,6 +35,8 @@ class MemoryBuffer:
             return self.models[model_meta_data.model_id]['load_task']
 
     def start_stream(self, model_meta_data, callback):
+        """Initializes a new offloading stream by ensuring that the model parameters are available locally.
+        """
         load_task = self.get_load_task(model_meta_data)
         if load_task is None:
             self.load_model(model_meta_data, callback)
@@ -43,30 +45,19 @@ class MemoryBuffer:
         else:
             callback(load_task)
 
-    def input_received(self, model_meta_data, input_tensor, task_queue, statistics, callback):
-        deserialization_started = time()
-
+    def input_received(self, model_meta_data, input_tensor, task_queue, callback, statistics_record):
         load_task = self.get_load_task(model_meta_data)
         model = load_task.result()
-        task_data = { 'activation': self.transferToDevice(input_tensor), 'model': model }
+        task_data = { 'activation': self.transferToDevice(input_tensor),
+                      'model': model,
+                      'statistics_record': statistics_record }
 
-        deserialization_latency = time() - deserialization_started
+        task_queue.put_nowait(("forward_propagate", task_data, lambda result: self.result_received(result, callback)))
 
-        task_queue.put_nowait(("forward_propagate", task_data, lambda result: self.result_received(result, callback, statistics)))
-
-        statistics.current_record.queued(deserialization_latency)
-
-    def result_received(self, result, callback, statistics):
-        serialization_started = time()
+    def result_received(self, result, callback):
         transferred_result = self.transferToHost(result["pred"])
-        serialization_latency = time() - serialization_started
 
-        queuing_time = time() - statistics.current_record.connection_made_at - statistics.current_record.task_queued
-
-        callback(transferred_result, queuing_time)
-
-        statistics.current_record.set_task_latency(result["latency"])
-        statistics.current_record.set_serialization_latency(serialization_latency)
+        callback(transferred_result)
 
     def load_model(self, model_meta_data : ModelMetaData, callback):
         model_loader_protocol_factory = lambda on_con_lost, stats_queue: \

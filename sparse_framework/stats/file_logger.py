@@ -20,7 +20,7 @@ class FileLogger():
             filepath = os.path.join(self.data_dir, log_file_name)
             self.files[statistics] = filepath
             if not os.path.exists(filepath):
-                with open(self.files[statistics], 'a') as f:
+                with open(self.files[statistics], 'w') as f:
                     f.write(record.csv_header())
         return self.files[statistics]
 

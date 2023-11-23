@@ -2,7 +2,7 @@ import asyncio
 
 from torch.utils.data import DataLoader
 
-from sparse_framework import SparseNode, SparseProtocol
+from sparse_framework import SparseProtocol
 from sparse_framework.stats import ServerRequestStatistics, ClientRequestStatistics
 
 from .model_repository import DiskModelRepository
@@ -76,29 +76,41 @@ class InferenceClientProtocol(SparseProtocol):
         self.no_samples = no_samples
         self.target_latency = target_latency
         self.use_scheduling = use_scheduling
+
         self.statistics = ClientRequestStatistics(data_source_id, stats_queue)
+        self.current_record = None
 
     def start_stream(self):
-        self.statistics.create_record("initialize_stream")
+        self.current_record = self.statistics.create_record("initialize_stream")
+
         self.send_payload({ 'op': "initialize_stream", 'model_meta_data': self.model_meta_data })
-        self.statistics.request_sent()
+
+        self.current_record.request_sent()
 
     def stream_started(self, result_data):
-        latency = self.statistics.task_completed()
-        self.logger.info(f"Initialized stream in {latency:.2f} seconds with {1.0/self.target_latency:.2f} FPS target rate (Scheduling: {self.use_scheduling}).")
+        self.current_record.response_received()
+        self.statistics.log_record(self.current_record)
+        offload_latency = self.statistics.get_offload_latency(self.current_record)
+        self.logger.info(f"Initialized stream in {offload_latency:.2f} seconds with {1.0/self.target_latency:.2f} FPS target rate (Scheduling: {self.use_scheduling}).")
+
+        # Start offloading tasks
         self.offload_task()
 
     def offload_task(self):
-        self.statistics.create_record("offload_task")
+        self.current_record = self.statistics.create_record("offload_task")
+        self.current_record.processing_started()
         self.no_samples -= 1
         features, labels = next(iter(self.dataloader))
         self.send_payload({ 'op': 'offload_task',
                             'activation': features,
                             'labels': labels,
                             'model_meta_data': self.model_meta_data })
+        self.current_record.request_sent()
 
     def offload_task_completed(self, result_data):
-        latency = self.statistics.task_completed()
+        self.current_record.response_received()
+        self.statistics.log_record(self.current_record)
+        offload_latency = self.statistics.get_offload_latency(self.current_record)
 
         if (self.no_samples > 0):
             if self.use_scheduling and 'sync' in result_data.keys():
@@ -106,7 +118,7 @@ class InferenceClientProtocol(SparseProtocol):
             else:
                 sync = 0.0
             loop = asyncio.get_running_loop()
-            loop.call_later(self.target_latency-latency + sync if self.target_latency > latency else 0, self.offload_task)
+            loop.call_later(self.target_latency-offload_latency + sync if self.target_latency > offload_latency else 0, self.offload_task)
         else:
             self.transport.close()
 
@@ -126,14 +138,9 @@ class InferenceClientProtocol(SparseProtocol):
     def connection_lost(self, exc):
         self.on_con_lost.set_result(self.statistics)
 
-    def send_payload(self, payload):
-        super().send_payload(payload)
-
-        self.statistics.request_sent()
-
 class InferenceServerProtocol(SparseProtocol):
     def __init__(self,
-                 node : SparseNode,
+                 node,
                  use_scheduling : bool,
                  task_queue,
                  stats_queue):
@@ -146,41 +153,7 @@ class InferenceServerProtocol(SparseProtocol):
         self.statistics = ServerRequestStatistics(node.node_id, stats_queue)
 
         self.model_meta_data = None
-
-    def start_stream(self, payload):
-        self.model_meta_data = payload['model_meta_data']
-
-        self.memory_buffer.start_stream(self.model_meta_data, self.stream_started)
-
-        self.statistics.current_record.queued()
-
-    def stream_started(self, load_task):
-        self.send_payload({ "statusCode": 200 })
-
-    def offload_task(self, payload):
-        self.memory_buffer.input_received(self.model_meta_data,
-                                          payload['activation'],
-                                          self.task_queue,
-                                          self.statistics,
-                                          self.forward_propagated)
-
-    def forward_propagated(self, prediction, queuing_time):
-        payload = { "pred": prediction }
-        if self.use_scheduling:
-            payload["sync"] = queuing_time
-        self.send_payload(payload)
-
-    def payload_received(self, payload):
-        if "op" not in payload.keys():
-            self.logger.error(f"Received unknown payload {payload}")
-            return
-
-        self.statistics.create_record(payload["op"])
-
-        if payload["op"] == "initialize_stream":
-            self.start_stream(payload)
-        else:
-            self.offload_task(payload)
+        self.current_record = None
 
     def connection_made(self, transport):
         self.statistics.connected()
@@ -192,7 +165,49 @@ class InferenceServerProtocol(SparseProtocol):
 
         super().connection_lost(exc)
 
-    def send_payload(self, payload):
-        super().send_payload(payload)
+    def payload_received(self, payload):
+        if "op" not in payload.keys():
+            self.logger.error(f"Received unknown payload {payload}")
+            return
 
-        self.statistics.task_completed()
+
+        if payload["op"] == "initialize_stream":
+            self.start_stream(payload)
+        else:
+            self.request_received(payload)
+
+    def start_stream(self, payload):
+        self.current_record = self.statistics.create_record(payload["op"])
+        self.current_record.request_received()
+
+        self.model_meta_data = payload['model_meta_data']
+        self.memory_buffer.start_stream(self.model_meta_data, self.stream_started)
+
+        self.current_record.task_queued()
+
+    def stream_started(self, load_task):
+        self.send_payload({ "statusCode": 200 })
+
+        self.current_record.response_sent()
+        self.statistics.log_record(self.current_record)
+
+    def request_received(self, payload):
+        self.current_record = self.statistics.create_record(payload["op"])
+        self.current_record.request_received()
+
+        self.memory_buffer.input_received(self.model_meta_data,
+                                          payload['activation'],
+                                          self.task_queue,
+                                          self.forward_propagated,
+                                          self.current_record)
+
+        self.current_record.task_queued()
+
+    def forward_propagated(self, prediction):
+        payload = { "pred": prediction }
+        if self.use_scheduling:
+            payload["sync"] = self.statistics.get_queueing_time(self.current_record)
+        self.send_payload(payload)
+
+        self.current_record.response_sent()
+        self.statistics.log_record(self.current_record)
