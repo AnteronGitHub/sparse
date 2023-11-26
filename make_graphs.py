@@ -20,8 +20,9 @@ class StatisticsFileLoader:
         return options[menu_entry_index]
 
     def load_dataframe(self):
-        filename = self.select_from_options([path for path in os.listdir(self.stats_path) if path.endswith(".csv")],
-                                            "Dataframe file name:")
+        data_files = [path for path in os.listdir(self.stats_path) if path.endswith(".csv")]
+        data_files.sort()
+        filename = self.select_from_options(data_files, "Dataframe file name:")
         if filename is None:
             return None
         filepath = os.path.join(self.stats_path, filename)
