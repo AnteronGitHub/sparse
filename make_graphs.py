@@ -154,7 +154,9 @@ class StatisticsGraphPlotter:
         ax = sns.boxplot(x="Datasources",
                          y="Offload latency (ms)",
                          hue="Scheduling",
-                         data=pd.concat(frames), palette="dark:grey")
+                         data=pd.concat(frames),
+                         palette="dark:grey",
+                         showfliers=False)
 
         filepath = os.path.join(self.write_path, "offload_latency_boxplot.png")
         plt.savefig(filepath, dpi=400)
