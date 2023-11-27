@@ -24,13 +24,13 @@ class TensorExecutor(TaskExecutor):
             self.logger.debug(f"Received unknown function '{fn_name}' call.")
 
     def forward_propagate(self, input_data: dict, callback) -> dict:
-        """Execute a single gradient computation for the offloaded layers."""
-        split_layer, model, statistics_record = input_data['activation'], \
-                                                input_data['model'], \
-                                                input_data['statistics_record']
+        """Run forward pass for specified model with specified input tensor."""
+        model_meta_data, statistics_record = input_data['model_meta_data'], input_data['statistics_record']
         statistics_record.task_started()
 
-        pred = model(split_layer)
+        model = self.memory_buffer.get_model(model_meta_data)
+        features = self.memory_buffer.pop_input(model_meta_data)
+        pred = model(features)
 
         statistics_record.task_completed()
 

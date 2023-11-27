@@ -11,9 +11,10 @@ class TaskExecutor:
     User is expected to implement the computation logic by defining a custom execute_task() function. Additionally it
     is possible to implement custom initialization code by overriding optional start() hook.
     """
-    def __init__(self, queue):
+    def __init__(self, memory_buffer, queue):
         self.logger = logging.getLogger("sparse")
         self.executor = ThreadPoolExecutor()
+        self.memory_buffer = memory_buffer
         self.queue = queue
 
     async def start(self):

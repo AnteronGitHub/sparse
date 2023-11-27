@@ -21,6 +21,7 @@ class MemoryBuffer:
 
         self.device = device
         self.models = {}
+        self.inputs = {}
 
     def transferToDevice(self, tensor):
         return tensor.to(self.device)
@@ -34,6 +35,16 @@ class MemoryBuffer:
         else:
             return self.models[model_meta_data.model_id]['load_task']
 
+    def get_model(self, model_meta_data : ModelMetaData):
+        load_task = self.get_load_task(model_meta_data)
+        return load_task.result()
+
+    def buffer_input(self, model_meta_data, input_tensor):
+        self.inputs[model_meta_data.model_id].append(self.transferToDevice(input_tensor))
+
+    def pop_input(self, model_meta_data : ModelMetaData):
+        return self.inputs[model_meta_data.model_id].pop(0)
+
     def start_stream(self, model_meta_data, callback):
         """Initializes a new offloading stream by ensuring that the model parameters are available locally.
         """
@@ -44,15 +55,6 @@ class MemoryBuffer:
             load_task.add_done_callback(callback)
         else:
             callback(load_task)
-
-    def input_received(self, model_meta_data, input_tensor, task_queue, callback, statistics_record):
-        load_task = self.get_load_task(model_meta_data)
-        model = load_task.result()
-        task_data = { 'activation': self.transferToDevice(input_tensor),
-                      'model': model,
-                      'statistics_record': statistics_record }
-
-        task_queue.put_nowait(("forward_propagate", task_data, lambda result: self.result_received(result, callback)))
 
     def result_received(self, result, callback):
         transferred_result = self.transferToHost(result["pred"])
@@ -75,6 +77,7 @@ class MemoryBuffer:
     def model_loaded(self, model_meta_data : ModelMetaData, load_task, callback):
         model = load_task.result()
         self.models[model_meta_data.model_id]["model"] = model.to(self.device)
+        self.inputs[model_meta_data.model_id] = []
         callback(load_task)
 
     async def save_model(self, model_meta_data : ModelMetaData):

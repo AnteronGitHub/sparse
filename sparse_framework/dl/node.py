@@ -45,21 +45,16 @@ class InferenceServer(SparseNode):
     def __init__(self, use_scheduling : bool):
         super().__init__()
 
-        self.memory_buffer = None
         self.use_scheduling = use_scheduling
-
-    def get_memory_buffer(self) -> MemoryBuffer:
-        if (self.memory_buffer is None):
-            self.memory_buffer = MemoryBuffer(self, get_device())
-        return self.memory_buffer
 
     def get_futures(self):
         futures = super().get_futures()
 
+        memory_buffer = MemoryBuffer(self, get_device())
         task_queue = asyncio.Queue()
 
-        futures.append(TensorExecutor(task_queue).start())
-        futures.append(self.start_server(lambda: InferenceServerProtocol(self, \
+        futures.append(TensorExecutor(memory_buffer, task_queue).start())
+        futures.append(self.start_server(lambda: InferenceServerProtocol(memory_buffer, \
                                                                          self.use_scheduling, \
                                                                          task_queue, \
                                                                          self.stats_queue), \

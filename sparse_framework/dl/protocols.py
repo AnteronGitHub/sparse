@@ -140,15 +140,15 @@ class InferenceClientProtocol(SparseProtocol):
 
 class InferenceServerProtocol(SparseProtocol):
     def __init__(self,
-                 node,
+                 memory_buffer,
                  use_scheduling : bool,
                  task_queue,
                  stats_queue):
         super().__init__()
 
+        self.memory_buffer = memory_buffer
         self.task_queue = task_queue
         self.stats_queue = stats_queue
-        self.memory_buffer = node.get_memory_buffer()
         self.use_scheduling = use_scheduling
         self.statistics = ServerRequestStatistics(self.connection_id, stats_queue)
 
@@ -195,11 +195,14 @@ class InferenceServerProtocol(SparseProtocol):
         self.current_record = self.statistics.create_record(payload["op"])
         self.current_record.request_received()
 
-        self.memory_buffer.input_received(self.model_meta_data,
-                                          payload['activation'],
-                                          self.task_queue,
-                                          self.forward_propagated,
-                                          self.current_record)
+        self.memory_buffer.buffer_input(self.model_meta_data, payload['activation'])
+
+        task_data = { 'model_meta_data': self.model_meta_data,
+                      'statistics_record': self.current_record }
+
+        self.task_queue.put_nowait(("forward_propagate",
+                                    task_data,
+                                    lambda result: self.memory_buffer.result_received(result, self.forward_propagated)))
 
         self.current_record.task_queued()
 
