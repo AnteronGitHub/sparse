@@ -3,9 +3,11 @@ import io
 import logging
 import pickle
 import struct
+import uuid
 
 class SparseProtocol(asyncio.Protocol):
     def __init__(self):
+        self.connection_id = str(uuid.uuid4())
         self.logger = logging.getLogger("sparse")
         self.payload_buffer = io.BytesIO()
         self.transport = None

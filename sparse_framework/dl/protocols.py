@@ -77,7 +77,7 @@ class InferenceClientProtocol(SparseProtocol):
         self.target_latency = target_latency
         self.use_scheduling = use_scheduling
 
-        self.statistics = ClientRequestStatistics(data_source_id, stats_queue)
+        self.statistics = ClientRequestStatistics(self.connection_id, stats_queue)
         self.current_record = None
 
     def start_stream(self):
@@ -150,7 +150,7 @@ class InferenceServerProtocol(SparseProtocol):
         self.stats_queue = stats_queue
         self.memory_buffer = node.get_memory_buffer()
         self.use_scheduling = use_scheduling
-        self.statistics = ServerRequestStatistics(node.node_id, stats_queue)
+        self.statistics = ServerRequestStatistics(self.connection_id, stats_queue)
 
         self.model_meta_data = None
         self.current_record = None

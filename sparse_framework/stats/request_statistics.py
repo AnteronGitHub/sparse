@@ -7,16 +7,16 @@ class RequestStatisticsRecord:
 
     The timestamps are collected relative to the time at which the connection was made.
     """
-    def __init__(self, node_id : str, request_op : str, connection_made_at : float):
-        self.node_id = node_id
+    def __init__(self, connection_id : str, request_op : str, connection_made_at : float):
+        self.connection_id = connection_id
         self.request_op = request_op
         self.connection_made_at = connection_made_at
 
     def csv_header(self):
-        return "node_id,request_op\n"
+        return "connection_id,request_op\n"
 
     def to_csv(self):
-        return f"{self.node_id},{self.request_op}\n"
+        return f"{self.connection_id},{self.request_op}\n"
 
 class ServerRequestStatisticsRecord(RequestStatisticsRecord):
     def __init__(self, *args):
@@ -43,10 +43,10 @@ class ServerRequestStatisticsRecord(RequestStatisticsRecord):
         self.response_sent_at = time() - self.connection_made_at
 
     def csv_header(self):
-        return "node_id,request_op,request_received_at,task_queued_at,task_started_at,task_completed_at,response_sent_at\n"
+        return "connection_id,request_op,request_received_at,task_queued_at,task_started_at,task_completed_at,response_sent_at\n"
 
     def to_csv(self):
-        return f"{self.node_id},{self.request_op},{self.request_received_at},{self.task_queued_at},{self.task_started_at},{self.task_completed_at},{self.response_sent_at}\n"
+        return f"{self.connection_id},{self.request_op},{self.request_received_at},{self.task_queued_at},{self.task_started_at},{self.task_completed_at},{self.response_sent_at}\n"
 
 class ClientRequestStatisticsRecord(RequestStatisticsRecord):
     def __init__(self, *args):
@@ -65,16 +65,16 @@ class ClientRequestStatisticsRecord(RequestStatisticsRecord):
         self.response_received_at = time() - self.connection_made_at
 
     def csv_header(self):
-        return "node_id,request_op,processing_started_at,request_sent_at,response_received_at\n"
+        return "connection_id,request_op,processing_started_at,request_sent_at,response_received_at\n"
 
     def to_csv(self):
-        return f"{self.node_id},{self.request_op},{self.processing_started_at},{self.request_sent_at},{self.response_received_at}\n"
+        return f"{self.connection_id},{self.request_op},{self.processing_started_at},{self.request_sent_at},{self.response_received_at}\n"
 
 class RequestStatistics():
     """Class that collects statistics for requests made during a connection.
     """
-    def __init__(self, node_id : str, stats_queue = None):
-        self.node_id = node_id
+    def __init__(self, connection_id : str, stats_queue = None):
+        self.connection_id = connection_id
         self.request_records = []
         self.stats_queue = stats_queue
 
@@ -84,7 +84,7 @@ class RequestStatistics():
         self.connected_at = time()
 
     def create_record(self, task_op) -> RequestStatisticsRecord:
-        return RequestStatisticsRecord(self.node_id, task_op, self.connected_at)
+        return RequestStatisticsRecord(self.connection_id, task_op, self.connected_at)
 
     def log_record(self, record : RequestStatisticsRecord):
         self.request_records.append(record)
@@ -101,7 +101,7 @@ class RequestStatistics():
 
 class ServerRequestStatistics(RequestStatistics):
     def create_record(self, task_op) -> ServerRequestStatisticsRecord:
-        return ServerRequestStatisticsRecord(self.node_id, task_op, self.connected_at)
+        return ServerRequestStatisticsRecord(self.connection_id, task_op, self.connected_at)
 
     def get_service_time(self, record : ServerRequestStatisticsRecord):
         return record.response_sent_at - record.request_received_at
@@ -141,7 +141,7 @@ class ServerRequestStatistics(RequestStatistics):
 
 class ClientRequestStatistics(RequestStatistics):
     def create_record(self, task_op) -> ClientRequestStatisticsRecord:
-        return ClientRequestStatisticsRecord(self.node_id, task_op, self.connected_at)
+        return ClientRequestStatisticsRecord(self.connection_id, task_op, self.connected_at)
 
     def get_e2e_latency(self, record : ClientRequestStatisticsRecord):
         return record.response_received_at - record.processing_started_at

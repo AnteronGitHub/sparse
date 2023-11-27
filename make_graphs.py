@@ -40,7 +40,7 @@ class StatisticsFileLoader:
 
         no_datasources = input("Number of data sources in experiment: ")
         used_scheduling = self.select_from_options(["OTN", "None"], "Scheduling method:")
-        df = df.assign(Datasources=int(no_datasources), Scheduling=used_scheduling)
+        df = df.assign(Connections=int(no_datasources), Scheduling=used_scheduling)
 
         # Statistics only for offloaded tasks
         df = df.loc[df['request_op']=='offload_task']
@@ -114,7 +114,7 @@ class StatisticsGraphPlotter:
 
         # Plot graph
         fig, ax = plt.subplots(figsize=(12,6))
-        for label, data in stats.groupby("node_id"):
+        for label, data in stats.groupby("connection_id"):
             data.plot(y="Offload latency (ms)", ax=ax, label=label, marker=marker)
 
         plt.title(title)
@@ -152,7 +152,7 @@ class StatisticsGraphPlotter:
 
             frames.append(self.count_offload_task_statistics(df, start_at, end_at))
 
-        ax = sns.boxplot(x="Datasources",
+        ax = sns.boxplot(x="Connections",
                          y="Offload latency (ms)",
                          hue="Scheduling",
                          data=pd.concat(frames),
