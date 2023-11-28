@@ -195,19 +195,18 @@ class InferenceServerProtocol(SparseProtocol):
         self.current_record = self.statistics.create_record(payload["op"])
         self.current_record.request_received()
 
-        self.memory_buffer.buffer_input(self.model_meta_data, payload['activation'])
+        index = self.memory_buffer.buffer_input(self.model_meta_data,
+                                                payload['activation'],
+                                                self.forward_propagated,
+                                                self.current_record)
 
-        task_data = { 'model_meta_data': self.model_meta_data,
-                      'statistics_record': self.current_record }
-
-        self.task_queue.put_nowait(("forward_propagate",
-                                    task_data,
-                                    lambda result: self.memory_buffer.result_received(result, self.forward_propagated)))
+        if index == 0:
+            self.task_queue.put_nowait(("forward_propagate", self.model_meta_data))
 
         self.current_record.task_queued()
 
-    def forward_propagated(self, prediction):
-        payload = { "pred": prediction }
+    def forward_propagated(self, result):
+        payload = { "pred": result }
         if self.use_scheduling:
             payload["sync"] = self.statistics.get_queueing_time(self.current_record)
         self.send_payload(payload)

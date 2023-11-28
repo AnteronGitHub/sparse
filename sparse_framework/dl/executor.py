@@ -15,26 +15,29 @@ class TensorExecutor(TaskExecutor):
         self.logger.info(f"Task executor using {self.device} for tensor processing.")
         await super().start()
 
-    def execute_task(self, fn_name, input_data: dict, callback) -> dict:
+    def execute_task(self, fn_name, input_data):
         if fn_name == "forward_propagate":
-            self.forward_propagate(input_data, callback)
+            self.forward_propagate(input_data)
         elif fn_name == "backward_propagate":
-            self.backward_propagate(input_data, callback)
+            self.backward_propagate(input_data)
         else:
             self.logger.debug(f"Received unknown function '{fn_name}' call.")
 
-    def forward_propagate(self, input_data: dict, callback) -> dict:
+    def forward_propagate(self, model_meta_data):
         """Run forward pass for specified model with specified input tensor."""
-        model_meta_data, statistics_record = input_data['model_meta_data'], input_data['statistics_record']
-        statistics_record.task_started()
-
         model = self.memory_buffer.get_model(model_meta_data)
-        features = self.memory_buffer.pop_input(model_meta_data)
+        features, callbacks, statistics_records = self.memory_buffer.dispatch_batch(model_meta_data)
+
+        task_started_at = time()
         pred = model(features)
+        task_completed_at = time()
 
-        statistics_record.task_completed()
+        for record in statistics_records:
+            record.task_started(task_started_at)
+            record.task_completed(task_completed_at)
 
-        callback({ "pred": pred })
+        for callback in callbacks:
+            callback(pred)
 
     def backward_propagate(self, input_data: dict, callback) -> dict:
         split_layer, labels, model, loss_fn, optimizer, pred = input_data['activation'], \

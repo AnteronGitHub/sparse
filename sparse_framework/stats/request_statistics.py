@@ -33,11 +33,15 @@ class ServerRequestStatisticsRecord(RequestStatisticsRecord):
     def task_queued(self):
         self.task_queued_at = time() - self.connection_made_at
 
-    def task_started(self):
-        self.task_started_at = time() - self.connection_made_at
+    def task_started(self, task_started_at = None):
+        if task_started_at is None:
+            task_started_at = time()
+        self.task_started_at = task_started_at - self.connection_made_at
 
-    def task_completed(self):
-        self.task_completed_at = time() - self.connection_made_at
+    def task_completed(self, task_completed_at = None):
+        if task_completed_at is None:
+            task_completed_at = time()
+        self.task_completed_at = task_completed_at - self.connection_made_at
 
     def response_sent(self):
         self.response_sent_at = time() - self.connection_made_at
