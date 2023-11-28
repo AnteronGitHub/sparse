@@ -201,7 +201,7 @@ class InferenceServerProtocol(SparseProtocol):
                                                 self.current_record)
 
         if index == 0:
-            self.task_queue.put_nowait(("forward_propagate", self.model_meta_data))
+            self.task_queue.put_nowait(("forward_propagate", self.model_meta_data, self.memory_buffer.result_received))
 
         self.current_record.task_queued()
 

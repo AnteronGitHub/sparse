@@ -20,8 +20,8 @@ class TaskExecutor:
     async def start(self):
         loop = asyncio.get_running_loop()
         while True:
-            task_type, input_data = await self.queue.get()
-            await loop.run_in_executor(self.executor, functools.partial(self.execute_task, task_type, input_data))
+            task_type, input_data, callback = await self.queue.get()
+            await loop.run_in_executor(self.executor, functools.partial(self.execute_task, task_type, input_data, callback))
             self.queue.task_done()
 
     def execute_task(self, input_data):

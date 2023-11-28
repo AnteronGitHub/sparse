@@ -51,8 +51,7 @@ class MemoryBuffer:
         """Appends an input tensor to the specified model's input buffer and returns its index.
         """
         index = len(self.task_data_buffer[model_meta_data.model_id])
-        callback = lambda result: self.result_received(result, rx_callback, index)
-        task_data = TaskData(self.transferToDevice(input_tensor), callback, statistics_record)
+        task_data = TaskData(self.transferToDevice(input_tensor), rx_callback, statistics_record)
         self.task_data_buffer[model_meta_data.model_id].append(task_data)
         return index
 
@@ -83,12 +82,11 @@ class MemoryBuffer:
         else:
             callback(load_task)
 
-    def result_received(self, result, callback, index):
+    def result_received(self, result, callbacks):
         transferred_result = self.transferToHost(result)
 
-        result = transferred_result[index]
-
-        callback(result)
+        for index, callback in enumerate(callbacks):
+            callback(transferred_result[index])
 
     def load_model(self, model_meta_data : ModelMetaData, callback):
         model_loader_protocol_factory = lambda on_con_lost, stats_queue: \
