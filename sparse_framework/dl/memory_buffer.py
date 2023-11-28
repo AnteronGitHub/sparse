@@ -47,28 +47,37 @@ class MemoryBuffer:
         load_task = self.get_load_task(model_meta_data)
         return load_task.result()
 
-    def buffer_input(self, model_meta_data, input_tensor, rx_callback, statistics_record) -> int:
+    def buffer_input(self, model_meta_data, input_tensor, rx_callback, statistics_record, lock) -> int:
         """Appends an input tensor to the specified model's input buffer and returns its index.
         """
-        index = len(self.task_data_buffer[model_meta_data.model_id])
-        task_data = TaskData(self.transferToDevice(input_tensor), rx_callback, statistics_record)
-        self.task_data_buffer[model_meta_data.model_id].append(task_data)
-        return index
+        with lock:
+            index = len(self.task_data_buffer[model_meta_data.model_id])
+            task_data = TaskData(self.transferToDevice(input_tensor), rx_callback, statistics_record)
+            self.task_data_buffer[model_meta_data.model_id].append(task_data)
+
+            self.logger.info(f"{index+1} samples buffered.")
+            return index
 
     def pop_input(self, model_meta_data : ModelMetaData):
         return self.task_data_buffer[model_meta_data.model_id].pop(0)
 
-    def dispatch_batch(self, model_meta_data : ModelMetaData):
+    def dispatch_batch(self, model_meta_data : ModelMetaData, lock):
+        with lock:
+            task_data_batch = self.task_data_buffer[model_meta_data.model_id]
+            self.task_data_buffer[model_meta_data.model_id] = []
+
         input_data = []
         callbacks = []
         statistics_records = []
-        for task_data in self.task_data_buffer[model_meta_data.model_id]:
+        batch_size = 0
+        for task_data in task_data_batch:
             input_data.append(task_data.input_data)
             callbacks.append(task_data.done_callback)
             statistics_records.append(task_data.statistics_record)
+            batch_size += 1
 
-        self.task_data_buffer[model_meta_data.model_id] = []
 
+        self.logger.info(f"Dispatched batch of {batch_size} samples.")
         return torch.cat(input_data), callbacks, statistics_records
 
     def start_stream(self, model_meta_data, callback):
