@@ -51,13 +51,10 @@ class InferenceServer(SparseNode):
     def get_futures(self):
         futures = super().get_futures()
 
-        m = multiprocessing.Manager()
-        lock = m.Lock()
-
         memory_buffer = MemoryBuffer(self, get_device())
         task_queue = asyncio.Queue()
 
-        futures.append(TensorExecutor(lock, memory_buffer, task_queue).start())
+        futures.append(TensorExecutor(memory_buffer, task_queue).start())
         futures.append(self.start_server(lambda: InferenceServerProtocol(memory_buffer, \
                                                                          self.use_scheduling, \
                                                                          task_queue, \

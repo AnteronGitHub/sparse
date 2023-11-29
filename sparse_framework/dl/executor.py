@@ -15,18 +15,18 @@ class TensorExecutor(TaskExecutor):
         self.logger.info(f"Task executor using {self.device} for tensor processing.")
         await super().start()
 
-    def execute_task(self, fn_name, input_data, callback, lock):
+    def execute_task(self, fn_name, input_data, callback):
         if fn_name == "forward_propagate":
-            self.forward_propagate(input_data, callback, lock)
+            self.forward_propagate(input_data, callback)
         elif fn_name == "backward_propagate":
-            self.backward_propagate(input_data, callback, lock)
+            self.backward_propagate(input_data, callback)
         else:
             self.logger.debug(f"Received unknown function '{fn_name}' call.")
 
-    def forward_propagate(self, model_meta_data, callback, lock):
+    def forward_propagate(self, model_meta_data, callback):
         """Run forward pass for specified model with specified input tensor."""
         model = self.memory_buffer.get_model(model_meta_data)
-        features, callbacks, statistics_records = self.memory_buffer.dispatch_batch(model_meta_data, lock)
+        features, callbacks, statistics_records = self.memory_buffer.dispatch_batch(model_meta_data)
 
         task_started_at = time()
         pred = model(features)

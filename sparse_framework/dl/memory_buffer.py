@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import multiprocessing
 from time import time
 
 import torch
@@ -30,6 +31,7 @@ class MemoryBuffer:
 
         self.models = {}
         self.task_data_buffer = {}
+        self.lock = multiprocessing.Manager().Lock()
 
     def transferToDevice(self, tensor):
         return tensor.to(self.device)
@@ -47,10 +49,10 @@ class MemoryBuffer:
         load_task = self.get_load_task(model_meta_data)
         return load_task.result()
 
-    def buffer_input(self, model_meta_data, input_tensor, rx_callback, statistics_record, lock) -> int:
+    def buffer_input(self, model_meta_data, input_tensor, rx_callback, statistics_record) -> int:
         """Appends an input tensor to the specified model's input buffer and returns its index.
         """
-        with lock:
+        with self.lock:
             index = len(self.task_data_buffer[model_meta_data.model_id])
             task_data = TaskData(self.transferToDevice(input_tensor), rx_callback, statistics_record)
             self.task_data_buffer[model_meta_data.model_id].append(task_data)
@@ -61,8 +63,8 @@ class MemoryBuffer:
     def pop_input(self, model_meta_data : ModelMetaData):
         return self.task_data_buffer[model_meta_data.model_id].pop(0)
 
-    def dispatch_batch(self, model_meta_data : ModelMetaData, lock):
-        with lock:
+    def dispatch_batch(self, model_meta_data : ModelMetaData):
+        with self.lock:
             task_data_batch = self.task_data_buffer[model_meta_data.model_id]
             self.task_data_buffer[model_meta_data.model_id] = []
 
