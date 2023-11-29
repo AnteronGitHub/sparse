@@ -55,14 +55,14 @@ class MemoryBuffer:
             task_data = TaskData(self.transferToDevice(input_tensor), rx_callback, statistics_record)
             self.task_data_buffer[model_meta_data.model_id].append(task_data)
 
-        self.logger.info(f"{index+1} samples buffered.")
+        self.logger.debug(f"{index+1} samples buffered.")
         return index
 
     def pop_input(self, model_meta_data : ModelMetaData, lock):
         with lock:
             task_data = self.task_data_buffer[model_meta_data.model_id].pop(0)
 
-        self.logger.info(f"Dispatched sample from buffer.")
+        self.logger.debug(f"Dispatched sample from buffer.")
         return task_data.input_data, [task_data.done_callback], [task_data.statistics_record]
 
     def dispatch_batch(self, model_meta_data : ModelMetaData, lock):
