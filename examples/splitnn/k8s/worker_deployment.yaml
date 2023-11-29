@@ -42,6 +42,8 @@ spec:
         - "worker.py"
         - "--use-scheduling"
         - "$SPARSE_USE_SCHEDULING"
+        - "--use-batching"
+        - "$SPARSE_USE_BATCHING"
         volumeMounts:
         - name: app-code
           mountPath: /app

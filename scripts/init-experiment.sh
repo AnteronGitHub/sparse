@@ -25,6 +25,9 @@ init_environment () {
   read -p "Use scheduling (default 1): " SPARSE_USE_SCHEDULING
   export SPARSE_USE_SCHEDULING=${SPARSE_USE_SCHEDULING:-1}
 
+  read -p "Use batching (default 1): " SPARSE_USE_BATCHING
+  export SPARSE_USE_BATCHING=${SPARSE_USE_BATCHING:-1}
+
   # Deployment specs
   read -p "Use external link for data source (default 'no'): " SPARSE_DATASOURCE_USE_EXTERNAL_LINK
   export SPARSE_DATASOURCE_USE_EXTERNAL_LINK=${SPARSE_DATASOURCE_USE_EXTERNAL_LINK:-"no"}

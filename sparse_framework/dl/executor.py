@@ -7,12 +7,13 @@ from . import count_model_parameters, get_device
 __all__ = ["TensorExecutor"]
 
 class TensorExecutor(TaskExecutor):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, use_batching : bool, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.device = get_device()
+        self.use_batching = use_batching
 
     async def start(self):
-        self.logger.info(f"Task executor using {self.device} for tensor processing.")
+        self.logger.info(f"Task executor using {self.device} for tensor processing (Batching: {self.use_batching}).")
         await super().start()
 
     def execute_task(self, fn_name, input_data, callback, lock):
@@ -26,7 +27,11 @@ class TensorExecutor(TaskExecutor):
     def forward_propagate(self, model_meta_data, callback, lock):
         """Run forward pass for specified model with specified input tensor."""
         model = self.memory_buffer.get_model(model_meta_data)
-        features, callbacks, statistics_records = self.memory_buffer.dispatch_batch(model_meta_data, lock)
+
+        if self.use_batching:
+            features, callbacks, statistics_records = self.memory_buffer.dispatch_batch(model_meta_data, lock) 
+        else:
+            features, callbacks, statistics_records = self.memory_buffer.pop_input(model_meta_data, lock) 
 
         task_started_at = time()
         pred = model(features)

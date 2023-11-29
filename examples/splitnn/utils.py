@@ -8,6 +8,7 @@ def parse_arguments():
     parser.add_argument('--dataset', default='CIFAR10', type=str, help="Options: FMNIST, CIFAR10, CIFAR100, Imagenet100")
     parser.add_argument('--no-samples', default=64, type=int)
     parser.add_argument('--use-scheduling', default=1, type=int)
+    parser.add_argument('--use-batching', default=1, type=int)
     parser.add_argument('--application', default='learning', type=str)
     parser.add_argument('--no-datasources', default=1, type=int)
     parser.add_argument('--no-models', default=1, type=int)

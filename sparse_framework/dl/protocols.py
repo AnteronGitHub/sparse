@@ -142,6 +142,7 @@ class InferenceServerProtocol(SparseProtocol):
     def __init__(self,
                  memory_buffer,
                  use_scheduling : bool,
+                 use_batching : bool,
                  task_queue,
                  stats_queue,
                  lock):
@@ -150,7 +151,10 @@ class InferenceServerProtocol(SparseProtocol):
         self.memory_buffer = memory_buffer
         self.task_queue = task_queue
         self.stats_queue = stats_queue
+
         self.use_scheduling = use_scheduling
+        self.use_batching = use_batching
+
         self.statistics = ServerRequestStatistics(self.connection_id, stats_queue)
         self.lock = lock
 
@@ -202,7 +206,7 @@ class InferenceServerProtocol(SparseProtocol):
                                                 self.forward_propagated,
                                                 self.current_record, self.lock)
 
-        if index == 0:
+        if not self.use_batching or index == 0:
             self.task_queue.put_nowait(("forward_propagate", self.model_meta_data, self.memory_buffer.result_received))
 
         self.current_record.task_queued()

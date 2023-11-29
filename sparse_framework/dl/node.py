@@ -43,10 +43,11 @@ class InferenceServer(SparseNode):
 
     Inference server runs the executor in a separate thread from the server, using an asynchronous queue.
     """
-    def __init__(self, use_scheduling : bool):
+    def __init__(self, use_scheduling : bool, use_batching : bool):
         super().__init__()
 
         self.use_scheduling = use_scheduling
+        self.use_batching = use_batching
 
     def get_futures(self):
         futures = super().get_futures()
@@ -57,9 +58,10 @@ class InferenceServer(SparseNode):
         memory_buffer = MemoryBuffer(self, get_device())
         task_queue = asyncio.Queue()
 
-        futures.append(TensorExecutor(lock, memory_buffer, task_queue).start())
+        futures.append(TensorExecutor(self.use_batching, lock, memory_buffer, task_queue).start())
         futures.append(self.start_server(lambda: InferenceServerProtocol(memory_buffer, \
                                                                          self.use_scheduling, \
+                                                                         self.use_batching, \
                                                                          task_queue, \
                                                                          self.stats_queue,
                                                                          lock), \
