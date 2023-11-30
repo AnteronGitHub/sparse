@@ -206,10 +206,9 @@ class InferenceServerProtocol(SparseProtocol):
                                                 self.forward_propagated,
                                                 self.current_record, self.lock)
 
+        self.current_record.task_queued()
         if not self.use_batching or index == 0:
             self.task_queue.put_nowait(("forward_propagate", self.model_meta_data, self.memory_buffer.result_received))
-
-        self.current_record.task_queued()
 
     def forward_propagated(self, result):
         payload = { "pred": result }
