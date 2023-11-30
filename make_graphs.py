@@ -58,9 +58,9 @@ class StatisticsFileLoader:
         except ValueError:
             start_at = 0.0
         try:
-            end_at = float(input("End at timestamp: "))
+            period_length = float(input("Period length: "))
         except ValueError:
-            end_at = -1.0
+            period_length = -1.0
         try:
             y_min = float(input("Min y: "))
         except ValueError:
@@ -70,14 +70,33 @@ class StatisticsFileLoader:
         except ValueError:
             y_max = -1
 
-        return title, start_at, end_at, y_min, y_max
+        return title, start_at, period_length, y_min, y_max
 
 class StatisticsGraphPlotter:
     def __init__(self, write_path = '/var/lib/sparse/stats'):
         self.file_loader = StatisticsFileLoader()
         self.write_path = write_path
 
-    def count_offload_task_client_statistics(self, df, start_at = 0.0, end_at = -1.0):
+    def count_offload_task_client_statistics_legacy(self, df, start_at = 0.0, period_length = -1.0):
+        df = df.rename(columns={ 'processing_started':'request_sent_at',
+                                 'latency': 'Latency (ms)',
+                                 'node_id': 'connection_id',
+                                 'offload_latency': 'Offload latency (ms)' })
+
+        # Scale latencies to milliseconds
+        df['Latency (ms)'] = df['Latency (ms)'].apply(lambda x: 1000.0*x)
+        df['Offload latency (ms)'] = df['Offload latency (ms)'].apply(lambda x: 1000.0*x)
+
+        # Drop first rows to ignore 'slow start'
+        # (See e.g: https://stackoverflow.com/questions/64420777/opencv-cuda-api-very-slow-at-the-first-call)
+        df = df[df["request_sent_at"] >= start_at]
+        if period_length > 0.0:
+            df = df[df["request_sent_at"] <= start_at + period_length]
+        df["request_sent_at"] = df["request_sent_at"].apply(lambda x: x-start_at)
+
+        return df.set_index("request_sent_at")
+
+    def count_offload_task_client_statistics(self, df, start_at = 0.0, period_length = -1.0):
         """Calculates latencies from a Dataframe with time stamps, and returns a new DataFrame with the results.
 
         Result DataFrame uses 'request_sent_at' timestamp as the index.
@@ -87,22 +106,24 @@ class StatisticsGraphPlotter:
         df['e2e_latency'] = df['response_received_at'] - df['processing_started_at']
         df['offload_latency'] = df['response_received_at'] - df['request_sent_at']
 
-        # Scale latencies to milliseconds
-        df['e2e_latency'] = df['e2e_latency'].apply(lambda x: 1000.0*x)
-        df['offload_latency'] = df['offload_latency'].apply(lambda x: 1000.0*x)
+        df = df.rename(columns={ 'e2e_latency': 'Latency (ms)',
+                                 'offload_latency': 'Offload latency (ms)',
+                                 'node_id': 'connection_id' })
 
-        df = df.rename(columns={ 'e2e_latency': 'Latency (ms)', 'offload_latency': 'Offload latency (ms)' })
+        # Scale latencies to milliseconds
+        df['Latency (ms)'] = df['Latency (ms)'].apply(lambda x: 1000.0*x)
+        df['Offload latency (ms)'] = df['Offload latency (ms)'].apply(lambda x: 1000.0*x)
 
         # Drop first rows to ignore 'slow start'
         # (See e.g: https://stackoverflow.com/questions/64420777/opencv-cuda-api-very-slow-at-the-first-call)
         df = df[df["request_sent_at"] >= start_at]
-        if end_at > 0.0:
-            df = df[df["request_sent_at"] <= end_at]
+        if period_length > 0.0:
+            df = df[df["request_sent_at"] <= start_at + period_length]
         df["request_sent_at"] = df["request_sent_at"].apply(lambda x: x-start_at)
 
         return df.set_index("request_sent_at")
 
-    def count_offload_task_server_statistics(self, df, start_at = 30.0, end_at = -1.0):
+    def count_offload_task_server_statistics(self, df, start_at = 30.0, period_length = -1.0):
         df = df.loc[df['request_op']=='offload_task']
 
         df['e2e_latency'] = df['response_sent_at'] - df['request_received_at']
@@ -124,35 +145,41 @@ class StatisticsGraphPlotter:
 
         # Translate time axis
         df = df[df["request_received_at"] >= start_at]
-        if end_at > 0.0:
-            df = df[df["request_received_at"] <= end_at]
+        if period_length > 0.0:
+            df = df[df["request_received_at"] <= start_at + period_length]
         df["request_received_at"] = df["request_received_at"].apply(lambda x: x-start_at)
 
         return df.set_index("request_received_at")
 
-    def print_statistics(self):
+    def print_statistics(self, legacy = False):
         dataframe_type, df = self.file_loader.load_dataframe()
 
         if dataframe_type == "ClientRequestStatisticsRecord":
             # Calculate statistics for offloaded tasks
-            stats = self.count_offload_task_client_statistics(df)
+            if legacy:
+                stats = self.count_offload_task_client_statistics_legacy(df)
+            else:
+                stats = self.count_offload_task_client_statistics(df)
             # Print statistics
             print(stats[['Latency (ms)', 'Offload latency (ms)']].describe())
         else:
             stats = self.count_offload_task_server_statistics(df)
             print(stats[['Service time (ms)', 'RX latency (ms)', 'Queueing time (ms)', 'Task latency (ms)', 'TX latency (ms)']].describe())
 
-    def plot_latency_timeline(self):
+    def plot_latency_timeline(self, latency = False):
         dataframe_type, df = self.file_loader.load_dataframe()
-        title, start_at, end_at, y_min, y_max = self.file_loader.parse_scales()
+        title, start_at, period_length, y_min, y_max = self.file_loader.parse_scales()
 
         marker = 'o' if (input("Use marker in plot points (y/N): ")) == "y" else ''
 
         # Count analytics
         if dataframe_type == "ClientRequestStatisticsRecord":
-            stats = self.count_offload_task_client_statistics(df, start_at, end_at)
+            if latency:
+                stats = self.count_offload_task_client_statistics_legacy(df, start_at, period_length)
+            else:
+                stats = self.count_offload_task_client_statistics(df, start_at, period_length)
         else:
-            stats = self.count_offload_task_server_statistics(df, start_at, end_at)
+            stats = self.count_offload_task_server_statistics(df, start_at, period_length)
 
         # Plot graph
         ylabel = "Offload latency (ms)" if dataframe_type == "ClientRequestStatisticsRecord" else "Service time (ms)"
@@ -167,10 +194,10 @@ class StatisticsGraphPlotter:
         plt.grid()
 
         ax.get_legend().remove()
-        if end_at > 0:
-            ax.set_xlim([0, end_at - start_at])
+        if period_length > 0:
+            ax.set_xlim([0, period_length])
 
-        if y_min > 0 and y_max > 0:
+        if y_min > 0 or y_max > 0:
             ax.set_ylim([y_min, y_max])
 
         filepath = os.path.join(self.write_path, f"{dataframe_type}_latency_timeline.png")
@@ -178,7 +205,7 @@ class StatisticsGraphPlotter:
         print(f"Saved column plot to '{filepath}'")
 
     def plot_benchmark_barplot(self):
-        title, start_at, end_at, y_min, y_max = self.file_loader.parse_scales()
+        title, start_at, period_length, y_min, y_max = self.file_loader.parse_scales()
 
         plt.figure(figsize=(8,4))
 
@@ -225,11 +252,11 @@ class StatisticsGraphPlotter:
             except ValueError:
                 start_at = 0.0
             try:
-                end_at = float(input("End at timestamp: "))
+                period_length = float(input("End at timestamp: "))
             except ValueError:
-                end_at = -1.0
+                period_length = -1.0
 
-            frames.append(self.count_offload_task_client_statistics(df, start_at, end_at))
+            frames.append(self.count_offload_task_client_statistics(df, start_at, period_length))
 
         ax = sns.boxplot(x="Connections",
                          y="Offload latency (ms)",
@@ -244,11 +271,12 @@ class StatisticsGraphPlotter:
 
 if __name__ == "__main__":
     plotter = StatisticsGraphPlotter()
-    operation = plotter.file_loader.select_from_options(["Print statistics", "Plot timeline", "Plot barplot", "Plot boxplot"], "Select operation:")
-    if operation == "Print statistics":
-        plotter.print_statistics()
+    operation = plotter.file_loader.select_from_options(["Print DataFrame", "Plot timeline", "Plot barplot", "Plot boxplot"], "Select operation:")
+    legacy = bool(input("Legacy format y/N: "))
+    if operation == "Print DataFrame":
+        plotter.print_statistics(legacy)
     elif operation == "Plot timeline":
-        plotter.plot_latency_timeline()
+        plotter.plot_latency_timeline(legacy)
     elif operation == "Plot barplot":
         plotter.plot_benchmark_barplot()
     else:
