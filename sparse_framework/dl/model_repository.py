@@ -2,9 +2,18 @@ import os
 import torch
 from torch import nn
 
-from ...models import ModuleQueue
-from ..model_meta_data import ModelMetaData
-from .base_model_repository import BaseModelRepository
+from .models import ModuleQueue
+from .model_meta_data import ModelMetaData
+
+__all__ = [ "BaseModelRepository",
+            "DiskModelRepository" ]
+
+class BaseModelRepository():
+    async def get_model(self, model_meta_data : ModelMetaData):
+        pass
+
+    async def save_model(self, model : ModuleQueue, model_meta_data : ModelMetaData):
+        pass
 
 class DiskModelRepository(BaseModelRepository):
     def __init__(self, data_path : str = "/data/models"):
