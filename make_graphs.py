@@ -37,13 +37,14 @@ class StatisticsFileLoader:
             print(f"File '{filename}' was not found in directory '{STATS_PATH}'. Make sure that it exists and is readable.")
 
     def parse_boxplot_frame(self):
-        dataframe_type, df = self.load_dataframe()
+        dataframe_type = "ClientRequestStatisticsRecord"
+        _, df = self.load_dataframe(dataframe_type)
 
         if df is None:
             return None
 
         no_datasources = input("Number of data sources in experiment: ")
-        used_scheduling = self.select_from_options(["OTN", "None"], "Scheduling method:")
+        used_scheduling = self.select_from_options(["FCFS", "FCFS w/ Batching", "OTN"], "Scheduling method:")
         df = df.assign(Connections=int(no_datasources), Scheduling=used_scheduling)
 
         # Statistics only for offloaded tasks
@@ -184,7 +185,8 @@ class StatisticsGraphPlotter:
         # Plot graph
         ylabel = "Offload latency (ms)" if dataframe_type == "ClientRequestStatisticsRecord" else "Service time (ms)"
         xlabel = "Request sent (s)" if dataframe_type == "ClientRequestStatisticsRecord" else "Request received (s)"
-        fig, ax = plt.subplots(figsize=(12,6))
+        plt.rcParams.update({ 'font.size': 24 })
+        fig, ax = plt.subplots(figsize=(12,8))
         for label, data in stats.groupby("connection_id"):
             data.plot(y=ylabel, ax=ax, label=label, marker=marker)
 
@@ -201,13 +203,14 @@ class StatisticsGraphPlotter:
             ax.set_ylim([y_min, y_max])
 
         filepath = os.path.join(self.write_path, f"{dataframe_type}_latency_timeline.png")
-        plt.savefig(filepath, dpi=600)
+        plt.tight_layout()
+        plt.savefig(filepath, dpi=400)
         print(f"Saved column plot to '{filepath}'")
 
     def plot_benchmark_barplot(self):
         title, start_at, period_length, y_min, y_max = self.file_loader.parse_scales()
 
-        plt.figure(figsize=(8,4))
+        plt.figure(figsize=(16,8))
 
         barplot_data = pd.DataFrame([], columns=["Connections", "RX", 'Queueing', 'Task', "TX"])
         dataframe_type = "ServerRequestStatisticsRecord"
@@ -236,25 +239,21 @@ class StatisticsGraphPlotter:
             ax.set_ylim([0, y_max])
 
         filepath = os.path.join(self.write_path, f"{dataframe_type}_latency_barplot.png")
+        plt.tight_layout()
         plt.savefig(filepath, dpi=400)
         print(f"Saved benchmark barplot to '{filepath}'")
 
     def plot_offload_latency_boxplot(self):
-        plt.figure(figsize=(8,4))
+        plt.rcParams.update({ 'font.size': 24 })
+        plt.figure(figsize=(12,8))
 
+        dataframe_type = "ClientRequestStatisticsRecord"
         frames = []
+        title, start_at, period_length, y_min, y_max = self.file_loader.parse_scales()
         while True:
             df = self.file_loader.parse_boxplot_frame()
             if df is None:
                 break
-            try:
-                start_at = float(input("Start at timestamp: "))
-            except ValueError:
-                start_at = 0.0
-            try:
-                period_length = float(input("End at timestamp: "))
-            except ValueError:
-                period_length = -1.0
 
             frames.append(self.count_offload_task_client_statistics(df, start_at, period_length))
 
@@ -265,7 +264,11 @@ class StatisticsGraphPlotter:
                          palette="dark:grey",
                          showfliers=False)
 
-        filepath = os.path.join(self.write_path, "offload_latency_boxplot.png")
+        if y_min > 0 or y_max > 0:
+            ax.set_ylim([y_min, y_max])
+
+        filepath = os.path.join(self.write_path, f"{dataframe_type}_latency_boxplot.png")
+        plt.tight_layout()
         plt.savefig(filepath, dpi=400)
         print(f"Saved offload latency boxplot to '{filepath}'")
 
