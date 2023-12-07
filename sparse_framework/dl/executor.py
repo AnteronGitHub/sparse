@@ -11,6 +11,7 @@ class TensorExecutor(TaskExecutor):
         super().__init__(*args, **kwargs)
         self.device = get_device()
         self.use_batching = use_batching
+        self.batch_no = 0
 
     async def start(self):
         self.logger.info(f"Task executor using {self.device} for tensor processing (Batching: {self.use_batching}).")
@@ -38,9 +39,10 @@ class TensorExecutor(TaskExecutor):
         task_completed_at = time()
 
         for record in statistics_records:
-            record.task_started(task_started_at)
+            record.task_started(task_started_at, self.batch_no)
             record.task_completed(task_completed_at)
 
+        self.batch_no += 1
         callback(pred, callbacks)
 
     def backward_propagate(self, input_data: dict, callback) -> dict:

@@ -24,6 +24,7 @@ class ServerRequestStatisticsRecord(RequestStatisticsRecord):
         self.request_received_at = None
         self.task_queued_at = None
         self.task_started_at = None
+        self.batch_no = None
         self.task_completed_at = None
         self.response_sent_at = None
 
@@ -33,10 +34,11 @@ class ServerRequestStatisticsRecord(RequestStatisticsRecord):
     def task_queued(self):
         self.task_queued_at = time() - self.connection_made_at
 
-    def task_started(self, task_started_at = None):
+    def task_started(self, task_started_at = None, batch_no = 0):
         if task_started_at is None:
             task_started_at = time()
         self.task_started_at = task_started_at - self.connection_made_at
+        self.batch_no = batch_no
 
     def task_completed(self, task_completed_at = None):
         if task_completed_at is None:
@@ -47,10 +49,10 @@ class ServerRequestStatisticsRecord(RequestStatisticsRecord):
         self.response_sent_at = time() - self.connection_made_at
 
     def csv_header(self):
-        return "connection_id,request_op,request_received_at,task_queued_at,task_started_at,task_completed_at,response_sent_at\n"
+        return "connection_id,request_op,request_received_at,task_queued_at,task_started_at,task_completed_at,response_sent_at,batch_no\n"
 
     def to_csv(self):
-        return f"{self.connection_id},{self.request_op},{self.request_received_at},{self.task_queued_at},{self.task_started_at},{self.task_completed_at},{self.response_sent_at}\n"
+        return f"{self.connection_id},{self.request_op},{self.request_received_at},{self.task_queued_at},{self.task_started_at},{self.task_completed_at},{self.response_sent_at},{self.batch_no}\n"
 
 class ClientRequestStatisticsRecord(RequestStatisticsRecord):
     def __init__(self, *args):
