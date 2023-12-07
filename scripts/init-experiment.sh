@@ -28,6 +28,9 @@ init_environment () {
   read -p "Use batching (default 1): " SPARSE_USE_BATCHING
   export SPARSE_USE_BATCHING=${SPARSE_USE_BATCHING:-1}
 
+  read -p "Target latency in milliseconds (default 200): " SPARSE_TARGET_LATENCY
+  export SPARSE_TARGET_LATENCY=${SPARSE_TARGET_LATENCY:-200}
+
   # Deployment specs
   read -p "Use external link for data source (default 'no'): " SPARSE_DATASOURCE_USE_EXTERNAL_LINK
   export SPARSE_DATASOURCE_USE_EXTERNAL_LINK=${SPARSE_DATASOURCE_USE_EXTERNAL_LINK:-"no"}

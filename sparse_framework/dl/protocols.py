@@ -9,8 +9,6 @@ from .model_repository import DiskModelRepository
 
 __all__ = ["InferenceClientProtocol", "InferenceServerProtocol", "ParameterClientProtocol", "ParameterServerProtocol"]
 
-TARGET_FPS = 5.0
-
 class ParameterClientProtocol(SparseProtocol):
     """Protocol for downloading model parameters over a TCP connection.
     """
@@ -67,7 +65,7 @@ class InferenceClientProtocol(SparseProtocol):
                  on_con_lost,
                  no_samples,
                  use_scheduling,
-                 target_latency = 1/TARGET_FPS,
+                 target_latency,
                  stats_queue = None):
         super().__init__()
         self.dataloader = DataLoader(dataset, 1)
