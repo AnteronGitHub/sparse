@@ -124,7 +124,7 @@ class StatisticsGraphPlotter:
 
         return df.set_index("request_sent_at")
 
-    def count_offload_task_server_statistics(self, df, start_at = 30.0, period_length = -1.0):
+    def count_offload_task_server_statistics(self, df, start_at = 0.0, period_length = -1.0):
         df = df.loc[df['request_op']=='offload_task']
 
         df['e2e_latency'] = df['response_sent_at'] - df['request_received_at']
@@ -152,8 +152,37 @@ class StatisticsGraphPlotter:
 
         return df.set_index("request_received_at")
 
+    def count_offload_task_server_batch_statistics(self, df, start_at = 0.0, period_length = -1.0):
+        df = df.loc[df['request_op']=='offload_task']
+        df = df[df["task_started_at"] >= start_at]
+
+        if period_length > 0.0:
+            df = df[df["task_started_at"] <= start_at + period_length]
+
+        result_df = pd.DataFrame([], columns=["Task started (s)", "Task latency (ms)", "Batch Size"])
+
+        batch_size = task_started = task_latency = 0
+        batch_no = -1
+        for i in df.index:
+            if df["batch_no"][i] == batch_no:
+                batch_size += 1
+            else:
+                if batch_size > 0:
+                    result_df.loc[len(result_df.index)] = [task_started, task_latency, batch_size]
+                batch_no = df["batch_no"][i]
+
+                task_started = df["task_started_at"][i]
+                task_latency = 1000.0 * (df["task_completed_at"][i] - df["task_started_at"][i])
+                batch_size = 1
+
+        result_df["Task started (s)"] = result_df["Task started (s)"].apply(lambda x: x-start_at)
+        return result_df.set_index("Task started (s)")
+
     def print_statistics(self, legacy = False):
         dataframe_type, df = self.file_loader.load_dataframe()
+        batch_stats = self.count_offload_task_server_batch_statistics(df)
+        print(batch_stats)
+        return
 
         if dataframe_type == "ClientRequestStatisticsRecord":
             # Calculate statistics for offloaded tasks
@@ -272,9 +301,43 @@ class StatisticsGraphPlotter:
         plt.savefig(filepath, dpi=400)
         print(f"Saved offload latency boxplot to '{filepath}'")
 
+    def plot_task_timeline(self):
+        title, start_at, period_length, y_min, y_max = self.file_loader.parse_scales()
+
+        dataframe_type = "ServerRequestStatisticsRecord"
+        _, df = self.file_loader.load_dataframe(dataframe_type)
+        stats = self.count_offload_task_server_batch_statistics(df, start_at, period_length)
+
+        plt.rcParams.update({ 'font.size': 12 })
+        plt.figure(figsize=(24,8))
+
+        stats.hist(column="Batch Size", legend=False)
+
+        plt.xlabel("Batch size")
+        plt.title(title)
+        plt.tight_layout()
+
+        filepath = os.path.join(self.write_path, f"{dataframe_type}_batch_size_histogram.png")
+        plt.savefig(filepath, dpi=400)
+        print(f"Saved batch size histogram to '{filepath}'")
+
+        plt.rcParams.update({ 'font.size': 24 })
+        plt.figure(figsize=(12,8))
+        ax = sns.boxplot(x="Batch Size",
+                         y="Task latency (ms)",
+                         data=stats,
+                         showfliers=False)
+
+        plt.title(title)
+        plt.tight_layout()
+
+        filepath = os.path.join(self.write_path, f"{dataframe_type}_batch_size_latency_boxplot.png")
+        plt.savefig(filepath, dpi=400)
+        print(f"Saved task latency boxplot to '{filepath}'")
+
 if __name__ == "__main__":
     plotter = StatisticsGraphPlotter()
-    operation = plotter.file_loader.select_from_options(["Print DataFrame", "Plot timeline", "Plot barplot", "Plot boxplot"], "Select operation:")
+    operation = plotter.file_loader.select_from_options(["Print DataFrame", "Plot timeline", "Plot barplot", "Plot boxplot", "Plot batch tasks"], "Select operation:")
     legacy = bool(input("Legacy format y/N: "))
     if operation == "Print DataFrame":
         plotter.print_statistics(legacy)
@@ -282,5 +345,7 @@ if __name__ == "__main__":
         plotter.plot_latency_timeline(legacy)
     elif operation == "Plot barplot":
         plotter.plot_benchmark_barplot()
-    else:
+    elif operation == "Plot boxplot":
         plotter.plot_offload_latency_boxplot()
+    else:
+        plotter.plot_task_timeline()
