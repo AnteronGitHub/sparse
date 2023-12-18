@@ -208,10 +208,13 @@ class InferenceServerProtocol(SparseProtocol):
         if not self.use_batching or index == 0:
             self.task_queue.put_nowait(("forward_propagate", self.model_meta_data, self.memory_buffer.result_received))
 
-    def forward_propagated(self, result):
+    def forward_propagated(self, result, batch_index = 0):
         payload = { "pred": result }
         if self.use_scheduling:
-            payload["sync"] = self.statistics.get_queueing_time(self.current_record)
+            queueing_time_ms = int(self.statistics.get_queueing_time(self.current_record) * 1000)
+            task_latency_ms = 9
+            sync_delay_ms = batch_index * task_latency_ms + queueing_time_ms % task_latency_ms
+            payload["sync"] =  sync_delay_ms / 1000.0
         self.send_payload(payload)
 
         self.current_record.response_sent()

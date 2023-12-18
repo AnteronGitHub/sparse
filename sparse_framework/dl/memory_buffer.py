@@ -97,8 +97,8 @@ class MemoryBuffer:
     def result_received(self, result, callbacks):
         transferred_result = self.transferToHost(result)
 
-        for index, callback in enumerate(callbacks):
-            callback(transferred_result[index])
+        for batch_index, callback in enumerate(callbacks):
+            callback(transferred_result[batch_index], batch_index)
 
     def load_model(self, model_meta_data : ModelMetaData, callback):
         model_loader_protocol_factory = lambda on_con_lost, stats_queue: \
