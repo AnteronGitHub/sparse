@@ -44,7 +44,7 @@ class StatisticsFileLoader:
             return None
 
         no_datasources = input("Number of data sources in experiment: ")
-        used_scheduling = self.select_from_options(["FCFS", "FCFS w/ Batching", "OTN"], "Scheduling method:")
+        used_scheduling = self.select_from_options(["FCFS", "B-FCFS", "OTN", "B-OTN"], "Scheduling method:")
         df = df.assign(Connections=int(no_datasources), Scheduling=used_scheduling)
 
         # Statistics only for offloaded tasks
