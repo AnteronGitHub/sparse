@@ -211,9 +211,16 @@ class InferenceServerProtocol(SparseProtocol):
     def forward_propagated(self, result, batch_index = 0):
         payload = { "pred": result }
         if self.use_scheduling:
+            # Quantize queueing time to millisecond precision
             queueing_time_ms = int(self.statistics.get_queueing_time(self.current_record) * 1000)
+
+            # Use externally measured median task latency
             task_latency_ms = 9
+
+            # Use modulo arithmetics to spread batch requests
             sync_delay_ms = batch_index * task_latency_ms + queueing_time_ms % task_latency_ms
+
+            self.current_record.set_sync_delay_ms(sync_delay_ms)
             payload["sync"] =  sync_delay_ms / 1000.0
         self.send_payload(payload)
 

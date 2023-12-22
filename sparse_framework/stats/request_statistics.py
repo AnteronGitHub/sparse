@@ -27,6 +27,7 @@ class ServerRequestStatisticsRecord(RequestStatisticsRecord):
         self.batch_no = None
         self.task_completed_at = None
         self.response_sent_at = None
+        self.sync_delay_ms = 0.0
 
     def request_received(self):
         self.request_received_at = time() - self.connection_made_at
@@ -45,14 +46,17 @@ class ServerRequestStatisticsRecord(RequestStatisticsRecord):
             task_completed_at = time()
         self.task_completed_at = task_completed_at - self.connection_made_at
 
+    def set_sync_delay_ms(self, sync_delay_ms):
+        self.sync_delay_ms = sync_delay_ms
+
     def response_sent(self):
         self.response_sent_at = time() - self.connection_made_at
 
     def csv_header(self):
-        return "connection_id,request_op,request_received_at,task_queued_at,task_started_at,task_completed_at,response_sent_at,batch_no\n"
+        return "connection_id,request_op,request_received_at,task_queued_at,task_started_at,task_completed_at,response_sent_at,batch_no,sync_delay_ms\n"
 
     def to_csv(self):
-        return f"{self.connection_id},{self.request_op},{self.request_received_at},{self.task_queued_at},{self.task_started_at},{self.task_completed_at},{self.response_sent_at},{self.batch_no}\n"
+        return f"{self.connection_id},{self.request_op},{self.request_received_at},{self.task_queued_at},{self.task_started_at},{self.task_completed_at},{self.response_sent_at},{self.batch_no},{self.sync_delay_ms}\n"
 
 class ClientRequestStatisticsRecord(RequestStatisticsRecord):
     def __init__(self, *args):
