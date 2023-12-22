@@ -214,7 +214,7 @@ class StatisticsGraphPlotter:
         # Plot graph
         ylabel = "Offload latency (ms)" if dataframe_type == "ClientRequestStatisticsRecord" else "Service time (ms)"
         xlabel = "Request sent (s)" if dataframe_type == "ClientRequestStatisticsRecord" else "Request received (s)"
-        plt.rcParams.update({ 'font.size': 24 })
+        plt.rcParams.update({ 'font.size': 32 })
         fig, ax = plt.subplots(figsize=(12,8))
         for label, data in stats.groupby("connection_id"):
             data.plot(y=ylabel, ax=ax, label=label, marker=marker)
