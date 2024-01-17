@@ -241,6 +241,8 @@ class StatisticsGraphPlotter:
 
         plt.figure(figsize=(16,8))
 
+        plt.rcParams.update({ 'font.size': 18 })
+
         barplot_data = pd.DataFrame([], columns=["Connections", "RX", 'Queueing', 'Task', "TX"])
         dataframe_type = "ServerRequestStatisticsRecord"
         while True:
@@ -251,12 +253,13 @@ class StatisticsGraphPlotter:
             no_connections = int(input("Number of connections: "))
             stats = self.count_offload_task_server_statistics(df)
 
-            barplot_data.loc[len(barplot_data.index)] = [no_connections,
+            barplot_data.loc[len(barplot_data.index)] = [int(no_connections),
                                                          stats.loc[:, 'RX latency (ms)'].mean(),
                                                          stats.loc[:, 'Queueing time (ms)'].mean(),
                                                          stats.loc[:, 'Task latency (ms)'].mean(),
                                                          stats.loc[:, 'TX latency (ms)'].mean()]
 
+        barplot_data.Connections = barplot_data.Connections.astype(int)
         barplot_data = barplot_data.set_index("Connections")
 
         ax = barplot_data.plot.bar(rot=0, stacked=True)
