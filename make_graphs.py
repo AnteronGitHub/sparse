@@ -304,20 +304,25 @@ class StatisticsGraphPlotter:
         plt.savefig(filepath, dpi=400)
         print(f"Saved offload latency boxplot to '{filepath}'")
 
-    def plot_task_timeline(self):
+    def plot_batch_statistics(self):
         title, start_at, period_length, y_min, y_max = self.file_loader.parse_scales()
 
         dataframe_type = "ServerRequestStatisticsRecord"
         _, df = self.file_loader.load_dataframe(dataframe_type)
+        no_connections = int(input("Number of connections: "))
         stats = self.count_offload_task_server_batch_statistics(df, start_at, period_length)
 
-        plt.rcParams.update({ 'font.size': 12 })
+        plt.rcParams.update({ 'font.size': 24 })
         plt.figure(figsize=(24,8))
 
-        stats.hist(column="Batch Size", legend=False)
+        stats["Batch Size"] = stats["Batch Size"].astype(int)
+        stats.hist(column="Batch Size", legend=False, bins=no_connections)
 
+        plt.grid(None)
         plt.xlabel("Batch size")
         plt.title(title)
+        plt.xlim([0, no_connections + 1])
+        plt.tick_params(left = False, labelleft = False)
         plt.tight_layout()
 
         filepath = os.path.join(self.write_path, f"{dataframe_type}_batch_size_histogram.png")
@@ -351,4 +356,4 @@ if __name__ == "__main__":
     elif operation == "Plot boxplot":
         plotter.plot_offload_latency_boxplot()
     else:
-        plotter.plot_task_timeline()
+        plotter.plot_batch_statistics()
