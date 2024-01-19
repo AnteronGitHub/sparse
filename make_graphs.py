@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import os
 import seaborn as sns
+import numpy as np
 
 from simple_term_menu import TerminalMenu
 
@@ -304,7 +305,7 @@ class StatisticsGraphPlotter:
         plt.savefig(filepath, dpi=400)
         print(f"Saved offload latency boxplot to '{filepath}'")
 
-    def plot_batch_statistics(self):
+    def plot_batch_distribution(self):
         title, start_at, period_length, y_min, y_max = self.file_loader.parse_scales()
 
         dataframe_type = "ServerRequestStatisticsRecord"
@@ -329,6 +330,25 @@ class StatisticsGraphPlotter:
         plt.savefig(filepath, dpi=400)
         print(f"Saved batch size histogram to '{filepath}'")
 
+    def plot_batch_latency_boxplot(self):
+        title, start_at, period_length, y_min, y_max = self.file_loader.parse_scales()
+
+        dataframe_type = "ServerRequestStatisticsRecord"
+        frames = []
+        while True:
+            _, df = self.file_loader.load_dataframe(dataframe_type)
+            if df is None:
+                break
+
+            frames.append(self.count_offload_task_server_batch_statistics(df, start_at, period_length))
+        stats = pd.concat(frames)
+
+        plt.rcParams.update({ 'font.size': 24 })
+        plt.figure(figsize=(24,8))
+
+        stats["Batch Size"] = stats["Batch Size"].astype(int)
+        max_batch_size = stats["Batch Size"].max()
+
         plt.rcParams.update({ 'font.size': 24 })
         plt.figure(figsize=(12,8))
         ax = sns.boxplot(x="Batch Size",
@@ -337,6 +357,7 @@ class StatisticsGraphPlotter:
                          showfliers=False)
 
         plt.title(title)
+        plt.xticks(np.arange(max_batch_size, step=10))
         plt.tight_layout()
 
         filepath = os.path.join(self.write_path, f"{dataframe_type}_batch_size_latency_boxplot.png")
@@ -345,7 +366,7 @@ class StatisticsGraphPlotter:
 
 if __name__ == "__main__":
     plotter = StatisticsGraphPlotter()
-    operation = plotter.file_loader.select_from_options(["Print DataFrame", "Plot timeline", "Plot barplot", "Plot boxplot", "Plot batch tasks"], "Select operation:")
+    operation = plotter.file_loader.select_from_options(["Print DataFrame", "Plot timeline", "Plot barplot", "Plot boxplot", "Plot batch size distribution", "Plot batch latency variance"], "Select operation:")
     legacy = bool(input("Legacy format y/N: "))
     if operation == "Print DataFrame":
         plotter.print_statistics(legacy)
@@ -355,5 +376,7 @@ if __name__ == "__main__":
         plotter.plot_benchmark_barplot()
     elif operation == "Plot boxplot":
         plotter.plot_offload_latency_boxplot()
+    elif operation == "Plot batch size distribution":
+        plotter.plot_batch_distribution()
     else:
-        plotter.plot_batch_statistics()
+        plotter.plot_batch_latency_boxplot()
