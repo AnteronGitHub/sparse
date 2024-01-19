@@ -13,7 +13,7 @@ __all__ = ["InferenceClient", "InferenceServer", "ParameterServer"]
 class InferenceClient(SparseNode):
     """A Node that iterates over a dataset and offloads the sample inference to specified server.
     """
-    def __init__(self, dataset, model_meta_data, no_samples, use_scheduling, **kwargs):
+    def __init__(self, dataset, model_meta_data, no_samples, use_scheduling, target_latency, **kwargs):
         super().__init__(**kwargs)
         self.protocol_factory = lambda on_con_lost, stats_queue: \
                                         lambda: InferenceClientProtocol(self.node_id, \
@@ -22,6 +22,7 @@ class InferenceClient(SparseNode):
                                                                         on_con_lost, \
                                                                         no_samples, \
                                                                         use_scheduling, \
+                                                                        target_latency, \
                                                                         stats_queue=stats_queue)
 
 

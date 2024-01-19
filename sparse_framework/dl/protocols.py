@@ -9,8 +9,6 @@ from .model_repository import DiskModelRepository
 
 __all__ = ["InferenceClientProtocol", "InferenceServerProtocol", "ParameterClientProtocol", "ParameterServerProtocol"]
 
-TARGET_FPS = 5.0
-
 class ParameterClientProtocol(SparseProtocol):
     """Protocol for downloading model parameters over a TCP connection.
     """
@@ -67,7 +65,7 @@ class InferenceClientProtocol(SparseProtocol):
                  on_con_lost,
                  no_samples,
                  use_scheduling,
-                 target_latency = 1/TARGET_FPS,
+                 target_latency,
                  stats_queue = None):
         super().__init__()
         self.dataloader = DataLoader(dataset, 1)
@@ -210,10 +208,20 @@ class InferenceServerProtocol(SparseProtocol):
         if not self.use_batching or index == 0:
             self.task_queue.put_nowait(("forward_propagate", self.model_meta_data, self.memory_buffer.result_received))
 
-    def forward_propagated(self, result):
+    def forward_propagated(self, result, batch_index = 0):
         payload = { "pred": result }
         if self.use_scheduling:
-            payload["sync"] = self.statistics.get_queueing_time(self.current_record)
+            # Quantize queueing time to millisecond precision
+            queueing_time_ms = int(self.statistics.get_queueing_time(self.current_record) * 1000)
+
+            # Use externally measured median task latency
+            task_latency_ms = 9
+
+            # Use modulo arithmetics to spread batch requests
+            sync_delay_ms = batch_index * task_latency_ms + queueing_time_ms % task_latency_ms
+
+            self.current_record.set_sync_delay_ms(sync_delay_ms)
+            payload["sync"] =  sync_delay_ms / 1000.0
         self.send_payload(payload)
 
         self.current_record.response_sent()

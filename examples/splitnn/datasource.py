@@ -12,6 +12,7 @@ async def run_datasources(args):
                                      ModelMetaData(model_id=str(i % args.no_models), model_name=args.model_name),
                                      int(args.no_samples),
                                      int(args.use_scheduling)==1,
+                                     float(args.target_latency)/1000.0,
                                      node_id=str(i))
         tasks.append(datasource.start())
 

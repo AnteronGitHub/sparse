@@ -45,6 +45,8 @@ spec:
         - "$SPARSE_NO_SAMPLES"
         - "--use-scheduling"
         - "$SPARSE_USE_SCHEDULING"
+        - "--target-latency"
+        - "$SPARSE_TARGET_LATENCY"
         volumeMounts:
         - name: app-code
           mountPath: /app
