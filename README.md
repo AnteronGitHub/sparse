@@ -20,3 +20,19 @@ tested with the following devices and the following software:
 
 See [how to deploy the example applications with Kubernetes](https://github.com/AnteronGitHub/sparse/blob/master/k8s).
 
+# Citation in articles
+
+The following article introduces this design (corresponds to version `v1.0.0-rc2`):
+```
+@INPROCEEDINGS{10403079,
+  author={Vainio, Antero and Mudvari, Akrit and Kiedanski, Diego and Tarkoma, Sasu and Tassiulas, Leandros},
+  booktitle={2023 IEEE 7th International Conference on Fog and Edge Computing (ICFEC)},
+  title={Fog Computing for Deep Learning with Pipelines},
+  year={2023},
+  volume={},
+  number={},
+  pages={64-72},
+  keywords={Training;Program processors;Computational modeling;Pipelines;Hardware;Task analysis;Edge computing;fog computing;stream processing systems;deep learning},
+  doi={10.1109/ICFEC57925.2023.00017}}
+```
+
