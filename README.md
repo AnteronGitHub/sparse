@@ -18,7 +18,7 @@ tested with the following devices and the following software:
 | Jetson AGX Xavier | 5.0 preview     | 3.8.10         | 1.12.0a0        | 20.10.12       | nvcr.io/nvidia/l4t-pytorch:r34.1.0-pth1.12-py3 | jp50               |
 | Lenovo ThinkPad   | -               | 3.8.12         | 1.11.0          | 20.10.15       | pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime | amd64              |
 
-See [how to deploy the example applications with Kubernetes](https://github.com/AnteronGitHub/sparse/blob/master/k8s).
+[Follow these instructions to run the example applications with Kubernetes](https://github.com/AnteronGitHub/sparse/blob/master/k8s).
 
 # Citation in articles
 
