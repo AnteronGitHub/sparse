@@ -20,6 +20,28 @@ tested with the following devices and the following software:
 
 [Follow these instructions to run the example applications with Kubernetes](https://github.com/AnteronGitHub/sparse/blob/master/k8s).
 
+# Publishing to PyPi
+
+Follow the instructions below to update PyPi index after a new version has been released.
+
+1. Update version number in `pyproject.toml`
+1. Update PyPA's `build` package by running:
+```
+python3 -m pip install --upgrade build
+```
+1. Build project package by running:
+```
+python3 -m build
+```
+1. Update PyPA's `twine` package by running:
+```
+python3 -m pip install --upgrade twine
+```
+1. Upload the built package by running:
+```
+python3 -m twine upload dist/*
+```
+
 # Citation in articles
 
 The following article introduces this design (corresponds to version `v1.0.0-rc2`):
