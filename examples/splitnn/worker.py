@@ -1,25 +1,10 @@
-from sparse_framework.node.worker import Worker
-from sparse_framework.dl import ModelTrainingRepository
+import asyncio
 
-from utils import parse_arguments, _get_benchmark_log_file_prefix
+from sparse_framework.dl import InferenceServer
 
-class SplitNNWorker(Worker):
-    def __init__(self, application, model_name, partition, benchmark_log_file_prefix):
-        if application == 'learning':
-            from gradient_calculator import GradientCalculator
-            task_executor = GradientCalculator(model_name, partition)
-        else:
-            from inference_calculator import InferenceCalculator
-            task_executor = InferenceCalculator(model_name, partition)
-        Worker.__init__(self, task_executor = task_executor, benchmark_log_file_prefix = benchmark_log_file_prefix)
+from utils import parse_arguments
 
 if __name__ == '__main__':
     args = parse_arguments()
 
-    partition = "server" if args.suite in ["fog_offloading", "edge_split"] else "unsplit"
-    benchmark_log_file_prefix = _get_benchmark_log_file_prefix(args, "worker")
-
-    SplitNNWorker(application=args.application,
-                  model_name=args.model_name,
-                  partition=partition,
-                  benchmark_log_file_prefix=benchmark_log_file_prefix).start()
+    asyncio.run(InferenceServer(int(args.use_scheduling)==1, int(args.use_batching)==1).start())

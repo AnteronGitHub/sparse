@@ -1,4 +1,6 @@
-from sparse_framework.stats import MonitorServer
+import asyncio
+
+from .monitor_server import MonitorServer
 
 if __name__ == '__main__':
-    MonitorServer().start()
+    asyncio.run(MonitorServer().start())

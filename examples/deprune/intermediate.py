@@ -1,5 +1,4 @@
-from sparse_framework.node.master import Master
-from sparse_framework.node.worker import Worker
+from sparse_framework import Master, Worker
 
 from benchmark import parse_arguments, get_depruneProps, _get_benchmark_log_file_prefix
 

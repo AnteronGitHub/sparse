@@ -9,6 +9,7 @@ delete_resource () {
 }
 
 delete_pods () {
+  SPARSE_EXAMPLE="splitnn"
   case $SPARSE_SUITE in
     "edge_offloading")
       delete_resource $SPARSE_EXAMPLE "datasource"
@@ -44,7 +45,6 @@ delete_pods () {
   esac
 
   delete_sparse_resource "model_server"
-  delete_sparse_resource "sparse_monitor"
 }
 
 delete_pods

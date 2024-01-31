@@ -4,103 +4,13 @@ This repository contains source code for Stream Processing Architecture for Reso
 Sparse for short). Additionally, sample applications utilizing Sparse for deep learning can be found in examples
 directory.
 
-## Quick start with deep learning
-
-Follow these instructions to start creating your own sparse applications for distributed deep learning with PyTorch.
-
-First, install sparse framework from PyPi:
-
 ```
 pip install sparse-framework
 ```
 
-Create a sparse worker node which trains a neural network using data sent by master:
-```model_trainer.py
-"""model_trainer.py
-"""
-import torch
-from torch import nn
-
-from sparse_framework.node.worker import Worker
-from sparse_framework.dl.gradient_calculator import GradientCalculator
-
-# PyTorch model
-class NeuralNetwork(nn.Module):
-    def __init__(self):
-        super().__init__()
-        self.flatten = nn.Flatten()
-        self.linear_relu_stack = nn.Sequential(
-            nn.Linear(28*28, 512),
-            nn.ReLU(),
-            nn.Linear(512, 512),
-            nn.ReLU(),
-            nn.Linear(512, 10)
-        )
-
-    def forward(self, x):
-        x = self.flatten(x)
-        logits = self.linear_relu_stack(x)
-        return logits
-
-# Sparse node
-class ModelTrainer(Worker):
-    def __init__(self):
-        model = NeuralNetwork()
-        loss_fn = nn.CrossEntropyLoss()
-        optimizer = torch.optim.SGD(model.parameters(), lr=1e-3)
-
-        Worker.__init__(self,
-                        task_executor = GradientCalculator(model=model,
-                                                           loss_fn=loss_fn,
-                                                           optimizer=optimizer))
-
-if __name__ == '__main__':
-    ModelTrainer().start()
-```
-
-Then create the corresponding sparse master node:
-```data_source.py
-"""data_source.py
-"""
-from torch.utils.data import DataLoader
-from torchvision import datasets
-from torchvision.transforms import ToTensor
-
-import asyncio
-
-from sparse_framework.dl.serialization import encode_offload_request, decode_offload_response
-from sparse_framework.node.master import Master
-
-# Sparse node
-class TrainingDataSource(Master):
-    async def train(self, batch_size = 64, epochs = 1):
-        # torchvision dataset
-        training_data = datasets.FashionMNIST(
-            root="data",
-            train=True,
-            download=True,
-            transform=ToTensor(),
-        )
-        for t in range(epochs):
-            for batch, (X, y) in enumerate(DataLoader(training_data, batch_size)):
-                input_data = encode_offload_request(X, y)
-                result_data = await self.task_deployer.deploy_task(input_data)
-                split_grad, loss = decode_offload_response(result_data)
-                print('Loss: {}'.format(loss))
-
-if __name__ == '__main__':
-    asyncio.run(TrainingDataSource().train())
-```
-
-To run training, start the worker and the master processes (in separate terminal sessions):
-```
-python model_trainer.py
-python data_source.py
-```
-
 ## Example Applications
 
-The repository includes example applications (in the [examples directory](./examples)). The applications are tested
+The repository includes example applications (in the [examples directory](https://github.com/AnteronGitHub/sparse/blob/master/examples)). The applications are tested
 tested with the following devices and the following software:
 
 | Device            | JetPack version | Python version | PyTorch version | Docker version | Base image                                     | Docker tag suffix |
@@ -108,5 +18,43 @@ tested with the following devices and the following software:
 | Jetson AGX Xavier | 5.0 preview     | 3.8.10         | 1.12.0a0        | 20.10.12       | nvcr.io/nvidia/l4t-pytorch:r34.1.0-pth1.12-py3 | jp50               |
 | Lenovo ThinkPad   | -               | 3.8.12         | 1.11.0          | 20.10.15       | pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime | amd64              |
 
-See [how to deploy the example applications with Kubernetes](./k8s).
+[Follow these instructions to run the example applications with Kubernetes](https://github.com/AnteronGitHub/sparse/blob/master/k8s).
+
+# Publishing to PyPi
+
+Follow the instructions below to update PyPi index after a new version has been released.
+
+1. Update version number in `pyproject.toml`
+1. Update PyPA's `build` package by running:
+```
+python3 -m pip install --upgrade build
+```
+1. Build project package by running:
+```
+python3 -m build
+```
+1. Update PyPA's `twine` package by running:
+```
+python3 -m pip install --upgrade twine
+```
+1. Upload the built package by running:
+```
+python3 -m twine upload dist/*
+```
+
+# Citation in articles
+
+The following article introduces this design (corresponds to version `v1.0.0-rc2`):
+```
+@INPROCEEDINGS{10403079,
+  author={Vainio, Antero and Mudvari, Akrit and Kiedanski, Diego and Tarkoma, Sasu and Tassiulas, Leandros},
+  booktitle={2023 IEEE 7th International Conference on Fog and Edge Computing (ICFEC)},
+  title={Fog Computing for Deep Learning with Pipelines},
+  year={2023},
+  volume={},
+  number={},
+  pages={64-72},
+  keywords={Training;Program processors;Computational modeling;Pipelines;Hardware;Task analysis;Edge computing;fog computing;stream processing systems;deep learning},
+  doi={10.1109/ICFEC57925.2023.00017}}
+```
 

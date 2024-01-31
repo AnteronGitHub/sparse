@@ -7,7 +7,6 @@ metadata:
   labels:
     app: splitnn-datasource
 spec:
-  parallelism: $SPARSE_NO_DATASOURCES
   template:
     spec:
       affinity:
@@ -32,25 +31,22 @@ spec:
         command: ["python3"]
         args:
         - "datasource.py"
-        - "--application"
-        - "$SPARSE_APPLICATION"
+        - "--no-datasources"
+        - "$SPARSE_NO_DATASOURCES"
+        - "--no-models"
+        - "$SPARSE_NO_MODELS"
         - "--suite"
         - "$SPARSE_SUITE"
         - "--model"
         - "$SPARSE_MODEL"
         - "--dataset"
         - "$SPARSE_DATASET"
-        - "--batch-size"
-        - "$SPARSE_BATCH_SIZE"
-        - "--batches"
-        - "$SPARSE_BATCHES"
-        - "--epochs"
-        - "$SPARSE_EPOCHS"
-        resources:
-          limits:
-            cpu: "$SPARSE_DATASOURCE_CPU_LIMIT"
-              # Adding memory limitations restrics using swap
-              #            memory: "$SPARSE_DATASOURCE_MEMORY_LIMIT"
+        - "--no-samples"
+        - "$SPARSE_NO_SAMPLES"
+        - "--use-scheduling"
+        - "$SPARSE_USE_SCHEDULING"
+        - "--target-latency"
+        - "$SPARSE_TARGET_LATENCY"
         volumeMounts:
         - name: app-code
           mountPath: /app
@@ -60,6 +56,8 @@ spec:
           mountPath: /data
         - name: sparse-run
           mountPath: /run/sparse
+        - name: sparse-stats
+          mountPath: /data/stats
       restartPolicy: Never
       volumes:
       - name: app-code
@@ -74,3 +72,6 @@ spec:
       - name: sparse-run
         hostPath:
           path: /run/sparse
+      - name: sparse-stats
+        hostPath:
+          path: /var/lib/sparse/stats
