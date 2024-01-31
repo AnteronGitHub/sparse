@@ -33,13 +33,14 @@ python3 -m pip install --upgrade build
 ```
 python3 -m build
 ```
+1. Ensure that you have set up an authorized PyPi token for publishing the package for repository `sparse-framework`.
 1. Update PyPA's `twine` package by running:
 ```
 python3 -m pip install --upgrade twine
 ```
 1. Upload the built package by running:
 ```
-python3 -m twine upload dist/*
+python3 -m twine upload --repository sparse-framework dist/*
 ```
 
 # Citation in articles
