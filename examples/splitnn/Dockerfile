@@ -9,4 +9,4 @@ WORKDIR /app
 
 COPY . .
 
-CMD ["python3", "aio.py"]
+CMD ["python3", "worker.py"]
