@@ -5,8 +5,11 @@ import pickle
 import struct
 import uuid
 
+from .io_buffer import SparseIOBuffer
+from .stats import RequestStatistics
+
 class SparseProtocol(asyncio.Protocol):
-    def __init__(self):
+    def __init__(self, stats_queue = None, request_statistics_factory = None):
         self.connection_id = str(uuid.uuid4())
         self.logger = logging.getLogger("sparse")
         self.payload_buffer = io.BytesIO()
@@ -15,17 +18,27 @@ class SparseProtocol(asyncio.Protocol):
         self.receiving_payload = False
         self.payload_size = 0
 
+        if request_statistics_factory is None:
+            self.request_statistics = None
+        else:
+            self.request_statistics = request_statistics_factory(self.connection_id, stats_queue)
+
+        self.current_record = None
+
+    def connection_made(self, transport):
+        if self.request_statistics is not None:
+            self.request_statistics.connected()
+
+        peername = transport.get_extra_info('peername')
+        self.transport = transport
+        self.logger.info(f"Connected to {peername}.")
+
     def send_payload(self, payload):
         payload_data = pickle.dumps(payload)
         payload_size = len(payload_data)
 
         self.transport.write(struct.pack("!Q", payload_size))
         self.transport.write(payload_data)
-
-    def connection_made(self, transport):
-        peername = transport.get_extra_info('peername')
-        self.transport = transport
-        self.logger.info(f"Connected to {peername}.")
 
     def data_received(self, data):
         if self.receiving_payload:
@@ -48,3 +61,6 @@ class SparseProtocol(asyncio.Protocol):
             except pickle.UnpicklingError:
                 self.logger.error(f"Deserialization error. {len(payload_data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
 
+
+    def payload_received(self, payload):
+        pass

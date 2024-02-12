@@ -1,3 +1,99 @@
+from torchvision import datasets
+from torchvision import transforms
+
+def FashionMNIST():
+    dataset = datasets.FashionMNIST(
+        root="/data",
+        train=True,
+        download=True,
+        transform=transforms.ToTensor(),
+    )
+
+    classes = [
+        "T-shirt/top",
+        "Trouser",
+        "Pullover",
+        "Dress",
+        "Coat",
+        "Sandal",
+        "Shirt",
+        "Sneaker",
+        "Bag",
+        "Ankle boot",
+    ]
+
+
+    return dataset, classes
+
+def CIFAR10_dataset():
+    dataset = datasets.CIFAR10(
+            root="/data",
+            train=True,
+            download=True,
+            transform= transforms.Compose([
+                transforms.Resize(size=(32, 32)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                    )
+                ])
+            )
+
+    classes = [
+            'airplane',
+            'automobile',
+            'bird',
+            'cat',
+            'deer',
+            'dog',
+            'frog',
+            'horse',
+            'ship',
+            'truck']
+
+
+    return dataset, classes
+
+def CIFAR100_dataset():
+    dataset = datasets.CIFAR100(
+            root="/data",
+            train=True,
+            download=True,
+            transform= transforms.Compose([
+                transforms.Resize(size=(32, 32)),
+                transforms.ToTensor(),
+                transforms.Normalize(
+                    (0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)
+                    )
+                ])
+            )
+
+    classes = [
+        "beaver", "dolphin", "otter", "seal", "whale",
+        "aquarium fish", "flatfish", "ray", "shark", "trout",
+        "orchids", "poppies", "roses", "sunflowers", "tulips",
+        "bottles", "bowls", "cans", "cups", "plates",
+        "apples", "mushrooms", "oranges", "pears", "sweet peppers",
+        "clock", "computer keyboard", "lamp", "telephone", "television",
+        "bed", "chair", "couch", "table", "wardrobe",
+        "bee", "beetle", "butterfly", "caterpillar", "cockroach",
+        "bear", "leopard", "lion", "tiger", "wolf",
+        "bridge", "castle", "house", "road", "skyscraper",
+        "cloud", "forest", "mountain", "plain", "sea",
+        "camel", "cattle", "chimpanzee", "elephant", "kangaroo",
+        "fox", "porcupine", "possum", "raccoon", "skunk",
+        "crab", "lobster", "snail", "spider", "worm",
+        "baby", "boy", "girl", "man", "woman",
+        "crocodile", "dinosaur", "lizard", "snake", "turtle",
+        "hamster", "mouse", "rabbit", "shrew", "squirrel",
+        "maple", "oak", "palm", "pine", "willow",
+        "bicycle", "bus", "motorcycle", "pickup truck", "train",
+        "lawn-mower", "rocket", "streetcar", "tank", "tractor"
+    ]
+
+
+    return dataset, classes
+
 # Imagenet100 implementation taken from
 # https://github.com/guglielmocamporese/relvit/blob/main/datasets/dataset_option/imagenet100.py
 
@@ -12,9 +108,6 @@ import json
 from PIL import Image
 
 from torch.utils.data import DataLoader
-from torchvision import datasets
-from torchvision import transforms
-
 
 ##################################################
 # Imagenet100 Dataset
@@ -117,3 +210,19 @@ def Imagenet100_dataset():
     )
 
     return training_data, num_classes
+
+def get_dataset(dataset_name):
+    if dataset_name == 'CIFAR10':
+        return CIFAR10_dataset()
+    elif dataset_name == 'CIFAR100':
+        from .cifar100 import CIFAR100_dataset
+        return CIFAR100_dataset()
+    elif dataset_name == 'Imagenet100':
+        from .imagenet100 import Imagenet100_dataset
+        return Imagenet100_dataset()
+    elif dataset_name == 'FMNIST':
+        from .mnist_fashion import FashionMNIST
+        return FashionMNIST()
+    else:
+        raise f'No dataset with the name {dataset} was found in the repository'
+

@@ -5,56 +5,6 @@ from torch.utils.data import DataLoader
 from sparse_framework import SparseProtocol
 from sparse_framework.stats import ServerRequestStatistics, ClientRequestStatistics
 
-from .model_repository import DiskModelRepository
-
-__all__ = ["InferenceClientProtocol", "InferenceServerProtocol", "ParameterClientProtocol", "ParameterServerProtocol"]
-
-class ParameterClientProtocol(SparseProtocol):
-    """Protocol for downloading model parameters over a TCP connection.
-    """
-    def __init__(self, model_meta_data, on_con_lost):
-        super().__init__()
-
-        self.model_meta_data = model_meta_data
-        self.on_con_lost = on_con_lost
-
-    def download_model(self):
-        self.send_payload({ 'method' : 'get_model', 'model_meta_data': self.model_meta_data })
-
-    def model_downloaded(self, model):
-        self.on_con_lost.set_result(model)
-
-    def payload_received(self, payload):
-        model = payload["model"]
-        loss_fn = payload["loss_fn"]
-        optimizer = payload["optimizer"]
-
-        if "model" in payload.keys():
-            self.model_downloaded(payload["model"])
-
-    def connection_made(self, transport):
-        super().connection_made(transport)
-
-        self.download_model()
-
-class ParameterServerProtocol(SparseProtocol):
-    """Protocol for serving model parameters over a TCP connection.
-    """
-    def __init__(self):
-        super().__init__()
-
-        self.model_repository = DiskModelRepository()
-
-    def payload_received(self, payload):
-        method = payload["method"]
-
-        if method == "get_model":
-            model_meta_data = payload["model_meta_data"]
-            model, loss_fn, optimizer = self.model_repository.get_model(model_meta_data)
-            self.send_payload({ "model": model, "loss_fn": loss_fn, "optimizer": optimizer })
-        else:
-            self.logger.error(f"Received request for unknown method '{method}'.")
-
 class InferenceClientProtocol(SparseProtocol):
     """Protocol for serving models over a TCP connection.
     """
@@ -79,11 +29,12 @@ class InferenceClientProtocol(SparseProtocol):
         self.current_record = None
 
     def start_stream(self):
-        self.current_record = self.statistics.create_record("initialize_stream")
+        self.offload_task()
+        #self.current_record = self.statistics.create_record("initialize_stream")
 
-        self.send_payload({ 'op': "initialize_stream", 'model_meta_data': self.model_meta_data })
+        #self.send_payload({ 'op': "initialize_stream", 'model_meta_data': self.model_meta_data })
 
-        self.current_record.request_sent()
+        #self.current_record.request_sent()
 
     def stream_started(self, result_data):
         self.current_record.response_received()
@@ -199,8 +150,7 @@ class InferenceServerProtocol(SparseProtocol):
         self.current_record = self.statistics.create_record(payload["op"])
         self.current_record.request_received()
 
-        index = self.memory_buffer.buffer_input(self.model_meta_data,
-                                                payload['activation'],
+        index = self.memory_buffer.buffer_input(payload['activation'],
                                                 self.forward_propagated,
                                                 self.current_record, self.lock)
 

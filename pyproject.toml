@@ -18,9 +18,6 @@ classifiers = [
 ]
 dependencies = [
     "python-dotenv == 0.21.1",
-    "psutil == 5.8.0",
-    "torch == 1.11.0",
-    "torchvision == 0.12.0"
 ]
 
 [project.urls]

@@ -1,7 +1,7 @@
 import torch.nn as nn
 import torch
 
-from .module_queue import ModuleQueue
+from module_queue import ModuleQueue
 
 class VGGClassifier(nn.Module):
     def __init__(self, num_classes=1000):
