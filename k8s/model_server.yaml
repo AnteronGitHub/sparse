@@ -41,9 +41,64 @@ spec:
                 operator: In
                 values:
                 - "true"
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - "amd64"
       containers:
       - name: model-server
-        image: sparse/pytorch
+        image: anterondocker/sparse-framework:pytorch
+        imagePullPolicy: IfNotPresent
+        command: ["python3"]
+        args: ["-m", "dl"]
+        volumeMounts:
+        - name: sparse-code
+          mountPath: /usr/lib/sparse_framework
+        - name: sparse-data
+          mountPath: /data
+      volumes:
+      - name: sparse-code
+        hostPath:
+          path: /opt/sparse/sparse_framework
+      - name: sparse-data
+        hostPath:
+          path: /var/lib/sparse/data
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: model-server
+  namespace: sparse
+  labels:
+    app: model-server
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: model-server
+  template:
+    metadata:
+      labels:
+        app: model-server
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: sparse/model-server
+                operator: In
+                values:
+                - "true"
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - "arm64"
+      containers:
+      - name: model-server
+        image: anterondocker/sparse-framework:l4t-pytorch
         imagePullPolicy: IfNotPresent
         command: ["python3"]
         args: ["-m", "dl"]
