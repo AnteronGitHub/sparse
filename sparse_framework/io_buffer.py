@@ -66,4 +66,4 @@ class SparseIOBuffer:
         raise "Buffer not implemented! See documentation on how to implement your own memory buffer"
 
     def transferToHost(self, output_data):
-        raise "Task executor not implemented! See documentation on how to implement your own executor"
+        raise "Buffer not implemented! See documentation on how to implement your own memory buffer"

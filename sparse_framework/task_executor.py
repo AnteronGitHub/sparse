@@ -21,9 +21,14 @@ class TaskExecutor:
     async def start(self):
         loop = asyncio.get_running_loop()
         while True:
-            task_type, callback = await self.queue.get()
-            await loop.run_in_executor(self.executor, functools.partial(self.execute_task, task_type, callback, self.lock))
+            callback = await self.queue.get()
+            await loop.run_in_executor(self.executor, functools.partial(self.execute_task, callback, self.lock))
             self.queue.task_done()
 
-    def execute_task(self, input_data):
+    def buffer_input(self, input_data, result_callback, statistics_record):
+        self.memory_buffer.buffer_input(input_data, result_callback, statistics_record, self.lock)
+        statistics_record.task_queued()
+        self.queue.put_nowait((self.memory_buffer.result_received))
+
+    def execute_task(self, callback, lock):
         raise "Task executor not implemented! See documentation on how to implement your own executor"

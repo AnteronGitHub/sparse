@@ -1,4 +1,5 @@
 import asyncio
+import multiprocessing
 import logging
 import os
 import uuid
@@ -36,7 +37,11 @@ class SparseNode:
     network connections.
     """
 
-    def __init__(self, node_id : str = str(uuid.uuid4()), log_level : int = logging.INFO):
+    def __init__(self,
+                 node_id : str = str(uuid.uuid4()),
+                 log_level : int = logging.INFO,
+                 executor_factory = None,
+                 server_protocol_factory = None):
         self.node_id = node_id
 
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=log_level)
@@ -47,15 +52,44 @@ class SparseNode:
 
         self.stats_queue = None
 
+        self.executor_factory = executor_factory
+        self.server_protocol_factory = server_protocol_factory
+
+    def add_worker_slice_futures(self, futures, executor_factory, server_protocol_factory):
+        if executor_factory is None or server_protocol_factory is None:
+            return futures
+
+        m = multiprocessing.Manager()
+        lock = m.Lock()
+
+        task_queue = asyncio.Queue()
+
+        executor = self.executor_factory(lock, task_queue)
+
+        futures.append(executor.start())
+        futures.append(self.start_server(self.server_protocol_factory(executor, self.stats_queue), \
+                                         self.config.listen_address, \
+                                         self.config.listen_port))
+        return futures
+
+    def add_statistics_futures(self, futures):
+        self.stats_queue = asyncio.Queue()
+        monitor_daemon = MonitorDaemon(self.stats_queue)
+
+        futures.append(monitor_daemon.start())
+        return futures
+
     def get_futures(self):
         """Common base class for each Node in a Sparse cluster.
 
         Nodes maintain asynchronous task loop for distributed pipelines. Nodes add tasks such as opening or listening for
         network connections.
         """
-        self.stats_queue = asyncio.Queue()
-        self.monitor_daemon = MonitorDaemon(self.stats_queue)
-        return [self.monitor_daemon.start()]
+        futures = []
+
+        futures = self.add_statistics_futures(futures)
+        futures = self.add_worker_slice_futures(futures, self.executor_factory, self.server_protocol_factory)
+        return futures
 
     async def start(self):
         """Starts the main task loop by collecting all of the future objects.
