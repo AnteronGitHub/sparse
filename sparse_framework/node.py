@@ -103,12 +103,17 @@ class SparseNode:
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
 
-        await loop.create_connection(protocol_factory(on_con_lost, self.stats_queue), host, port)
-        result = await on_con_lost
-        if callback is not None:
-            callback(result)
+        while True:
+            try:
+                await loop.create_connection(protocol_factory(on_con_lost, self.stats_queue), host, port)
+                result = await on_con_lost
+                if callback is not None:
+                    callback(result)
 
-        return result
+                return result
+            except ConnectionRefusedError:
+                self.logger.warn("Connection refused. Re-trying in 5 seconds.")
+                await asyncio.sleep(5)
 
     async def start_server(self, protocol_factory, addr, port):
         loop = asyncio.get_running_loop()
