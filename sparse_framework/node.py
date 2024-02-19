@@ -41,7 +41,9 @@ class SparseNode:
                  node_id : str = str(uuid.uuid4()),
                  log_level : int = logging.INFO,
                  executor_factory = None,
-                 server_protocol_factory = None):
+                 server_protocol_factory = None,
+                 client_protocol_factory = None,
+                 client_protocol_callback = None):
         self.node_id = node_id
 
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=log_level)
@@ -54,6 +56,9 @@ class SparseNode:
 
         self.executor_factory = executor_factory
         self.server_protocol_factory = server_protocol_factory
+
+        self.client_protocol_factory = client_protocol_factory
+        self.client_protocol_callback = client_protocol_callback
 
     def add_worker_slice_futures(self, futures, executor_factory, server_protocol_factory):
         if executor_factory is None or server_protocol_factory is None:
@@ -72,6 +77,17 @@ class SparseNode:
                                          self.config.listen_port))
         return futures
 
+    def add_master_slice_futures(self, futures):
+        if self.client_protocol_factory is None:
+            return futures
+
+        futures.append(self.connect_to_server(self.client_protocol_factory,
+                                              self.config.upstream_host,
+                                              self.config.upstream_port,
+                                              self.client_protocol_callback))
+
+        return futures
+
     def add_statistics_futures(self, futures):
         self.stats_queue = asyncio.Queue()
         monitor_daemon = MonitorDaemon(self.stats_queue)
@@ -80,15 +96,12 @@ class SparseNode:
         return futures
 
     def get_futures(self):
-        """Common base class for each Node in a Sparse cluster.
-
-        Nodes maintain asynchronous task loop for distributed pipelines. Nodes add tasks such as opening or listening for
-        network connections.
+        """Collects node coroutines to be executed on startup.
         """
         futures = []
-
         futures = self.add_statistics_futures(futures)
         futures = self.add_worker_slice_futures(futures, self.executor_factory, self.server_protocol_factory)
+        futures = self.add_master_slice_futures(futures)
         return futures
 
     async def start(self):
