@@ -6,8 +6,10 @@ import uuid
 
 from dotenv import load_dotenv
 
+from .io_buffer import SparsePytorchIOBuffer
+from .protocols import SparseClientProtocol, SparseServerProtocol
 from .stats import MonitorDaemon
-from .task_executor import TaskExecutor
+from .task_executor import SparseTaskExecutor
 
 __all__ = ["SparseNode"]
 
@@ -40,10 +42,9 @@ class SparseNode:
     def __init__(self,
                  node_id : str = str(uuid.uuid4()),
                  log_level : int = logging.INFO,
-                 executor_factory = None,
-                 server_protocol_factory = None,
-                 client_protocol_factory = None,
-                 client_protocol_callback = None):
+                 operator_factory = None,
+                 stream_factory = None,
+                 sink_factory = None):
         self.node_id = node_id
 
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=log_level)
@@ -54,14 +55,25 @@ class SparseNode:
 
         self.stats_queue = None
 
-        self.executor_factory = executor_factory
-        self.server_protocol_factory = server_protocol_factory
+        self.operator_factory = operator_factory
 
-        self.client_protocol_factory = client_protocol_factory
-        self.client_protocol_callback = client_protocol_callback
+        self.stream_factory = stream_factory
+        self.sink_factory = sink_factory
 
-    def add_worker_slice_futures(self, futures, executor_factory, server_protocol_factory):
-        if executor_factory is None or server_protocol_factory is None:
+    def add_master_slice_futures(self, futures):
+        if self.stream_factory is None or self.sink_factory is None:
+            return futures
+
+        futures.append(self.connect_to_server(lambda: SparseClientProtocol(self.stats_queue, \
+                                                                           self.stream_factory, \
+                                                                           self.sink_factory),
+                                              self.config.upstream_host,
+                                              self.config.upstream_port))
+
+        return futures
+
+    def add_worker_slice_futures(self, futures, operator_factory):
+        if operator_factory is None:
             return futures
 
         m = multiprocessing.Manager()
@@ -69,23 +81,14 @@ class SparseNode:
 
         task_queue = asyncio.Queue()
 
-        executor = self.executor_factory(lock, task_queue)
+        self.io_buffer = SparsePytorchIOBuffer()
+        self.executor = SparseTaskExecutor(lock, self.io_buffer, task_queue)
+        self.executor.set_operator(operator_factory())
 
-        futures.append(executor.start())
-        futures.append(self.start_server(self.server_protocol_factory(executor, self.stats_queue), \
+        futures.append(self.executor.start())
+        futures.append(self.start_server(lambda: SparseServerProtocol(self.executor, self.stats_queue), \
                                          self.config.listen_address, \
                                          self.config.listen_port))
-        return futures
-
-    def add_master_slice_futures(self, futures):
-        if self.client_protocol_factory is None:
-            return futures
-
-        futures.append(self.connect_to_server(self.client_protocol_factory,
-                                              self.config.upstream_host,
-                                              self.config.upstream_port,
-                                              self.client_protocol_callback))
-
         return futures
 
     def add_statistics_futures(self, futures):
@@ -100,7 +103,7 @@ class SparseNode:
         """
         futures = []
         futures = self.add_statistics_futures(futures)
-        futures = self.add_worker_slice_futures(futures, self.executor_factory, self.server_protocol_factory)
+        futures = self.add_worker_slice_futures(futures, self.operator_factory)
         futures = self.add_master_slice_futures(futures)
         return futures
 
@@ -112,17 +115,19 @@ class SparseNode:
         """
         await asyncio.gather(*self.get_futures())
 
-    async def connect_to_server(self, protocol_factory, host, port, callback = None):
+    async def connect_to_server(self, protocol_factory, host, port):
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
 
         while True:
             try:
-                await loop.create_connection(protocol_factory(on_con_lost, self.stats_queue), host, port)
+                await loop.create_connection(lambda: SparseClientProtocol(on_con_lost, \
+                                                                          self.stats_queue, \
+                                                                          self.stream_factory, \
+                                                                          self.sink_factory), \
+                                             host, \
+                                             port)
                 result = await on_con_lost
-                if callback is not None:
-                    callback(result)
-
                 return result
             except ConnectionRefusedError:
                 self.logger.warn("Connection refused. Re-trying in 5 seconds.")

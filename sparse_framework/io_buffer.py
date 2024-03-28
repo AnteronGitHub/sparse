@@ -63,7 +63,32 @@ class SparseIOBuffer:
             callback(transferred_result[batch_index], batch_index)
 
     def transferToDevice(self, input_data):
-        raise "Buffer not implemented! See documentation on how to implement your own memory buffer"
+        pass
 
     def transferToHost(self, output_data):
-        raise "Buffer not implemented! See documentation on how to implement your own memory buffer"
+        pass
+
+import torch
+
+class SparsePytorchIOBuffer(SparseIOBuffer):
+    """Memory buffer for Node's task executor.
+
+    Buffer ensures that when a task is created for the executor, all of the needed data are available in the executor
+    device memory. After the executor task has been processed, memory buffer transfers the data to the network device
+    for result transmission.
+    """
+    def __init__(self):
+        super().__init__()
+
+        self.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    def transferToDevice(self, tensor):
+        return tensor.to(self.device)
+
+    def transferToHost(self, tensor):
+        return tensor.to("cpu")
+
+    def dispatch_batch(self, lock):
+        features, callbacks, statistics_records = super().dispatch_batch(lock)
+
+        return torch.cat(features), callbacks, statistics_records
