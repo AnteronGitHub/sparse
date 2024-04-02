@@ -5,7 +5,6 @@ import pickle
 import struct
 import uuid
 
-from .io_buffer import SparseIOBuffer
 from .stats import RequestStatistics, ClientRequestStatistics, ServerRequestStatistics
 
 class SparseProtocol(asyncio.Protocol):
@@ -68,23 +67,16 @@ class SparseProtocol(asyncio.Protocol):
 class SparseClientProtocol(SparseProtocol):
     """Protocol for streaming data over a TCP connection.
     """
-    def __init__(self,
-                 on_con_lost,
-                 stats_queue = None,
-                 stream_factory = None,
-                 sink_factory = None):
-        super().__init__(stats_queue = stats_queue, request_statistics_factory = ClientRequestStatistics)
-        self.on_con_lost = on_con_lost
+    def __init__(self, on_con_lost, node):
+        super().__init__(stats_queue = node.stats_queue, request_statistics_factory = ClientRequestStatistics)
 
-        if stream_factory is not None:
-            self.stream = stream_factory(self)
-        if sink_factory is not None:
-            self.sink = sink_factory(self.logger)
+        self.on_con_lost = on_con_lost
+        self.node = node
 
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        self.stream.emit()
+        self.node.connected_to_server(self)
 
     def send_payload(self, payload):
         self.current_record = self.request_statistics.create_record("offload_task")
@@ -100,45 +92,26 @@ class SparseClientProtocol(SparseProtocol):
         self.current_record.response_received()
         self.request_statistics.log_record(self.current_record)
 
-        if self.sink is not None:
-            self.sink.tuple_received(payload)
-
-        if (self.stream.no_samples > 0):
-            offload_latency = self.request_statistics.get_offload_latency(self.current_record)
-
-            if self.stream.use_scheduling:
-                sync = payload['sync']
-            else:
-                sync = 0.0
-
-            target_latency = self.stream.target_latency
-
-            loop = asyncio.get_running_loop()
-            loop.call_later(target_latency-offload_latency + sync if target_latency > offload_latency else 0, self.stream.emit)
-        else:
-            self.transport.close()
+        self.node.tuple_received(self, payload)
 
     def connection_lost(self, exc):
         self.logger.info(self.request_statistics)
         self.on_con_lost.set_result(self.request_statistics)
 
 class SparseServerProtocol(SparseProtocol):
-    def __init__(self,
-                 task_executor,
-                 stats_queue,
-                 use_scheduling : bool = True,
-                 use_batching : bool = True):
-        super().__init__(stats_queue = stats_queue, request_statistics_factory = ServerRequestStatistics)
+    def __init__(self, node, use_scheduling : bool = True, use_batching : bool = True):
+        super().__init__(stats_queue = node.stats_queue, request_statistics_factory = ServerRequestStatistics)
+
+        self.node = node
 
         self.use_scheduling = use_scheduling
         self.use_batching = use_batching
-        self.task_executor = task_executor
 
     def payload_received(self, payload):
         self.current_record = self.request_statistics.create_record(payload["op"])
         self.current_record.request_received()
 
-        self.task_executor.buffer_input(payload["activation"], self.send_payload, self.current_record)
+        self.node.tuple_received(self, payload)
 
     def send_payload(self, result, batch_index = 0):
         payload = { "pred": result }

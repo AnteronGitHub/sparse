@@ -53,6 +53,8 @@ class SparseNode:
         self.config = SparseNodeConfig()
         self.config.load_config()
 
+        self.executor = None
+        self.io_buffer = None
         self.stats_queue = None
 
         self.operator_factory = operator_factory
@@ -60,15 +62,45 @@ class SparseNode:
         self.stream_factory = stream_factory
         self.sink_factory = sink_factory
 
+        self.stream = None
+        self.sink = None
+
+    def connected_to_server(self, protocol):
+        if self.stream_factory is not None:
+            self.stream = self.stream_factory(protocol)
+
+        self.stream.emit()
+
+    def tuple_received(self, protocol, payload):
+        if self.sink_factory is not None:
+            if self.sink is None:
+                self.sink = self.sink_factory(self.logger)
+            self.sink.tuple_received(payload)
+
+        if self.stream is not None:
+            if (self.stream.no_samples > 0):
+                offload_latency = protocol.request_statistics.get_offload_latency(protocol.current_record)
+
+                if self.stream.use_scheduling:
+                    sync = payload['sync']
+                else:
+                    sync = 0.0
+
+                target_latency = self.stream.target_latency
+
+                loop = asyncio.get_running_loop()
+                loop.call_later(target_latency-offload_latency + sync if target_latency > offload_latency else 0, self.stream.emit)
+            else:
+                protocol.transport.close()
+
+        if self.executor is not None:
+            self.executor.buffer_input(payload["activation"], protocol.send_payload, protocol.current_record)
+
     def add_master_slice_futures(self, futures):
         if self.stream_factory is None or self.sink_factory is None:
             return futures
 
-        futures.append(self.connect_to_server(lambda: SparseClientProtocol(self.stats_queue, \
-                                                                           self.stream_factory, \
-                                                                           self.sink_factory),
-                                              self.config.upstream_host,
-                                              self.config.upstream_port))
+        futures.append(self.connect_to_server(self.config.upstream_host, self.config.upstream_port))
 
         return futures
 
@@ -86,9 +118,7 @@ class SparseNode:
         self.executor.set_operator(operator_factory())
 
         futures.append(self.executor.start())
-        futures.append(self.start_server(lambda: SparseServerProtocol(self.executor, self.stats_queue), \
-                                         self.config.listen_address, \
-                                         self.config.listen_port))
+        futures.append(self.start_server(self.config.listen_address, self.config.listen_port))
         return futures
 
     def add_statistics_futures(self, futures):
@@ -115,28 +145,23 @@ class SparseNode:
         """
         await asyncio.gather(*self.get_futures())
 
-    async def connect_to_server(self, protocol_factory, host, port):
+    async def connect_to_server(self, host, port):
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
 
         while True:
             try:
-                await loop.create_connection(lambda: SparseClientProtocol(on_con_lost, \
-                                                                          self.stats_queue, \
-                                                                          self.stream_factory, \
-                                                                          self.sink_factory), \
-                                             host, \
-                                             port)
+                await loop.create_connection(lambda: SparseClientProtocol(on_con_lost, self), host, port)
                 result = await on_con_lost
                 return result
             except ConnectionRefusedError:
                 self.logger.warn("Connection refused. Re-trying in 5 seconds.")
                 await asyncio.sleep(5)
 
-    async def start_server(self, protocol_factory, addr, port):
+    async def start_server(self, addr, port):
         loop = asyncio.get_running_loop()
 
         self.logger.info(f"Listening to '{addr}:{port}'")
-        server = await loop.create_server(protocol_factory, addr, port)
+        server = await loop.create_server(lambda: SparseServerProtocol(self), addr, port)
         async with server:
             await server.serve_forever()
