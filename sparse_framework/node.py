@@ -43,6 +43,7 @@ class SparseNode:
                  node_id : str = str(uuid.uuid4()),
                  log_level : int = logging.INFO,
                  operator_factory = None,
+                 source_factory = None,
                  stream_factory = None,
                  sink_factory = None):
         self.node_id = node_id
@@ -59,17 +60,20 @@ class SparseNode:
 
         self.operator_factory = operator_factory
 
+        self.source_factory = source_factory
         self.stream_factory = stream_factory
         self.sink_factory = sink_factory
 
+        self.source = None
         self.stream = None
         self.sink = None
 
     def connected_to_server(self, protocol):
         if self.stream_factory is not None:
             self.stream = self.stream_factory(protocol)
+            self.source = self.source_factory(self.stream)
 
-        self.stream.emit()
+        self.source.emit()
 
     def tuple_received(self, protocol, payload):
         if self.sink_factory is not None:
@@ -89,7 +93,7 @@ class SparseNode:
                 target_latency = self.stream.target_latency
 
                 loop = asyncio.get_running_loop()
-                loop.call_later(target_latency-offload_latency + sync if target_latency > offload_latency else 0, self.stream.emit)
+                loop.call_later(target_latency-offload_latency + sync if target_latency > offload_latency else 0, self.source.emit)
             else:
                 protocol.transport.close()
 
