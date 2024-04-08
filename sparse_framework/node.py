@@ -39,13 +39,7 @@ class SparseNode:
     network connections.
     """
 
-    def __init__(self,
-                 node_id : str = str(uuid.uuid4()),
-                 log_level : int = logging.INFO,
-                 operator_factory = None,
-                 source_factory = None,
-                 stream_factory = None,
-                 sink_factory = None):
+    def __init__(self, node_id : str = str(uuid.uuid4()), log_level : int = logging.INFO):
         self.node_id = node_id
 
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=log_level)
@@ -58,39 +52,29 @@ class SparseNode:
         self.io_buffer = None
         self.stats_queue = None
 
-        self.operator_factory = operator_factory
-
-        self.source_factory = source_factory
-        self.stream_factory = stream_factory
-        self.sink_factory = sink_factory
-
         self.source = None
         self.stream = None
         self.sink = None
 
     def connected_to_server(self, protocol):
-        if self.stream_factory is not None:
-            self.stream = self.stream_factory(protocol)
-            self.source = self.source_factory(self.stream)
-
-        self.source.emit()
+        if self.source is not None:
+            self.source.stream.add_protocol(protocol)
+            self.source.emit()
 
     def tuple_received(self, protocol, payload):
-        if self.sink_factory is not None:
-            if self.sink is None:
-                self.sink = self.sink_factory(self.logger)
+        if self.sink is not None:
             self.sink.tuple_received(payload)
 
-        if self.stream is not None:
-            if (self.stream.no_samples > 0):
+        if self.source is not None:
+            if (self.source.no_samples > 0):
                 offload_latency = protocol.request_statistics.get_offload_latency(protocol.current_record)
 
-                if self.stream.use_scheduling:
+                if self.source.use_scheduling:
                     sync = payload['sync']
                 else:
                     sync = 0.0
 
-                target_latency = self.stream.target_latency
+                target_latency = self.source.target_latency
 
                 loop = asyncio.get_running_loop()
                 loop.call_later(target_latency-offload_latency + sync if target_latency > offload_latency else 0, self.source.emit)
@@ -100,18 +84,21 @@ class SparseNode:
         if self.executor is not None:
             self.executor.buffer_input(payload["activation"], protocol.send_payload, protocol.current_record)
 
-    def add_master_slice_futures(self, futures):
-        if self.stream_factory is None or self.sink_factory is None:
-            return futures
+    def add_operator(self, operator_factory):
+        self.executor.set_operator(operator_factory())
 
+    def add_source(self, source_factory):
+        self.source = source_factory()
+
+    def add_sink(self, sink_factory):
+        self.sink = sink_factory(self.logger)
+
+    def add_master_slice_futures(self, futures):
         futures.append(self.connect_to_server(self.config.upstream_host, self.config.upstream_port))
 
         return futures
 
-    def add_worker_slice_futures(self, futures, operator_factory):
-        if operator_factory is None:
-            return futures
-
+    def add_worker_slice_futures(self, futures):
         m = multiprocessing.Manager()
         lock = m.Lock()
 
@@ -119,7 +106,6 @@ class SparseNode:
 
         self.io_buffer = SparsePytorchIOBuffer()
         self.executor = SparseTaskExecutor(lock, self.io_buffer, task_queue)
-        self.executor.set_operator(operator_factory())
 
         futures.append(self.executor.start())
         futures.append(self.start_server(self.config.listen_address, self.config.listen_port))
@@ -132,22 +118,34 @@ class SparseNode:
         futures.append(monitor_daemon.start())
         return futures
 
-    def get_futures(self):
+    def get_futures(self, is_worker = True):
         """Collects node coroutines to be executed on startup.
         """
         futures = []
         futures = self.add_statistics_futures(futures)
-        futures = self.add_worker_slice_futures(futures, self.operator_factory)
+
+        if is_worker:
+            futures = self.add_worker_slice_futures(futures)
+
         futures = self.add_master_slice_futures(futures)
         return futures
 
-    async def start(self):
+    async def start(self, operator_factory = None, source_factory = None, sink_factory = None):
         """Starts the main task loop by collecting all of the future objects.
 
         NB! When subclassing SparseNode instead of extending this function the user should use the get_futures
         function.
         """
-        await asyncio.gather(*self.get_futures())
+        futures = self.get_futures(is_worker=operator_factory is not None)
+
+        if source_factory is not None:
+            self.add_source(source_factory)
+        if sink_factory is not None:
+            self.add_sink(sink_factory)
+        if operator_factory is not None:
+            self.add_operator(operator_factory)
+
+        await asyncio.gather(*futures)
 
     async def connect_to_server(self, host, port):
         loop = asyncio.get_running_loop()

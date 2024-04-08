@@ -12,7 +12,7 @@ class SparseTaskExecutor:
     User is expected to implement the computation logic by defining a custom execute_task() function. Additionally it
     is possible to implement custom initialization code by overriding optional start() hook.
     """
-    def __init__(self, lock, memory_buffer, queue, use_batching : bool = True):
+    def __init__(self, lock, memory_buffer, queue):
         self.logger = logging.getLogger("sparse")
         self.executor = ThreadPoolExecutor()
 
@@ -20,8 +20,6 @@ class SparseTaskExecutor:
         self.queue = queue
         self.lock = lock
 
-        self.use_batching = use_batching
-        self.batch_no = 0
         self.operator = None
 
     def set_operator(self, operator):
@@ -38,11 +36,11 @@ class SparseTaskExecutor:
     def buffer_input(self, input_data, result_callback, statistics_record):
         batch_index = self.memory_buffer.buffer_input(input_data, result_callback, statistics_record, self.lock)
         statistics_record.task_queued()
-        if not self.use_batching or batch_index == 0:
+        if not self.operator.use_batching or batch_index == 0:
             self.queue.put_nowait((self.memory_buffer.result_received))
 
     def execute_task(self, callback, lock):
-        if self.use_batching:
+        if self.operator.use_batching:
             features, callbacks, statistics_records = self.memory_buffer.dispatch_batch(lock)
         else:
             features, callbacks, statistics_records = self.memory_buffer.pop_input(lock)
@@ -52,8 +50,8 @@ class SparseTaskExecutor:
         task_completed_at = time()
 
         for record in statistics_records:
-            record.task_started(task_started_at, self.batch_no)
+            record.task_started(task_started_at, self.operator.batch_no)
             record.task_completed(task_completed_at)
-        self.batch_no += 1
+        self.operator.batch_no += 1
 
         callback(pred, callbacks)

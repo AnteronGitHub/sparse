@@ -99,13 +99,12 @@ class SparseClientProtocol(SparseProtocol):
         self.on_con_lost.set_result(self.request_statistics)
 
 class SparseServerProtocol(SparseProtocol):
-    def __init__(self, node, use_scheduling : bool = True, use_batching : bool = True):
+    def __init__(self, node, use_scheduling : bool = True):
         super().__init__(stats_queue = node.stats_queue, request_statistics_factory = ServerRequestStatistics)
 
         self.node = node
 
         self.use_scheduling = use_scheduling
-        self.use_batching = use_batching
 
     def payload_received(self, payload):
         self.current_record = self.request_statistics.create_record(payload["op"])

@@ -3,13 +3,14 @@ import uuid
 __all__ = ["SparseSource", "SparseStream", "SparseSink", "SparseOperator"]
 
 class SparseStream:
-    def __init__(self, protocol, no_samples, target_latency, use_scheduling):
+    def __init__(self, no_samples, target_latency, use_scheduling):
         self.id = str(uuid.uuid4())
 
         self.target_latency = target_latency
         self.use_scheduling = use_scheduling
         self.no_samples = no_samples
 
+    def add_protocol(self, protocol):
         self.protocol = protocol
 
     def emit(self, data_tuple):
@@ -18,9 +19,13 @@ class SparseStream:
         self.protocol.send_payload(payload)
 
 class SparseSource:
-    def __init__(self, stream : SparseStream):
+    def __init__(self, no_samples, target_latency, use_scheduling):
         self.id = str(uuid.uuid4())
-        self.stream = stream
+        self.stream = SparseStream(no_samples, target_latency, use_scheduling)
+
+        self.target_latency = target_latency
+        self.use_scheduling = use_scheduling
+        self.no_samples = no_samples
 
     def get_tuple(self):
         pass
@@ -36,8 +41,10 @@ class SparseSink:
         pass
 
 class SparseOperator:
-    def __init__(self):
+    def __init__(self, use_batching : bool):
         self.id = str(uuid.uuid4())
+        self.batch_no = 0
+        self.use_batching = use_batching
 
     def call(self, input_tuple):
         pass
