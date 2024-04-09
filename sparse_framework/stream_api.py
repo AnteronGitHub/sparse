@@ -1,27 +1,44 @@
 import uuid
+import logging
 
 __all__ = ["SparseSource", "SparseStream", "SparseSink", "SparseOperator"]
 
 class SparseStream:
-    def __init__(self, no_samples, target_latency, use_scheduling):
-        self.id = str(uuid.uuid4())
+    def __init__(self, stream_id : str = None):
+        self.logger = logging.getLogger("sparse")
+        if stream_id is None:
+            self.stream_id = str(uuid.uuid4())
+        else:
+            self.stream_id = stream_id
 
-        self.target_latency = target_latency
-        self.use_scheduling = use_scheduling
-        self.no_samples = no_samples
+        self.protocol = None
+        self.executor = None
+        self.sink = None
+
+        self.output_stream = None
 
     def add_protocol(self, protocol):
         self.protocol = protocol
 
+    def add_executor(self, executor, output_stream):
+        self.executor = executor
+        self.output_stream = output_stream
+
+    def add_sink(self, sink):
+        self.sink = sink
+
     def emit(self, data_tuple):
-        self.no_samples -= 1
-        payload = {'stream_id': self.id, 'activation': data_tuple}
-        self.protocol.send_payload(payload)
+        if self.sink is not None:
+            self.sink.tuple_received(data_tuple)
+        if self.executor is not None:
+            self.executor.buffer_input(data_tuple, self.output_stream.emit, self.protocol.current_record)
+        elif self.protocol is not None:
+            self.protocol.send_payload(self.stream_id, data_tuple)
 
 class SparseSource:
     def __init__(self, no_samples, target_latency, use_scheduling):
         self.id = str(uuid.uuid4())
-        self.stream = SparseStream(no_samples, target_latency, use_scheduling)
+        self.stream = SparseStream()
 
         self.target_latency = target_latency
         self.use_scheduling = use_scheduling
@@ -31,6 +48,7 @@ class SparseSource:
         pass
 
     def emit(self):
+        self.no_samples -= 1
         self.stream.emit(self.get_tuple())
 
 class SparseSink:

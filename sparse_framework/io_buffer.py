@@ -60,7 +60,8 @@ class SparseIOBuffer:
         transferred_result = self.transferToHost(result)
 
         for batch_index, callback in enumerate(callbacks):
-            callback(transferred_result[batch_index], batch_index)
+            callback(transferred_result[batch_index])
+            # callback(transferred_result[batch_index], batch_index)
 
     def transferToDevice(self, input_data):
         pass

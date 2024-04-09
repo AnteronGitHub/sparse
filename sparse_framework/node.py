@@ -10,6 +10,7 @@ from .io_buffer import SparsePytorchIOBuffer
 from .protocols import SparseClientProtocol, SparseServerProtocol
 from .stats import MonitorDaemon
 from .task_executor import SparseTaskExecutor
+from .stream_api import SparseStream
 
 __all__ = ["SparseNode"]
 
@@ -53,7 +54,7 @@ class SparseNode:
         self.stats_queue = None
 
         self.source = None
-        self.stream = None
+        self.stream_replicas = []
         self.sink = None
 
     def connected_to_server(self, protocol):
@@ -61,17 +62,28 @@ class SparseNode:
             self.source.stream.add_protocol(protocol)
             self.source.emit()
 
-    def tuple_received(self, protocol, payload):
-        if self.sink is not None:
-            self.sink.tuple_received(payload)
+    def stream_received(self, stream_id, new_tuple, protocol = None):
+        self.logger.info(f"Received stream replica {stream_id}")
+        stream_replica = SparseStream(stream_id)
 
+        if self.executor is not None and self.executor.operator is not None:
+            output_stream = SparseStream()
+            output_stream.add_protocol(protocol)
+            stream_replica.add_executor(self.executor, output_stream)
+            stream_replica.add_protocol(protocol)
+        if self.sink is not None:
+            stream_replica.add_sink(self.sink)
+
+        self.stream_replicas.append(stream_replica)
+        stream_replica.emit(new_tuple)
+
+    def sync_received(self, protocol, stream_id, sync):
+        self.logger.debug(f"Received {sync} s sync")
         if self.source is not None:
             if (self.source.no_samples > 0):
                 offload_latency = protocol.request_statistics.get_offload_latency(protocol.current_record)
 
-                if self.source.use_scheduling:
-                    sync = payload['sync']
-                else:
+                if not self.source.use_scheduling:
                     sync = 0.0
 
                 target_latency = self.source.target_latency
@@ -81,14 +93,20 @@ class SparseNode:
             else:
                 protocol.transport.close()
 
-        if self.executor is not None:
-            self.executor.buffer_input(payload["activation"], protocol.send_payload, protocol.current_record)
+    def tuple_received(self, stream_id, new_tuple, protocol = None):
+        for stream in self.stream_replicas:
+            if stream.stream_id == stream_id:
+                stream.emit(new_tuple)
+                return
+
+        self.stream_received(stream_id, new_tuple, protocol)
 
     def add_operator(self, operator_factory):
         self.executor.set_operator(operator_factory())
 
     def add_source(self, source_factory):
         self.source = source_factory()
+        self.logger.info(f"Added source with stream id {self.source.stream.stream_id}")
 
     def add_sink(self, sink_factory):
         self.sink = sink_factory(self.logger)
@@ -126,8 +144,9 @@ class SparseNode:
 
         if is_worker:
             futures = self.add_worker_slice_futures(futures)
+        else:
+            futures = self.add_master_slice_futures(futures)
 
-        futures = self.add_master_slice_futures(futures)
         return futures
 
     async def start(self, operator_factory = None, source_factory = None, sink_factory = None):

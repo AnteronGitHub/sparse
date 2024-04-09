@@ -78,13 +78,11 @@ class SparseClientProtocol(SparseProtocol):
 
         self.node.connected_to_server(self)
 
-    def send_payload(self, payload):
+    def send_payload(self, stream_id, data_tuple):
         self.current_record = self.request_statistics.create_record("offload_task")
         self.current_record.processing_started()
 
-        payload['op'] = 'offload_task'
-
-        super().send_payload(payload)
+        super().send_payload({'stream_id': stream_id, 'activation': data_tuple, "op": "offload_task"})
 
         self.current_record.request_sent()
 
@@ -92,7 +90,13 @@ class SparseClientProtocol(SparseProtocol):
         self.current_record.response_received()
         self.request_statistics.log_record(self.current_record)
 
-        self.node.tuple_received(self, payload)
+        stream_id = payload['stream_id']
+        self.logger.debug(f"Received payload for stream {stream_id}")
+
+        if 'sync' in payload.keys():
+            self.node.sync_received(self, payload['stream_id'], payload['sync'])
+
+        self.node.tuple_received(payload['stream_id'], payload['pred'], protocol=self)
 
     def connection_lost(self, exc):
         self.logger.info(self.request_statistics)
@@ -110,10 +114,12 @@ class SparseServerProtocol(SparseProtocol):
         self.current_record = self.request_statistics.create_record(payload["op"])
         self.current_record.request_received()
 
-        self.node.tuple_received(self, payload)
+        stream_id = payload['stream_id']
+        new_tuple = payload['activation']
+        self.node.tuple_received(stream_id, new_tuple, protocol=self)
 
-    def send_payload(self, result, batch_index = 0):
-        payload = { "pred": result }
+    def send_payload(self, stream_id, result, batch_index = 0):
+        payload = { "pred": result, 'stream_id': stream_id, 'sync': 0 }
         if self.use_scheduling:
             # Quantize queueing time to millisecond precision
             queueing_time_ms = int(self.request_statistics.get_queueing_time(self.current_record) * 1000)
