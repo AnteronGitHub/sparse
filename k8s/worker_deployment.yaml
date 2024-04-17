@@ -1,0 +1,60 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sparse-worker
+  namespace: sparse
+  labels:
+    app: sparse-worker
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: sparse-worker
+  template:
+    metadata:
+      labels:
+        app: sparse-worker
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: sparse/node
+                operator: In
+                values:
+                - worker
+                - aio
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - "amd64"
+      containers:
+      - name: sparse-worker
+        image: anterondocker/sparse-framework:pytorch
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: WORKER_LISTEN_ADDRESS
+          value: "0.0.0.0"
+            #command: ["python3"]
+            #args:
+            #- "worker.py"
+            #- "--use-scheduling"
+            #- "$SPARSE_USE_SCHEDULING"
+            #- "--use-batching"
+            #- "$SPARSE_USE_BATCHING"
+        volumeMounts:
+        - name: sparse-run
+          mountPath: /run/sparse
+        - name: sparse-stats
+          mountPath: /data/stats
+      volumes:
+      - name: sparse-run
+        hostPath:
+          path: /run/sparse
+      - name: sparse-stats
+        hostPath:
+          path: /var/lib/sparse/stats

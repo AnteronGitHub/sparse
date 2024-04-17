@@ -3,10 +3,12 @@
 # See below which images to use:
 # | SDK            | Base image                                       |
 # | -------------- | ------------------------------------------------ |
+# | Plain Python   | python:3.12-slim                                 |
 # | JetPack 5.0    | nvcr.io/nvidia/l4t-pytorch:r34.1.0-pth1.12-py3   |
 # | JetPack 4.6.1  | nvcr.io/nvidia/l4t-pytorch:r32.7.1-pth1.9-py3    |
 
-FROM python:3.12-slim
+ARG BASE_IMAGE=pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime
+FROM $BASE_IMAGE
 
 ARG INSTALL_LOCATION=/usr/lib
 ARG PY_REQUIREMENTS=requirements.txt
@@ -21,4 +23,4 @@ RUN pip3 install -r requirements.txt
 WORKDIR $INSTALL_LOCATION/sparse_framework
 COPY sparse_framework $INSTALL_LOCATION/sparse_framework
 
-CMD ["python3", "-m", "sparse_framework.stats"]
+CMD ["python3", "-m", "sparse_framework"]

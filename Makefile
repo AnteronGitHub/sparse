@@ -37,7 +37,7 @@ $(docker_build_file): $(sparse_py) $(dockerfile)
 .PHONY: docker clean run run-experiment clean-experiment graphs
 
 docker: $(docker_build_file)
-	make -C examples/splitnn docker
+	#make -C examples/splitnn docker
 	# Deprecated
 #	make -C examples/deprune docker
 
