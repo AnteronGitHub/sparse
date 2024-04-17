@@ -12,7 +12,7 @@ from .stats import MonitorDaemon
 from .task_executor import SparseTaskExecutor
 from .stream_api import SparseStream
 
-__all__ = ["SparseNode"]
+__all__ = ["SparseNode", "SparseDeployer"]
 
 class SparseNodeConfig:
     def __init__(self):
@@ -149,13 +149,13 @@ class SparseNode:
 
         return futures
 
-    async def start(self, operator_factory = None, source_factory = None, sink_factory = None):
+    async def start(self, is_root = True, operator_factory = None, source_factory = None, sink_factory = None):
         """Starts the main task loop by collecting all of the future objects.
 
         NB! When subclassing SparseNode instead of extending this function the user should use the get_futures
         function.
         """
-        futures = self.get_futures(is_worker=operator_factory is not None)
+        futures = self.get_futures(is_worker=is_root)
 
         if source_factory is not None:
             self.add_source(source_factory)
@@ -186,3 +186,12 @@ class SparseNode:
         server = await loop.create_server(lambda: SparseServerProtocol(self), addr, port)
         async with server:
             await server.serve_forever()
+
+class SparseDeployer(SparseNode):
+    def deploy(self, operator = None):
+        self.operator = operator
+        asyncio.run(self.connect_to_server("sparse-worker", self.config.upstream_port))
+
+    def connected_to_server(self, protocol):
+        self.logger.info("Connected")
+        protocol.send_payload({"type": "operator", "op_factory": self.operator})

@@ -33,7 +33,8 @@ class SparseStream:
         if self.executor is not None:
             self.executor.buffer_input(data_tuple, self.output_stream.emit, self.protocol.current_record)
         elif self.protocol is not None:
-            self.protocol.send_payload(self.stream_id, data_tuple)
+            payload = {'stream_id': self.stream_id, 'activation': data_tuple, "op": "offload_task"}
+            self.protocol.send_payload(payload)
 
 class SparseSource:
     def __init__(self, no_samples, target_latency, use_scheduling):

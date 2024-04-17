@@ -78,11 +78,11 @@ class SparseClientProtocol(SparseProtocol):
 
         self.node.connected_to_server(self)
 
-    def send_payload(self, stream_id, data_tuple):
+    def send_payload(self, payload):
         self.current_record = self.request_statistics.create_record("offload_task")
         self.current_record.processing_started()
 
-        super().send_payload({'stream_id': stream_id, 'activation': data_tuple, "op": "offload_task"})
+        super().send_payload(payload)
 
         self.current_record.request_sent()
 
@@ -111,6 +111,9 @@ class SparseServerProtocol(SparseProtocol):
         self.use_scheduling = use_scheduling
 
     def payload_received(self, payload):
+        if payload["type"] == "operator":
+            self.logger.info("Received operator")
+            return
         self.current_record = self.request_statistics.create_record(payload["op"])
         self.current_record.request_received()
 
