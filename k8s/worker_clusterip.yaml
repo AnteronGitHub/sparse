@@ -8,7 +8,7 @@ metadata:
     app: sparse-worker
 spec:
   ports:
-  - port: 50007
+  - port: 50006
     protocol: TCP
   selector:
     app: sparse-worker

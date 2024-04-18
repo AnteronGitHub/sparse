@@ -60,7 +60,7 @@ class SparseSink:
         pass
 
 class SparseOperator:
-    def __init__(self, use_batching : bool):
+    def __init__(self, use_batching : bool = True):
         self.id = str(uuid.uuid4())
         self.batch_no = 0
         self.use_batching = use_batching

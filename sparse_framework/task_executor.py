@@ -23,7 +23,7 @@ class SparseTaskExecutor:
         self.operator = None
 
     def set_operator(self, operator):
-        self.logger.info(f"Registered operator")
+        self.logger.info(f"Registered '{operator.__class__.__name__}' operator")
         self.operator = operator
 
     async def start(self):

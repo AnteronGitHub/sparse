@@ -39,22 +39,25 @@ spec:
         env:
         - name: WORKER_LISTEN_ADDRESS
           value: "0.0.0.0"
-            #command: ["python3"]
-            #args:
-            #- "worker.py"
-            #- "--use-scheduling"
-            #- "$SPARSE_USE_SCHEDULING"
-            #- "--use-batching"
-            #- "$SPARSE_USE_BATCHING"
         volumeMounts:
+        - name: sparse-code
+          mountPath: /usr/lib/sparse_framework
         - name: sparse-run
           mountPath: /run/sparse
         - name: sparse-stats
           mountPath: /data/stats
+        - name: sparse-apps
+          mountPath: /data/apps
       volumes:
+      - name: sparse-code
+        hostPath:
+          path: /opt/sparse/sparse_framework
       - name: sparse-run
         hostPath:
           path: /run/sparse
+      - name: sparse-apps
+        hostPath:
+          path: /var/lib/sparse/apps
       - name: sparse-stats
         hostPath:
           path: /var/lib/sparse/stats
