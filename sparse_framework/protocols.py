@@ -67,7 +67,7 @@ class SparseAppDeployerProtocol(asyncio.Protocol):
         self.transport.write(payload_data)
 
 class SparseAppReceiverProtocol(asyncio.Protocol):
-    def __init__(self, node, file_path = ""):
+    def __init__(self, migrator_slice, file_path = ""):
         self.connection_id = str(uuid.uuid4())
         self.logger = logging.getLogger("sparse")
         self.transport = None
@@ -78,7 +78,7 @@ class SparseAppReceiverProtocol(asyncio.Protocol):
         self.data_size = 0
 
         self.file_path = file_path
-        self.node = node
+        self.migrator_slice = migrator_slice
 
     def clear_buffer(self):
         self.data_buffer = io.BytesIO()
@@ -107,7 +107,7 @@ class SparseAppReceiverProtocol(asyncio.Protocol):
         self.data_buffer.write(payload)
 
         if self.data_buffer.getbuffer().nbytes >= self.data_size:
-            self.node.data_received(self)
+            self.migrator_slice.data_received(self)
             self.clear_buffer()
 
     def send_payload(self, payload):
