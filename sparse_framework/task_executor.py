@@ -22,8 +22,7 @@ class SparseTaskExecutor:
 
         self.operator = None
 
-    def set_operator(self, operator):
-        self.logger.info(f"Registered '{operator.__class__.__name__}' operator")
+    def add_operator(self, operator):
         self.operator = operator
 
     async def start(self):
@@ -35,7 +34,7 @@ class SparseTaskExecutor:
 
     def buffer_input(self, input_data, result_callback, statistics_record):
         batch_index = self.memory_buffer.buffer_input(input_data, result_callback, statistics_record, self.lock)
-        statistics_record.task_queued()
+        #statistics_record.task_queued()
         if not self.operator.use_batching or batch_index == 0:
             self.queue.put_nowait((self.memory_buffer.result_received))
 
@@ -49,9 +48,9 @@ class SparseTaskExecutor:
         pred = self.operator.call(features)
         task_completed_at = time()
 
-        for record in statistics_records:
-            record.task_started(task_started_at, self.operator.batch_no)
-            record.task_completed(task_completed_at)
+        #for record in statistics_records:
+            # record.task_started(task_started_at, self.operator.batch_no)
+            # record.task_completed(task_completed_at)
         self.operator.batch_no += 1
 
         callback(pred, callbacks)

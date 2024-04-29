@@ -57,11 +57,13 @@ class SparseNode:
 
     def init_slices(self):
         runtime_slice = SparseStreamRuntimeSlice(self.config)
-        migrator_slice = SparseModuleMigratorSlice(runtime_slice, self.config)
+        stream_manager_slice = SparseStreamManagerSlice(runtime_slice, self.config)
+        migrator_slice = SparseModuleMigratorSlice(stream_manager_slice, self.config)
+
         self.slices = [
                 SparseQoSMonitorSlice(self.config),
                 runtime_slice,
-                SparseStreamManagerSlice(self.config),
+                stream_manager_slice,
                 migrator_slice
                 ]
 
@@ -159,8 +161,9 @@ class SparseStreamRuntimeSlice(SparseSlice):
 
         return futures
 
-    def add_operator(self, operator_factory):
-        self.executor.set_operator(operator_factory())
+    def add_operator(self, operator, input_stream, output_stream):
+        self.executor.add_operator(operator)
+        input_stream.add_executor(self.executor, output_stream)
 
     def sync_received(self, protocol, stream_id, sync):
         self.logger.debug(f"Received {sync} s sync")
@@ -178,14 +181,6 @@ class SparseStreamRuntimeSlice(SparseSlice):
             else:
                 protocol.transport.close()
 
-    def tuple_received(self, stream_id, new_tuple, protocol = None):
-        for stream in self.stream_replicas:
-            if stream.stream_id == stream_id:
-                stream.emit(new_tuple)
-                return
-
-        self.stream_received(stream_id, new_tuple, protocol)
-
     async def start_server(self, addr, port):
         loop = asyncio.get_running_loop()
 
@@ -195,25 +190,44 @@ class SparseStreamRuntimeSlice(SparseSlice):
             await server.serve_forever()
 
 class SparseStreamManagerSlice(SparseSlice):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, runtime_slice : SparseStreamRuntimeSlice, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.source = None
-        self.stream_replicas = []
+        self.operator = None
         self.sink = None
 
-    def add_source(self, source_factory):
-        self.source = source_factory()
-        self.logger.info(f"Added source with stream id {self.source.stream.stream_id}")
+        self.output_stream = SparseStream()
+        self.input_stream = SparseStream()
+        self.stream_replicas = []
+
+        self.runtime_slice = runtime_slice
+
+    def add_operator(self, operator_factory):
+        self.operator = operator_factory()
+        self.runtime_slice.add_operator(self.operator, self.input_stream, self.output_stream)
+
+        self.logger.info(f"Added local operator '{self.operator.__class__.__name__}'")
 
     def add_sink(self, sink_factory):
         self.sink = sink_factory(self.logger)
+        self.output_stream.add_sink(self.sink)
+
+        self.logger.info(f"Added local sink {self.sink.__class__.__name__}")
+
+    def add_source(self, source_factory):
+        self.source = source_factory(self.input_stream)
+
+        self.logger.info(f"Added local source {self.source.__class__.__name__}")
+
+        loop = asyncio.get_running_loop()
+        task = loop.create_task(self.source.start())
 
     def stream_received(self, stream_id, new_tuple, protocol = None):
         self.logger.info(f"Received stream replica {stream_id}")
         stream_replica = SparseStream(stream_id)
 
         if self.executor is not None and self.executor.operator is not None:
-            output_stream = SparseStream()
+            self.output_stream = SparseStream()
             output_stream.add_protocol(protocol)
             stream_replica.add_executor(self.executor, output_stream)
             stream_replica.add_protocol(protocol)
@@ -223,10 +237,18 @@ class SparseStreamManagerSlice(SparseSlice):
         self.stream_replicas.append(stream_replica)
         stream_replica.emit(new_tuple)
 
+    def tuple_received(self, stream_id, new_tuple, protocol = None):
+        for stream in self.stream_replicas:
+            if stream.stream_id == stream_id:
+                stream.emit(new_tuple)
+                return
+
+        self.stream_received(stream_id, new_tuple, protocol)
+
 class SparseModuleMigratorSlice(SparseSlice):
-    def __init__(self, runtime_slice : SparseStreamRuntimeSlice, *args, **kwargs):
+    def __init__(self, stream_manager_slice : SparseStreamManagerSlice, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.runtime_slice = runtime_slice
+        self.stream_manager_slice = stream_manager_slice
 
     def get_futures(self, futures):
         futures.append(self.start_app_server())
@@ -256,10 +278,14 @@ class SparseModuleMigratorSlice(SparseSlice):
     def app_module_received(self, protocol, app_archive_path : str, app_name : str = 'sparseapp'):
         shutil.unpack_archive(app_archive_path, os.path.join(self.config.app_repo_path, app_name))
         module_path = f"apps.{app_name}"
-        from apps.sparseapp import get_operators
+        from apps.sparseapp import get_operators, get_sinks, get_sources
         # TODO: importlib.import_module(module_path, package=module_path)
-        for operator in get_operators():
-            self.runtime_slice.add_operator(operator)
+        for source_factory in get_sources():
+            self.stream_manager_slice.add_source(source_factory)
+        for sink_factory in get_sinks():
+            self.stream_manager_slice.add_sink(sink_factory)
+        for operator_factory in get_operators():
+            self.stream_manager_slice.add_operator(operator_factory)
 
     def object_received(self, protocol, obj : dict):
         if obj["type"] == "app":

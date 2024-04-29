@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 import logging
 
@@ -31,26 +32,29 @@ class SparseStream:
         if self.sink is not None:
             self.sink.tuple_received(data_tuple)
         if self.executor is not None:
-            self.executor.buffer_input(data_tuple, self.output_stream.emit, self.protocol.current_record)
+            self.executor.buffer_input(data_tuple, self.output_stream.emit, None)
         elif self.protocol is not None:
             payload = {'stream_id': self.stream_id, 'activation': data_tuple, "op": "offload_task"}
             self.protocol.send_payload(payload)
 
 class SparseSource:
-    def __init__(self, no_samples, target_latency, use_scheduling):
+    def __init__(self, stream, no_samples = 64, target_latency = 200, use_scheduling = True):
+        self.logger = logging.getLogger("sparse")
         self.id = str(uuid.uuid4())
-        self.stream = SparseStream()
+        self.current_tuple = 0
 
+        self.stream = stream
         self.target_latency = target_latency
         self.use_scheduling = use_scheduling
-        self.no_samples = no_samples
 
     def get_tuple(self):
         pass
 
-    def emit(self):
-        self.no_samples -= 1
-        self.stream.emit(self.get_tuple())
+    async def start(self):
+        while True:
+            self.stream.emit(self.get_tuple())
+            self.current_tuple += 1
+            await asyncio.sleep(self.target_latency / 1000.0)
 
 class SparseSink:
     def __init__(self, logger):

@@ -44,10 +44,8 @@ spec:
           mountPath: /usr/lib/sparse_framework
         - name: sparse-run
           mountPath: /run/sparse
-        - name: sparse-stats
-          mountPath: /data/stats
-        - name: sparse-apps
-          mountPath: /data/apps
+        - name: sparse-data
+          mountPath: /data
       volumes:
       - name: sparse-code
         hostPath:
@@ -55,9 +53,6 @@ spec:
       - name: sparse-run
         hostPath:
           path: /run/sparse
-      - name: sparse-apps
+      - name: sparse-data
         hostPath:
-          path: /var/lib/sparse/apps
-      - name: sparse-stats
-        hostPath:
-          path: /var/lib/sparse/stats
+          path: /var/lib/sparse
