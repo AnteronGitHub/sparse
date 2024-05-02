@@ -1,4 +1,5 @@
 import asyncio
+from graphlib import TopologicalSorter
 import importlib
 import multiprocessing
 import logging
@@ -161,9 +162,11 @@ class SparseStreamRuntimeSlice(SparseSlice):
 
         return futures
 
-    def add_operator(self, operator, input_stream, output_stream):
+    def execute_locally(self, data_tuple, output_stream):
+        self.executor.buffer_input(data_tuple, output_stream.emit, None)
+
+    def add_operator(self, operator):
         self.executor.add_operator(operator)
-        input_stream.add_executor(self.executor, output_stream)
 
     def sync_received(self, protocol, stream_id, sync):
         self.logger.debug(f"Received {sync} s sync")
@@ -184,7 +187,7 @@ class SparseStreamRuntimeSlice(SparseSlice):
     async def start_server(self, addr, port):
         loop = asyncio.get_running_loop()
 
-        self.logger.info(f"Listening to '{addr}:{port}'")
+        self.logger.info(f"Data plane listening to '{addr}:{port}'")
         server = await loop.create_server(lambda: SparseServerProtocol(self), addr, port)
         async with server:
             await server.serve_forever()
@@ -202,25 +205,32 @@ class SparseStreamManagerSlice(SparseSlice):
 
         self.runtime_slice = runtime_slice
 
-    def add_operator(self, operator_factory):
-        self.operator = operator_factory()
-        self.runtime_slice.add_operator(self.operator, self.input_stream, self.output_stream)
+    def place_operator(self, operator_factory, destinations):
+        self.operator = operator_factory(self.output_stream)
 
-        self.logger.info(f"Added local operator '{self.operator.__class__.__name__}'")
+        self.runtime_slice.add_operator(self.operator)
 
-    def add_sink(self, sink_factory):
+        if self.sink and self.sink.name in destinations:
+            self.output_stream.add_listener(self.sink)
+
+        self.logger.info(f"Placed operator '{self.operator.name}'")
+
+    def place_sink(self, sink_factory):
         self.sink = sink_factory(self.logger)
-        self.output_stream.add_sink(self.sink)
 
-        self.logger.info(f"Added local sink {self.sink.__class__.__name__}")
+        self.logger.info(f"Placed sink '{self.sink.name}'")
 
-    def add_source(self, source_factory):
+    def place_source(self, source_factory, destinations):
         self.source = source_factory(self.input_stream)
 
-        self.logger.info(f"Added local source {self.source.__class__.__name__}")
+        if self.operator and self.operator.name in destinations:
+            self.input_stream.add_operator(self.operator)
+
+        self.logger.info(f"Placed source '{self.source.name}'")
 
         loop = asyncio.get_running_loop()
         task = loop.create_task(self.source.start())
+        return self.source
 
     def stream_received(self, stream_id, new_tuple, protocol = None):
         self.logger.info(f"Received stream replica {stream_id}")
@@ -260,7 +270,7 @@ class SparseModuleMigratorSlice(SparseSlice):
         server = await loop.create_server(lambda: SparseAppReceiverProtocol(self), \
                                           self.config.root_server_address, \
                                           self.config.root_server_port)
-        self.logger.info(f"Listening for submitted applications on '{self.config.root_server_address}:{self.config.root_server_port}'")
+        self.logger.info(f"Management plane listening to '{self.config.root_server_address}:{self.config.root_server_port}'")
         async with server:
             await server.serve_forever()
 
@@ -271,21 +281,40 @@ class SparseModuleMigratorSlice(SparseSlice):
         self.app_module_received(protocol, app_archive_path)
         protocol.send_payload({"type": "ack"})
 
+    def deploy_node(self, node_name : str, destinations : set, module_name : str = "sparseapp"):
+        app_module = importlib.import_module(f".{module_name}", package="sparse_framework.apps")
+        for source_factory in app_module.get_sources():
+            if source_factory.__name__ == node_name:
+                self.stream_manager_slice.place_source(source_factory, destinations)
+                return
+        for sink_factory in app_module.get_sinks():
+            if sink_factory.__name__ == node_name:
+                self.stream_manager_slice.place_sink(sink_factory)
+                return
+        for operator_factory in app_module.get_operators():
+            if operator_factory.__name__ == node_name:
+                self.stream_manager_slice.place_operator(operator_factory, destinations)
+                return
+
+    def deploy_app(self, app_name : str, app_dag : dict):
+        for node_name in TopologicalSorter(app_dag).static_order():
+            if node_name in app_dag.keys():
+                destinations = app_dag[node_name]
+            else:
+                destinations = {}
+            self.deploy_node(node_name, destinations)
+
     def app_received(self, protocol, app : dict):
-        self.logger.info(f"Received app {app}")
+        app_name = app["name"]
+        app_dag = app["dag"]
         protocol.transport.close()
+
+        self.logger.info(f"Received app '{app_name}'")
+        self.deploy_app(app_name, app_dag)
 
     def app_module_received(self, protocol, app_archive_path : str, app_name : str = 'sparseapp'):
         shutil.unpack_archive(app_archive_path, os.path.join(self.config.app_repo_path, app_name))
         module_path = f"apps.{app_name}"
-        from apps.sparseapp import get_operators, get_sinks, get_sources
-        # TODO: importlib.import_module(module_path, package=module_path)
-        for source_factory in get_sources():
-            self.stream_manager_slice.add_source(source_factory)
-        for sink_factory in get_sinks():
-            self.stream_manager_slice.add_sink(sink_factory)
-        for operator_factory in get_operators():
-            self.stream_manager_slice.add_operator(operator_factory)
 
     def object_received(self, protocol, obj : dict):
         if obj["type"] == "app":

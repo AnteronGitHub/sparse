@@ -53,7 +53,7 @@ class SparseIOBuffer:
             statistics_records.append(task_data.statistics_record)
             batch_size += 1
 
-        self.logger.info(f"Dispatched batch of {batch_size} samples from buffer.")
+        self.logger.debug(f"Dispatched batch of {batch_size} samples from buffer.")
         return input_data, callbacks, statistics_records
 
     def result_received(self, result, callbacks):

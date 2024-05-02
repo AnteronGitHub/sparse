@@ -24,7 +24,7 @@ class SparseAppDeployerProtocol(asyncio.Protocol):
     def connection_made(self, transport):
         peername = transport.get_extra_info('peername')
         self.transport = transport
-        self.logger.info(f"Connected to {peername}.")
+        self.logger.debug(f"Connected to {peername}.")
         self.node.connected(self)
 
     def connection_lost(self, exc):
@@ -89,11 +89,11 @@ class SparseAppReceiverProtocol(asyncio.Protocol):
     def connection_made(self, transport):
         self.transport = transport
         peername = self.transport.get_extra_info('peername')
-        self.logger.info(f"Connected to {peername}.")
+        self.logger.debug(f"Connected to {peername}.")
 
     def connection_lost(self, exc):
         peername = self.transport.get_extra_info('peername')
-        self.logger.info(f"{peername} disconnected.")
+        self.logger.debug(f"{peername} disconnected.")
 
     def data_received(self, data):
         if self.receiving_data:
@@ -140,7 +140,7 @@ class SparseProtocol(asyncio.Protocol):
 
         peername = transport.get_extra_info('peername')
         self.transport = transport
-        self.logger.info(f"Connected to {peername}.")
+        self.logger.debug(f"Connected to {peername}.")
 
     def send_payload(self, payload):
         payload_data = pickle.dumps(payload)

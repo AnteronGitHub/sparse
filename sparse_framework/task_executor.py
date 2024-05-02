@@ -24,6 +24,7 @@ class SparseTaskExecutor:
 
     def add_operator(self, operator):
         self.operator = operator
+        operator.set_executor(self)
 
     async def start(self):
         loop = asyncio.get_running_loop()

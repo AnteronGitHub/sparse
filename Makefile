@@ -19,7 +19,7 @@ ifneq (,$(shell uname -a | grep tegra))
 	docker_tag=l4t-pytorch
 	docker_py_requirements=requirements_jetson.txt
 else
-	docker_base_image=pytorch/pytorch:1.11.0-cuda11.3-cudnn8-runtime
+	docker_base_image=pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
 	docker_tag=pytorch
 	docker_py_requirements=requirements.txt
 endif
