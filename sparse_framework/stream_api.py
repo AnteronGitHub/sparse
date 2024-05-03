@@ -16,8 +16,6 @@ class SparseStream:
         self.operator = None
         self.sink = None
 
-        self.output_stream = None
-
     def add_listener(self, listener):
         base_classes = [a.__name__ for a in [*listener.__class__.__bases__]]
         if "SparseSink" in base_classes:
@@ -42,12 +40,12 @@ class SparseStream:
             self.protocol.send_payload(payload)
 
 class SparseSource:
-    def __init__(self, stream, no_samples = 64, target_latency = 200, use_scheduling = True):
+    def __init__(self, no_samples = 64, target_latency = 200, use_scheduling = True):
         self.logger = logging.getLogger("sparse")
         self.id = str(uuid.uuid4())
         self.current_tuple = 0
 
-        self.stream = stream
+        self.stream = SparseStream()
         self.target_latency = target_latency
         self.use_scheduling = use_scheduling
 
@@ -76,13 +74,13 @@ class SparseSink:
         pass
 
 class SparseOperator:
-    def __init__(self, output_stream, use_batching : bool = True):
+    def __init__(self, use_batching : bool = True):
         self.id = str(uuid.uuid4())
         self.batch_no = 0
         self.use_batching = use_batching
 
         self.executor = None
-        self.output_stream = output_stream
+        self.stream = SparseStream()
 
     @property
     def name(self):
@@ -92,7 +90,7 @@ class SparseOperator:
         self.executor = executor
 
     def receive_tuple(self, data_tuple):
-        self.executor.buffer_input(data_tuple, self.output_stream.emit, None)
+        self.executor.buffer_input(data_tuple, self.stream.emit, None)
 
     def call(self, input_tuple):
         pass

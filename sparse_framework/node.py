@@ -162,9 +162,6 @@ class SparseStreamRuntimeSlice(SparseSlice):
 
         return futures
 
-    def execute_locally(self, data_tuple, output_stream):
-        self.executor.buffer_input(data_tuple, output_stream.emit, None)
-
     def add_operator(self, operator):
         self.executor.add_operator(operator)
 
@@ -195,42 +192,45 @@ class SparseStreamRuntimeSlice(SparseSlice):
 class SparseStreamManagerSlice(SparseSlice):
     def __init__(self, runtime_slice : SparseStreamRuntimeSlice, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.source = None
-        self.operator = None
-        self.sink = None
 
-        self.output_stream = SparseStream()
-        self.input_stream = SparseStream()
+        self.sources = set()
+        self.operators = set()
+        self.sinks = set()
+
         self.stream_replicas = []
 
         self.runtime_slice = runtime_slice
 
     def place_operator(self, operator_factory, destinations):
-        self.operator = operator_factory(self.output_stream)
+        operator = operator_factory()
 
-        self.runtime_slice.add_operator(self.operator)
+        self.runtime_slice.add_operator(operator)
 
-        if self.sink and self.sink.name in destinations:
-            self.output_stream.add_listener(self.sink)
+        for sink in self.sinks:
+            if sink.name in destinations:
+                operator.stream.add_listener(sink)
 
-        self.logger.info(f"Placed operator '{self.operator.name}'")
+        self.operators.add(operator)
+        self.logger.info(f"Placed operator '{operator.name}'")
 
     def place_sink(self, sink_factory):
-        self.sink = sink_factory(self.logger)
-
-        self.logger.info(f"Placed sink '{self.sink.name}'")
+        sink = sink_factory(self.logger)
+        self.sinks.add(sink)
+        self.logger.info(f"Placed sink '{sink.name}'")
 
     def place_source(self, source_factory, destinations):
-        self.source = source_factory(self.input_stream)
+        source = source_factory()
 
-        if self.operator and self.operator.name in destinations:
-            self.input_stream.add_operator(self.operator)
+        for operator in self.operators:
+            if operator.name in destinations:
+                source.stream.add_operator(operator)
 
-        self.logger.info(f"Placed source '{self.source.name}'")
+        self.sources.add(source)
 
         loop = asyncio.get_running_loop()
-        task = loop.create_task(self.source.start())
-        return self.source
+        task = loop.create_task(source.start())
+
+        self.logger.info(f"Placed source '{source.name}'")
 
     def stream_received(self, stream_id, new_tuple, protocol = None):
         self.logger.info(f"Received stream replica {stream_id}")
