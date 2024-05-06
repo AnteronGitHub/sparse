@@ -210,8 +210,12 @@ class SparseStreamManagerSlice(SparseSlice):
             if sink.name in destinations:
                 operator.stream.add_listener(sink)
 
+        for o in self.operators:
+            if o.name in destinations:
+                operator.stream.add_listener(o)
+
         self.operators.add(operator)
-        self.logger.info(f"Placed operator '{operator.name}'")
+        self.logger.info(f"Placed operator '{operator.name}' with destinations {destinations}")
 
     def place_sink(self, sink_factory):
         sink = sink_factory(self.logger)

@@ -20,6 +20,8 @@ class SparseStream:
         base_classes = [a.__name__ for a in [*listener.__class__.__bases__]]
         if "SparseSink" in base_classes:
             self.add_sink(listener)
+        if "SparseOperator" in base_classes:
+            self.add_operator(listener)
 
     def add_protocol(self, protocol):
         self.protocol = protocol
@@ -90,7 +92,7 @@ class SparseOperator:
         self.executor = executor
 
     def receive_tuple(self, data_tuple):
-        self.executor.buffer_input(data_tuple, self.stream.emit, None)
+        self.executor.buffer_input(self.id, data_tuple, self.stream.emit, None)
 
     def call(self, input_tuple):
         pass
