@@ -14,7 +14,7 @@ class SparseStream:
 
         self.protocol = None
         self.operator = None
-        self.sink = None
+        self.sinks = set()
 
     def add_listener(self, listener):
         base_classes = [a.__name__ for a in [*listener.__class__.__bases__]]
@@ -30,11 +30,11 @@ class SparseStream:
         self.operator = operator
 
     def add_sink(self, sink):
-        self.sink = sink
+        self.sinks.add(sink)
 
     def emit(self, data_tuple):
-        if self.sink is not None:
-            self.sink.tuple_received(data_tuple)
+        for sink in self.sinks:
+            sink.tuple_received(data_tuple)
         if self.operator is not None:
             self.operator.receive_tuple(data_tuple)
         elif self.protocol is not None:
