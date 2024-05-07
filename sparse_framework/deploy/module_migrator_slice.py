@@ -6,7 +6,7 @@ import pickle
 import shutil
 
 from ..node import SparseSlice
-from ..protocols import SparseAppReceiverProtocol
+from .protocols import SparseAppReceiverProtocol
 from ..runtime import SparseStreamManagerSlice
 
 class SparseModuleMigratorSlice(SparseSlice):
@@ -24,22 +24,15 @@ class SparseModuleMigratorSlice(SparseSlice):
     async def start_app_server(self):
         loop = asyncio.get_running_loop()
 
-        server = await loop.create_server(lambda: SparseAppReceiverProtocol(self), \
+        server = await loop.create_server(lambda: SparseAppReceiverProtocol(self, self.config.app_repo_path), \
                                           self.config.root_server_address, \
                                           self.config.root_server_port)
         self.logger.info(f"Management plane listening to '{self.config.root_server_address}:{self.config.root_server_port}'")
         async with server:
             await server.serve_forever()
 
-    def file_received(self, protocol, data : bytes):
-        app_archive_path = "/tmp/app.zip"
-        with open(app_archive_path, "wb") as f:
-            f.write(data)
-        self.app_module_received(protocol, app_archive_path)
-        protocol.send_payload({"type": "ack"})
-
-    def deploy_node(self, node_name : str, destinations : set, module_name : str = "sparseapp"):
-        app_module = importlib.import_module(f".{module_name}", package="sparse_framework.apps")
+    def deploy_node(self, app_name : str, node_name : str, destinations : set):
+        app_module = importlib.import_module(f".{app_name}", package="sparse_framework.apps")
         for source_factory in app_module.get_sources():
             if source_factory.__name__ == node_name:
                 self.stream_manager_slice.place_source(source_factory, destinations)
@@ -59,32 +52,5 @@ class SparseModuleMigratorSlice(SparseSlice):
                 destinations = app_dag[node_name]
             else:
                 destinations = {}
-            self.deploy_node(node_name, destinations)
-
-    def app_received(self, protocol, app : dict):
-        app_name = app["name"]
-        app_dag = app["dag"]
-        protocol.transport.close()
-
-        self.logger.info(f"Received app '{app_name}'")
-        self.deploy_app(app_name, app_dag)
-
-    def app_module_received(self, protocol, app_archive_path : str, app_name : str = 'sparseapp'):
-        shutil.unpack_archive(app_archive_path, os.path.join(self.config.app_repo_path, app_name))
-        module_path = f"apps.{app_name}"
-
-    def object_received(self, protocol, obj : dict):
-        if obj["type"] == "app":
-            app = obj["data"]
-            self.app_received(protocol, app)
-
-    def data_received(self, protocol):
-        payload_type, data = protocol.data_type.decode(), protocol.data_buffer.getvalue()
-        if payload_type == "f":
-            self.file_received(protocol, data)
-        elif payload_type == "o":
-            try:
-                self.object_received(protocol, pickle.loads(data))
-            except pickle.UnpicklingError:
-                self.logger.error(f"Deserialization error. {len(data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
+            self.deploy_node(app_name, node_name, destinations)
 

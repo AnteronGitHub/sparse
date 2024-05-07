@@ -84,16 +84,6 @@ class SparseNode:
             self.source.stream.add_protocol(protocol)
             self.source.emit()
 
-    def data_received(self, protocol):
-        payload_type, data = protocol.data_type.decode(), protocol.data_buffer.getvalue()
-        if payload_type == "f":
-            self.file_received(protocol, data)
-        elif payload_type == "o":
-            try:
-                self.object_received(protocol, pickle.loads(data))
-            except pickle.UnpicklingError:
-                self.logger.error(f"Deserialization error. {len(data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
-
     def get_futures(self, is_worker = True):
         """Collects node coroutines to be executed on startup.
         """
