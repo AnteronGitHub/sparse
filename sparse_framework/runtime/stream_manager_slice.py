@@ -40,7 +40,7 @@ class SparseStreamManagerSlice(SparseSlice):
         self.sinks.add(sink)
         self.logger.info(f"Placed sink '{sink.name}'")
 
-    def place_source(self, source_factory, destinations):
+    def place_source(self, source_factory, destinations : set):
         source = source_factory()
 
         for operator in self.operators:

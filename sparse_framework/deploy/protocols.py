@@ -10,6 +10,14 @@ import uuid
 from ..protocols import SparseProtocol
 
 class SparseAppReceiverProtocol(SparseProtocol):
+    """Sparse network protocol for receiving an application and its module archive to a cluster.
+
+    Application is deployed in two phases. First its DAG is deployed as a dictionary, and then the application modules
+    are deployed as a ZIP archive.
+
+    After receiving the application DAG, the receiver responds with an 'ack' type message. After the module archive
+    is received the receiver closes the connection without acknowledgement.
+    """
     def __init__(self, migrator_slice, app_repo_path):
         super().__init__()
 
@@ -38,6 +46,11 @@ class SparseAppReceiverProtocol(SparseProtocol):
         self.logger.info(f"Received app '{self.app_name}'")
 
 class SparseAppDeployerProtocol(SparseProtocol):
+    """Sparse network protocol for sending an application and its module archive to a cluster.
+
+    Application is deployed in two phases. First its DAG is deployed as a dictionary, and then the application modules
+    are deployed as a ZIP archive.
+    """
     def __init__(self, app : dict, archive_path : str, on_con_lost : asyncio.Future):
         super().__init__()
 

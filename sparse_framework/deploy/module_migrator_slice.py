@@ -32,6 +32,8 @@ class SparseModuleMigratorSlice(SparseSlice):
             await server.serve_forever()
 
     def deploy_node(self, app_name : str, node_name : str, destinations : set):
+        """Deploys a Sparse application node to a cluster node from a local module.
+        """
         app_module = importlib.import_module(f".{app_name}", package="sparse_framework.apps")
         for source_factory in app_module.get_sources():
             if source_factory.__name__ == node_name:
@@ -47,6 +49,13 @@ class SparseModuleMigratorSlice(SparseSlice):
                 return
 
     def deploy_app(self, app_name : str, app_dag : dict):
+        """Deploys a Sparse application to a cluster.
+
+        The application graph is sorted topologically so that each destination node is deployed before its sources.
+
+        :param app_name: The name of the Sparse application to be deployed.
+        :param app_dag: A dictionary representing the Directed Asyclic Graph of application nodes.
+        """
         for node_name in TopologicalSorter(app_dag).static_order():
             if node_name in app_dag.keys():
                 destinations = app_dag[node_name]
