@@ -8,61 +8,78 @@ import uuid
 from sparse_framework.stats import RequestStatistics, ClientRequestStatistics, ServerRequestStatistics
 
 class SparseProtocol(asyncio.Protocol):
-    def __init__(self, stats_queue = None, request_statistics_factory = None):
+    """Common base class for all Sparse network protocols. Provides low-level implementations for sending byte files
+    and Python objects.
+    """
+    def __init__(self):
         self.connection_id = str(uuid.uuid4())
         self.logger = logging.getLogger("sparse")
-        self.payload_buffer = io.BytesIO()
         self.transport = None
 
-        self.receiving_payload = False
-        self.payload_size = 0
+        self.data_buffer = io.BytesIO()
+        self.receiving_data = False
+        self.data_type = None
+        self.data_size = 0
 
-        if request_statistics_factory is None:
-            self.request_statistics = None
-        else:
-            self.request_statistics = request_statistics_factory(self.connection_id, stats_queue)
-
-        self.current_record = None
+    def clear_buffer(self):
+        self.data_buffer = io.BytesIO()
+        self.receiving_data = False
+        self.data_type = None
+        self.data_size = 0
 
     def connection_made(self, transport):
-        if self.request_statistics is not None:
-            self.request_statistics.connected()
-
-        peername = transport.get_extra_info('peername')
         self.transport = transport
+        peername = self.transport.get_extra_info('peername')
         self.logger.debug(f"Connected to {peername}.")
 
-    def send_payload(self, payload):
+    def connection_lost(self, exc):
+        peername = self.transport.get_extra_info('peername')
+        self.logger.debug(f"{peername} disconnected.")
+
+    def data_received(self, data : bytes):
+        if self.receiving_data:
+            payload = data
+        else:
+            self.receiving_data = True
+            header = data[:9]
+            [self.data_type, self.data_size] = struct.unpack("!sQ", header)
+            payload = data[9:]
+
+        self.data_buffer.write(payload)
+
+        if self.data_buffer.getbuffer().nbytes >= self.data_size:
+            self.message_received(self.data_type.decode(), self.data_buffer.getvalue())
+            self.clear_buffer()
+
+    def message_received(self, payload_type : str, data : bytes):
+        if payload_type == "f":
+            self.file_received(data)
+        elif payload_type == "o":
+            try:
+                self.object_received(pickle.loads(data))
+            except pickle.UnpicklingError:
+                self.logger.error(f"Deserialization error. {len(data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
+
+    def file_received(self, data : bytes):
+        pass
+
+    def object_received(self, obj : dict):
+        pass
+
+    def send_file(self, file_path):
+        with open(file_path, "rb") as f:
+            data_bytes = f.read()
+            file_size = len(data_bytes)
+
+            self.transport.write(struct.pack("!sQ", b"f", file_size))
+            self.transport.write(data_bytes)
+
+    def send_payload(self, payload : dict):
         payload_data = pickle.dumps(payload)
         payload_size = len(payload_data)
 
-        self.transport.write(struct.pack("!Q", payload_size))
+        self.transport.write(struct.pack("!sQ", b"o", payload_size))
         self.transport.write(payload_data)
-
-    def data_received(self, data):
-        if self.receiving_payload:
-            payload = data
-        else:
-            self.receiving_payload = True
-            header = data[:8]
-            self.payload_size = struct.unpack("!Q", header)[0]
-            payload = data[8:]
-
-        self.payload_buffer.write(payload)
-
-        if self.payload_buffer.getbuffer().nbytes >= self.payload_size:
-            payload_data = self.payload_buffer.getvalue()
-            try:
-                payload = pickle.loads(payload_data)
-                self.payload_buffer = io.BytesIO()
-                self.payload_received(payload)
-                self.receiving_payload = False
-            except pickle.UnpicklingError:
-                self.logger.error(f"Deserialization error. {len(payload_data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
-
-
-    def payload_received(self, payload):
-        pass
 
 class SparseClientProtocol(SparseProtocol):
     """Protocol for streaming data over a TCP connection.

@@ -26,7 +26,6 @@ class SparseStreamRuntimeSlice(SparseSlice):
         self.executor = SparseTaskExecutor(lock, self.io_buffer, task_queue)
 
         futures.append(self.executor.start())
-        futures.append(self.start_server(self.config.listen_address, self.config.listen_port))
 
         return futures
 
@@ -48,12 +47,3 @@ class SparseStreamRuntimeSlice(SparseSlice):
                 loop.call_later(target_latency-offload_latency + sync if target_latency > offload_latency else 0, self.source.emit)
             else:
                 protocol.transport.close()
-
-    async def start_server(self, addr, port):
-        loop = asyncio.get_running_loop()
-
-        self.logger.info(f"Data plane listening to '{addr}:{port}'")
-        server = await loop.create_server(lambda: SparseServerProtocol(self), addr, port)
-        async with server:
-            await server.serve_forever()
-
