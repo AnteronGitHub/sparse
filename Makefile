@@ -42,13 +42,12 @@ docker: $(docker_build_file)
 #	make -C examples/deprune docker
 
 clean:
-	make -iC examples/splitnn clean
-	make -iC examples/deprune clean
-	docker container prune -f
-	docker image prune -f
-	sudo rm -rf $(pycache) $(docker_build_file)
+	scripts/delete_worker.sh
 
-run run-experiment:
+run:
+	scripts/deploy_worker.sh
+
+run-experiment:
 	scripts/run-experiment.sh
 
 clean-experiment:
