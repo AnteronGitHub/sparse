@@ -31,7 +31,9 @@ class SparseDeployer(SparseSlice):
 
         while True:
             try:
-                self.logger.debug(f"Connecting to root server on sparse-worker:{self.config.root_server_port}.")
+                self.logger.debug("Connecting to root server on %s:%s.",
+                                  self.config.root_server_address,
+                                  self.config.root_server_port)
                 await loop.create_connection(lambda: SparseAppDeployerProtocol(app, archive_path, on_con_lost), \
                                              self.config.root_server_address, \
                                              self.config.root_server_port)

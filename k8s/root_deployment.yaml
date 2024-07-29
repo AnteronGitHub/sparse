@@ -1,0 +1,58 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sparse-root
+  namespace: sparse
+  labels:
+    app: sparse-root
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: sparse-root
+  template:
+    metadata:
+      labels:
+        app: sparse-root
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: sparse/node
+                operator: In
+                values:
+                - root
+                - aio
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                - "amd64"
+      containers:
+      - name: sparse-root
+        image: anterondocker/sparse-framework:pytorch
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: WORKER_LISTEN_ADDRESS
+          value: "0.0.0.0"
+        volumeMounts:
+        - name: sparse-code
+          mountPath: /usr/lib/sparse_framework
+        - name: sparse-run
+          mountPath: /run/sparse
+        - name: sparse-data
+          mountPath: /data
+      volumes:
+      - name: sparse-code
+        hostPath:
+          path: /opt/sparse/sparse_framework
+      - name: sparse-run
+        hostPath:
+          path: /run/sparse
+      - name: sparse-data
+        hostPath:
+          path: /var/lib/sparse

@@ -37,11 +37,11 @@ class SparseNodeConfig:
         self.upstream_port = os.environ.get('MASTER_UPSTREAM_PORT') or 50007
         self.listen_address = os.environ.get('WORKER_LISTEN_ADDRESS') or '127.0.0.1'
         self.listen_port = os.environ.get('WORKER_LISTEN_PORT') or 50007
-        self.root_server_address = os.environ.get('SPARSE_ROOT_SERVER_ADDRESS') or '0.0.0.0'
+        self.root_server_address = os.environ.get('SPARSE_ROOT_SERVER_ADDRESS')
         self.root_server_port = os.environ.get('SPARSE_ROOT_SERVER_PORT') or 50006
         self.app_repo_path = os.environ.get('SPARSE_APP_REPO_PATH') or '/usr/lib/sparse_framework/apps'
 
-from .deploy import SparseModuleMigratorSlice, SparseDeployer
+from .deploy import SparseModuleMigratorSlice, SparseDeployer, DownstreamConnectorSlice
 from .runtime import SparseStreamRuntimeSlice, SparseStreamManagerSlice, SparseMasterSlice
 from .stats import SparseQoSMonitorSlice
 
@@ -78,6 +78,14 @@ class SparseNode:
                 migrator_slice,
                 self.sparse_deployer
                 ]
+
+        if self.config.root_server_address is None:
+            self.logger.info("Creating a new sparse cluster.")
+        else:
+            self.logger.info("Joining a sparse cluster on %s:%d.",
+                             self.config.root_server_address,
+                             self.config.root_server_port)
+            self.slices.append(DownstreamConnectorSlice(self.config))
 
     def connected_to_server(self, protocol):
         if self.source is not None:

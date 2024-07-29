@@ -21,13 +21,13 @@ class SparseModuleMigratorSlice(SparseSlice):
         futures.append(self.start_app_server())
         return futures
 
-    async def start_app_server(self):
+    async def start_app_server(self, listen_address = '0.0.0.0'):
         loop = asyncio.get_running_loop()
 
         server = await loop.create_server(lambda: SparseAppReceiverProtocol(self, self.config.app_repo_path), \
-                                          self.config.root_server_address, \
+                                          listen_address, \
                                           self.config.root_server_port)
-        self.logger.info(f"Management plane listening to '{self.config.root_server_address}:{self.config.root_server_port}'")
+        self.logger.info(f"Management plane listening to '{listen_address}:{self.config.root_server_port}'")
         async with server:
             await server.serve_forever()
 

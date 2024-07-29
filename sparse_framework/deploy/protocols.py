@@ -38,12 +38,16 @@ class SparseAppReceiverProtocol(SparseProtocol):
         self.migrator_slice.deploy_app(self.app_name, self.app_dag)
 
     def object_received(self, obj : dict):
-        self.send_payload({"type": "ack"})
+        if obj["op"] == "deploy_app":
+            self.send_payload({"type": "ack"})
 
-        app = obj["app"]
-        self.app_name = "sparseapp_" + app["name"]
-        self.app_dag = app["dag"]
-        self.logger.info(f"Received app '{self.app_name}'")
+            app = obj["app"]
+            self.app_name = "sparseapp_" + app["name"]
+            self.app_dag = app["dag"]
+            self.logger.info(f"Received app '{self.app_name}'")
+        elif obj["op"] == "connect_downstream":
+            peername = self.transport.get_extra_info('peername')
+            self.logger.info("Received a new upstream node from %s", peername)
 
 class SparseAppDeployerProtocol(SparseProtocol):
     """Sparse network protocol for sending an application and its module archive to a cluster.
@@ -61,7 +65,7 @@ class SparseAppDeployerProtocol(SparseProtocol):
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        self.send_payload({"app": self.app})
+        self.send_payload({"op": "deploy_app", "app": self.app})
 
     def connection_lost(self, exc):
         app_name = self.app["name"]
@@ -73,4 +77,15 @@ class SparseAppDeployerProtocol(SparseProtocol):
 
     def object_received(self, obj : dict):
         self.send_file(self.archive_path)
+
+class DownstreamConnectorProtocol(SparseProtocol):
+    def __init__(self, on_con_lost : asyncio.Future):
+        super().__init__()
+
+        self.on_con_lost = on_con_lost
+
+    def connection_made(self, transport):
+        super().connection_made(transport)
+
+        self.send_payload({"op": "connect_downstream"})
 
