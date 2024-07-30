@@ -34,7 +34,7 @@ class SparseAppReceiverProtocol(SparseProtocol):
         with open(app_archive_path, "wb") as f:
             f.write(data)
 
-        shutil.unpack_archive(app_archive_path, os.path.join(self.app_repo_path, self.app_name))
+        self.migrator_slice.add_app_module(self.app_name, app_archive_path)
         self.migrator_slice.deploy_app(self.app_name, self.app_dag)
 
     def object_received(self, obj : dict):
@@ -46,8 +46,11 @@ class SparseAppReceiverProtocol(SparseProtocol):
             self.app_dag = app["dag"]
             self.logger.info(f"Received app '{self.app_name}'")
         elif obj["op"] == "connect_downstream":
-            peername = self.transport.get_extra_info('peername')
-            self.logger.info("Received a new upstream node from %s", peername)
+            self.migrator_slice.add_upstream_node(self.transport)
+
+    def connection_lost(self, exc):
+        self.migrator_slice.remove_upstream_node(self.transport)
+        super().connection_lost(exc)
 
 class SparseAppDeployerProtocol(SparseProtocol):
     """Sparse network protocol for sending an application and its module archive to a cluster.
