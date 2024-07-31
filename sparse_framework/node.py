@@ -29,6 +29,7 @@ class SparseNodeConfig:
         self.listen_port = None
         self.root_server_address = None
         self.root_server_port = None
+        self.app_repo_path = None
 
     def load_config(self):
         load_dotenv(dotenv_path=".env")
@@ -85,7 +86,7 @@ class SparseNode:
             self.logger.info("Joining a sparse cluster on %s:%d.",
                              self.config.root_server_address,
                              self.config.root_server_port)
-            self.slices.append(DownstreamConnectorSlice(self.config))
+            self.slices.append(DownstreamConnectorSlice(migrator_slice, self.config))
 
     def connected_to_server(self, protocol):
         if self.source is not None:

@@ -11,7 +11,7 @@ class SparseProtocol(asyncio.Protocol):
     """Common base class for all Sparse network protocols. Provides low-level implementations for sending byte files
     and Python objects.
     """
-    def __init__(self):
+    def __init__(self, migrator_slice = None):
         self.connection_id = str(uuid.uuid4())
         self.logger = logging.getLogger("sparse")
         self.transport = None
@@ -20,6 +20,11 @@ class SparseProtocol(asyncio.Protocol):
         self.receiving_data = False
         self.data_type = None
         self.data_size = 0
+
+        self.app_name = None
+        self.app_dag = None
+
+        self.migrator_slice = migrator_slice
 
     def clear_buffer(self):
         self.data_buffer = io.BytesIO()
@@ -33,6 +38,8 @@ class SparseProtocol(asyncio.Protocol):
         self.logger.debug(f"Connected to {peername}.")
 
     def connection_lost(self, exc):
+        if self.migrator_slice is not None:
+            self.migrator_slice.remove_upstream_node(self.transport)
         peername = self.transport.get_extra_info('peername')
         self.logger.debug(f"{peername} disconnected.")
 
@@ -61,10 +68,26 @@ class SparseProtocol(asyncio.Protocol):
                 self.logger.error(f"Deserialization error. {len(data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
 
     def file_received(self, data : bytes):
-        pass
+        self.logger.info("Received file")
+        app_archive_path = f"/tmp/{self.app_name}.zip"
+        with open(app_archive_path, "wb") as f:
+            f.write(data)
+
+        if self.migrator_slice is not None:
+            self.migrator_slice.add_app_module(self.app_name, app_archive_path)
+            self.migrator_slice.deploy_app(self.app_name, self.app_dag)
 
     def object_received(self, obj : dict):
-        pass
+        if obj["op"] == "deploy_app":
+            self.send_payload({"type": "ack"})
+
+            app = obj["app"]
+            self.app_name = "sparseapp_" + app["name"]
+            self.app_dag = app["dag"]
+            self.logger.info(f"Received app '{self.app_name}'")
+        elif obj["op"] == "connect_downstream":
+            if self.migrator_slice is not None:
+                self.migrator_slice.add_upstream_node(self)
 
     def send_file(self, file_path):
         with open(file_path, "rb") as f:
@@ -80,6 +103,15 @@ class SparseProtocol(asyncio.Protocol):
 
         self.transport.write(struct.pack("!sQ", b"o", payload_size))
         self.transport.write(payload_data)
+
+    def deploy_app(self, app : dict):
+        """Initiates app deployment process by uploading the app dag.
+        """
+        self.send_payload({"op": "deploy_app", "app": app})
+
+    def migrate_app_module(self, archive_path : str):
+        self.logger.info("Migrating app module '%s'", archive_path)
+        self.send_file(archive_path)
 
 class SparseClientProtocol(SparseProtocol):
     """Protocol for streaming data over a TCP connection.

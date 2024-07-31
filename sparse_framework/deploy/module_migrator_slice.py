@@ -6,10 +6,12 @@ import pickle
 import shutil
 
 from ..node import SparseSlice
-from .protocols import SparseAppReceiverProtocol
 from ..runtime import SparseStreamManagerSlice
+from ..protocols import SparseProtocol
 
-class AppModule:
+class SparseApp:
+    """A sparse app is a Python module that provides a set of sources, operators, and sinks.
+    """
     def __init__(self, name : str, zip_path : str):
         self.name = name
         self.zip_path = zip_path
@@ -23,8 +25,11 @@ class AppModule:
         return self.app_module
 
 class UpstreamNode:
-    def __init__(self, transport):
-        self.transport = transport
+    def __init__(self, protocol : SparseProtocol):
+        self.protocol = protocol
+
+    def push_app(self, app : SparseApp):
+        self.protocol.migrate_app_module(app.zip_path)
 
 class SparseModuleMigratorSlice(SparseSlice):
     """Sparse Module Migrator Slice migrates software modules for sources, operators and sinks over the network so that
@@ -34,7 +39,7 @@ class SparseModuleMigratorSlice(SparseSlice):
         super().__init__(*args, **kwargs)
         self.stream_manager_slice = stream_manager_slice
         self.upstream_nodes = set()
-        self.app_modules = set()
+        self.apps = set()
 
     def get_futures(self, futures):
         futures.append(self.start_app_server())
@@ -43,41 +48,44 @@ class SparseModuleMigratorSlice(SparseSlice):
     async def start_app_server(self, listen_address = '0.0.0.0'):
         loop = asyncio.get_running_loop()
 
-        server = await loop.create_server(lambda: SparseAppReceiverProtocol(self, self.config.app_repo_path), \
+        server = await loop.create_server(lambda: SparseProtocol(self), \
                                           listen_address, \
                                           self.config.root_server_port)
         self.logger.info(f"Management plane listening to '{listen_address}:{self.config.root_server_port}'")
         async with server:
             await server.serve_forever()
 
-    def add_upstream_node(self, transport):
-        self.upstream_nodes.add(UpstreamNode(transport))
+    def add_upstream_node(self, protocol):
+        self.upstream_nodes.add(UpstreamNode(protocol))
 
-        self.logger.info("Added a new upstream node from %s", transport.get_extra_info('peername')[0])
+        self.logger.info("Added a new upstream node from %s", protocol.transport.get_extra_info('peername')[0])
 
-    def remove_upstream_node(self, transport):
+    def remove_upstream_node(self, protocol):
         for node in self.upstream_nodes:
-            if node.transport == transport:
+            if node.protocol == protocol:
                 self.upstream_nodes.discard(node)
-                host, port = transport.get_extra_info('peername')
-                self.logger.info("Removed upstream node from %s", transport.get_extra_info('peername')[0])
+                self.logger.info("Removed upstream node from %s", protocol.transport.get_extra_info('peername')[0])
                 return
 
     def add_app_module(self, name : str, zip_path : str):
-        self.app_modules.add(AppModule(name, zip_path))
+        self.apps.add(SparseApp(name, zip_path))
 
-    def get_app_module(self, name : str):
-        for module in self.app_modules:
-            if module.name == name:
-                return module.load(self.config.app_repo_path)
+    def get_app(self, name : str):
+        for app in self.apps:
+            if app.name == name:
+                return app
         return None
 
     def deploy_node(self, app_name : str, node_name : str, destinations : set):
         """Deploys a Sparse application node to a cluster node from a local module.
         """
-        app_module = self.get_app_module(app_name)
+        app = self.get_app(app_name)
+        app_module = app.load(self.config.app_repo_path)
         for source_factory in app_module.get_sources():
             if source_factory.__name__ == node_name:
+                for upstream_node in self.upstream_nodes:
+                    upstream_node.push_app(app)
+                    return
                 self.stream_manager_slice.place_source(source_factory, destinations)
                 return
         for sink_factory in app_module.get_sinks():

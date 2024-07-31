@@ -4,6 +4,10 @@ from ..node import SparseSlice
 from .protocols import DownstreamConnectorProtocol
 
 class DownstreamConnectorSlice(SparseSlice):
+    def __init__(self, migrator_slice, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.migrator_slice = migrator_slice
+
     def get_futures(self, futures):
         futures.append(self.connect_to_downstream_server())
         return futures
@@ -17,7 +21,7 @@ class DownstreamConnectorSlice(SparseSlice):
                 self.logger.info("Connecting to downstream server on %s:%s.", \
                                   self.config.root_server_address, \
                                   self.config.root_server_port)
-                await loop.create_connection(lambda: DownstreamConnectorProtocol(on_con_lost), \
+                await loop.create_connection(lambda: DownstreamConnectorProtocol(on_con_lost, self.migrator_slice), \
                                              self.config.root_server_address, \
                                              self.config.root_server_port)
                 await on_con_lost
