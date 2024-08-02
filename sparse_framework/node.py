@@ -42,7 +42,8 @@ class SparseNodeConfig:
         self.root_server_port = os.environ.get('SPARSE_ROOT_SERVER_PORT') or 50006
         self.app_repo_path = os.environ.get('SPARSE_APP_REPO_PATH') or '/usr/lib/sparse_framework/apps'
 
-from .deploy import SparseModuleMigratorSlice, SparseDeployer, DownstreamConnectorSlice
+from .deploy import SparseModuleMigratorSlice, SparseDeployer
+from .deploy.protocols import DownstreamConnectorProtocol
 from .runtime import SparseStreamRuntimeSlice, SparseStreamManagerSlice, SparseMasterSlice
 from .stats import SparseQoSMonitorSlice
 
@@ -68,25 +69,17 @@ class SparseNode:
 
     def init_slices(self):
         runtime_slice = SparseStreamRuntimeSlice(self.config)
-        stream_manager_slice = SparseStreamManagerSlice(runtime_slice, self.config)
-        migrator_slice = SparseModuleMigratorSlice(stream_manager_slice, self.config)
+        self.migrator_slice = SparseModuleMigratorSlice(self.config)
+        self.stream_manager_slice = SparseStreamManagerSlice(runtime_slice, self.migrator_slice, self.config)
         self.sparse_deployer = SparseDeployer(self.config)
 
         self.slices = [
                 SparseQoSMonitorSlice(self.config),
                 runtime_slice,
-                stream_manager_slice,
-                migrator_slice,
+                self.stream_manager_slice,
+                self.migrator_slice,
                 self.sparse_deployer
                 ]
-
-        if self.config.root_server_address is None:
-            self.logger.info("Creating a new sparse cluster.")
-        else:
-            self.logger.info("Joining a sparse cluster on %s:%d.",
-                             self.config.root_server_address,
-                             self.config.root_server_port)
-            self.slices.append(DownstreamConnectorSlice(migrator_slice, self.config))
 
     def connected_to_server(self, protocol):
         if self.source is not None:
@@ -96,12 +89,44 @@ class SparseNode:
     def get_futures(self, is_worker = True):
         """Collects node coroutines to be executed on startup.
         """
-        futures = []
+        futures = [self.start_app_server()]
 
         for node_slice in self.slices:
             futures = node_slice.get_futures(futures)
 
+        if self.config.root_server_address is not None:
+            futures.append(self.connect_to_downstream_server())
+
         return futures
+
+    async def start_app_server(self, listen_address = '0.0.0.0'):
+        from .protocols import SparseProtocol
+        loop = asyncio.get_running_loop()
+
+        server = await loop.create_server(lambda: SparseProtocol(self), \
+                                          listen_address, \
+                                          self.config.root_server_port)
+        self.logger.info("Server listening to %s:%d", listen_address, self.config.root_server_port)
+        async with server:
+            await server.serve_forever()
+
+    async def connect_to_downstream_server(self):
+        loop = asyncio.get_running_loop()
+        on_con_lost = loop.create_future()
+
+        while True:
+            try:
+                self.logger.info("Connecting to downstream server on %s:%s.", \
+                                  self.config.root_server_address, \
+                                  self.config.root_server_port)
+                await loop.create_connection(lambda: DownstreamConnectorProtocol(on_con_lost, self), \
+                                             self.config.root_server_address, \
+                                             self.config.root_server_port)
+                await on_con_lost
+                break
+            except ConnectionRefusedError:
+                self.logger.warn("Connection refused. Re-trying in 5 seconds.")
+                await asyncio.sleep(5)
 
     async def start(self, is_root = True, operator_factory = None, source_factory = None, sink_factory = None):
         """Starts the main task loop by collecting all of the future objects.

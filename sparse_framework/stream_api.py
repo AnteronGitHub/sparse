@@ -2,6 +2,8 @@ import asyncio
 import uuid
 import logging
 
+from .protocols import SparseProtocol
+
 __all__ = ["SparseSource", "SparseStream", "SparseSink", "SparseOperator"]
 
 class SparseStream:
@@ -23,7 +25,7 @@ class SparseStream:
         if "SparseOperator" in base_classes:
             self.add_operator(listener)
 
-    def add_protocol(self, protocol):
+    def add_protocol(self, protocol : SparseProtocol):
         self.protocol = protocol
 
     def add_operator(self, operator):
@@ -38,8 +40,7 @@ class SparseStream:
         if self.operator is not None:
             self.operator.receive_tuple(data_tuple)
         elif self.protocol is not None:
-            payload = {'stream_id': self.stream_id, 'activation': data_tuple, "op": "offload_task"}
-            self.protocol.send_payload(payload)
+            self.protocol.send_data_tuple(self.stream_id, data_tuple)
 
 class SparseSource:
     def __init__(self, no_samples = 64, target_latency = 200, use_scheduling = True):
