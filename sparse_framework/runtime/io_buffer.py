@@ -1,4 +1,5 @@
 import logging
+import multiprocessing
 
 __all__ = ["SparseIOBuffer"]
 
@@ -18,12 +19,14 @@ class SparseIOBuffer:
 
     def __init__(self):
         self.logger = logging.getLogger("sparse")
+        m = multiprocessing.Manager()
+        self.lock = m.Lock()
         self.input_buffers = {}
 
-    def buffer_input(self, operator_id, input_data, rx_callback, statistics_record, lock) -> int:
+    def buffer_input(self, operator_id, input_data, rx_callback, statistics_record) -> int:
         """Appends an input tensor to the specified model's input buffer and returns its index.
         """
-        with lock:
+        with self.lock:
             if operator_id in self.input_buffers.keys():
                 input_buffer = self.input_buffers[operator_id]
             else:
@@ -37,8 +40,8 @@ class SparseIOBuffer:
         self.logger.debug(f"{index+1} samples buffered.")
         return index
 
-    def pop_input(self, operator_id, lock):
-        with lock:
+    def pop_input(self, operator_id):
+        with self.lock:
             if operator_id not in self.input_buffers.keys():
                 raise "No buffer registered for operator"
 
@@ -47,8 +50,8 @@ class SparseIOBuffer:
         self.logger.debug(f"Dispatched sample from buffer.")
         return task_data.input_data, [task_data.done_callback], [task_data.statistics_record]
 
-    def dispatch_batch(self, operator_id, lock):
-        with lock:
+    def dispatch_batch(self, operator_id):
+        with self.lock:
             if operator_id not in self.input_buffers.keys():
                 raise "No buffer registered for operator"
             task_data_batch = self.input_buffers[operator_id]
@@ -104,7 +107,7 @@ class SparsePytorchIOBuffer(SparseIOBuffer):
     def transferToHost(self, tensor):
         return tensor.to("cpu")
 
-    def dispatch_batch(self, operator_id, lock):
-        features, callbacks, statistics_records = super().dispatch_batch(operator_id, lock)
+    def dispatch_batch(self, operator_id):
+        features, callbacks, statistics_records = super().dispatch_batch(operator_id)
 
         return torch.cat(features), callbacks, statistics_records

@@ -1,10 +1,7 @@
 import asyncio
-import multiprocessing
 
 from ..node import SparseSlice
-from ..protocols import SparseServerProtocol
 
-from .io_buffer import SparsePytorchIOBuffer
 from .task_executor import SparseTaskExecutor
 
 class SparseStreamRuntimeSlice(SparseSlice):
@@ -14,16 +11,9 @@ class SparseStreamRuntimeSlice(SparseSlice):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.executor = None
-        self.io_buffer = None
 
     def get_futures(self, futures):
-        m = multiprocessing.Manager()
-        lock = m.Lock()
-
-        task_queue = asyncio.Queue()
-
-        self.io_buffer = SparsePytorchIOBuffer()
-        self.executor = SparseTaskExecutor(lock, self.io_buffer, task_queue)
+        self.executor = SparseTaskExecutor()
 
         futures.append(self.executor.start())
 
