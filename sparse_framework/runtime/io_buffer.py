@@ -21,41 +21,30 @@ class SparseIOBuffer:
         self.logger = logging.getLogger("sparse")
         m = multiprocessing.Manager()
         self.lock = m.Lock()
-        self.input_buffers = {}
+        self.input_buffer = []
 
-    def buffer_input(self, operator_id, input_data, rx_callback, statistics_record) -> int:
+    def buffer_input(self, input_data, rx_callback, statistics_record) -> int:
         """Appends an input tensor to the specified model's input buffer and returns its index.
         """
         with self.lock:
-            if operator_id in self.input_buffers.keys():
-                input_buffer = self.input_buffers[operator_id]
-            else:
-                input_buffer = []
-                self.input_buffers[operator_id] = input_buffer
-
-            index = len(input_buffer)
+            index = len(self.input_buffer)
             task_data = TaskData(self.transferToDevice(input_data), rx_callback, statistics_record)
-            input_buffer.append(task_data)
+            self.input_buffer.append(task_data)
 
         self.logger.debug(f"{index+1} samples buffered.")
         return index
 
-    def pop_input(self, operator_id):
+    def pop_input(self):
         with self.lock:
-            if operator_id not in self.input_buffers.keys():
-                raise "No buffer registered for operator"
-
-            task_data = self.input_buffers[operator_id].pop(0)
+            task_data = self.input_buffer.pop(0)
 
         self.logger.debug(f"Dispatched sample from buffer.")
         return task_data.input_data, [task_data.done_callback], [task_data.statistics_record]
 
-    def dispatch_batch(self, operator_id):
+    def dispatch_batch(self):
         with self.lock:
-            if operator_id not in self.input_buffers.keys():
-                raise "No buffer registered for operator"
-            task_data_batch = self.input_buffers[operator_id]
-            self.input_buffers[operator_id] = []
+            task_data_batch = self.input_buffer
+            self.input_buffer = []
 
         input_data = []
         callbacks = []
@@ -107,7 +96,7 @@ class SparsePytorchIOBuffer(SparseIOBuffer):
     def transferToHost(self, tensor):
         return tensor.to("cpu")
 
-    def dispatch_batch(self, operator_id):
-        features, callbacks, statistics_records = super().dispatch_batch(operator_id)
+    def dispatch_batch(self):
+        features, callbacks, statistics_records = super().dispatch_batch()
 
         return torch.cat(features), callbacks, statistics_records

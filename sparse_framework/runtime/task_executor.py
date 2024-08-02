@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from time import time
 
 from .io_buffer import SparsePytorchIOBuffer
+from ..stream_api import SparseOperator
 
 class SparseTaskExecutor:
     """Common base class for task execution logic. This class implements potentially hardware-accelerated computations
@@ -20,13 +21,13 @@ class SparseTaskExecutor:
 
         self.queue = asyncio.Queue()
 
-        self.memory_buffer = SparsePytorchIOBuffer()
-
         self.operators = set()
+        self.memory_buffers = {}
 
-    def add_operator(self, operator):
+    def add_operator(self, operator : SparseOperator):
         operator.set_executor(self)
         self.operators.add(operator)
+        self.memory_buffers[operator.id] = SparsePytorchIOBuffer()
 
     def get_operator(self, operator_id):
         for o in self.operators:
@@ -42,7 +43,8 @@ class SparseTaskExecutor:
             self.queue.task_done()
 
     def buffer_input(self, operator_id, input_data, result_callback, statistics_record):
-        batch_index = self.memory_buffer.buffer_input(operator_id, input_data, result_callback, statistics_record)
+        memory_buffer = self.memory_buffers[operator_id]
+        batch_index = memory_buffer.buffer_input(input_data, result_callback, statistics_record)
         #statistics_record.task_queued()
 
         operator = self.get_operator(operator_id)
@@ -51,18 +53,19 @@ class SparseTaskExecutor:
             return
 
         if not operator.use_batching or batch_index == 0:
-            self.queue.put_nowait((operator_id, self.memory_buffer.result_received))
+            self.queue.put_nowait((operator_id, memory_buffer.result_received))
 
     def execute_task(self, operator_id, callback):
         operator = self.get_operator(operator_id)
+        memory_buffer = self.memory_buffers[operator_id]
         if operator is None:
             self.logger.error("Dispatched task for an unregistered operator")
             return
 
         if operator.use_batching:
-            features, callbacks, statistics_records = self.memory_buffer.dispatch_batch(operator_id)
+            features, callbacks, statistics_records = memory_buffer.dispatch_batch()
         else:
-            features, callbacks, statistics_records = self.memory_buffer.pop_input(operator_id)
+            features, callbacks, statistics_records = memory_buffer.pop_input()
 
         task_started_at = time()
         pred = operator.call(features)
