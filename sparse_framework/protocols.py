@@ -75,7 +75,7 @@ class SparseProtocol(asyncio.Protocol):
 
         if self.node.migrator_slice is not None:
             self.node.migrator_slice.add_app_module(self.app_name, app_archive_path)
-            self.node.stream_manager_slice.deploy_app(self.app_name, self.app_dag)
+            self.node.stream_manager_slice.deploy_app(self.app_dag)
 
     def object_received(self, obj : dict):
         if obj["op"] == "deploy_app":

@@ -99,28 +99,21 @@ class SparseStreamManagerSlice(SparseSlice):
 
         self.stream_received(stream_id, new_tuple, protocol)
 
-    def deploy_node(self, app_name : str, node_name : str, destinations : set):
+    def deploy_node(self, node_name : str, destinations : set):
         """Deploys a Sparse application node to a cluster node from a local module.
         """
-        app = self.module_slice.get_app(app_name)
-        app_module = app.load(self.config.app_repo_path)
-        for source_factory in app_module.get_sources():
-            if source_factory.__name__ == node_name:
-                for upstream_node in self.upstream_nodes:
-                    upstream_node.push_app(app)
-                    return
-                self.place_source(source_factory, destinations)
-                return
-        for sink_factory in app_module.get_sinks():
-            if sink_factory.__name__ == node_name:
-                self.place_sink(sink_factory)
-                return
-        for operator_factory in app_module.get_operators():
-            if operator_factory.__name__ == node_name:
-                self.place_operator(operator_factory, destinations)
-                return
+        factory, op_type, app = self.module_slice.get_factory(node_name)
 
-    def deploy_app(self, app_name : str, app_dag : dict):
+        if op_type == "Source":
+            for upstream_node in self.upstream_nodes:
+                upstream_node.push_app(app)
+            # self.place_source(factory, destinations)
+        elif op_type == "Sink":
+            self.place_sink(factory)
+        elif op_type == "Operator":
+            self.place_operator(factory, destinations)
+
+    def deploy_app(self, app_dag : dict):
         """Deploys a Sparse application to a cluster.
 
         The application graph is sorted topologically so that each destination node is deployed before its sources.
@@ -133,4 +126,4 @@ class SparseStreamManagerSlice(SparseSlice):
                 destinations = app_dag[node_name]
             else:
                 destinations = {}
-            self.deploy_node(app_name, node_name, destinations)
+            self.deploy_node(node_name, destinations)

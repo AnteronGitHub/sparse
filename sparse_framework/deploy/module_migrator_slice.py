@@ -40,9 +40,17 @@ class SparseModuleMigratorSlice(SparseSlice):
     def add_app_module(self, name : str, zip_path : str):
         self.apps.add(SparseApp(name, zip_path))
 
-    def get_app(self, name : str):
+    def get_factory(self, node_name : str):
         for app in self.apps:
-            if app.name == name:
-                return app
-        return None
+            app_module = app.load(self.config.app_repo_path)
+            for source_factory in app_module.get_sources():
+                if source_factory.__name__ == node_name:
+                    return source_factory, "Source", app
+            for sink_factory in app_module.get_sinks():
+                if sink_factory.__name__ == node_name:
+                    return sink_factory, "Sink", app
+            for operator_factory in app_module.get_operators():
+                if operator_factory.__name__ == node_name:
+                    return operator_factory, "Operator", app
 
+        return None, None, None
