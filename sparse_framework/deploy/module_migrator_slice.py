@@ -26,7 +26,7 @@ class UpstreamNode:
     def __init__(self, protocol : SparseProtocol):
         self.protocol = protocol
 
-    def push_app(self, app : SparseApp):
+    def push_app(self, app : SparseApp, app_dag : dict):
         self.protocol.migrate_app_module(app.zip_path)
 
 class SparseModuleMigratorSlice(SparseSlice):

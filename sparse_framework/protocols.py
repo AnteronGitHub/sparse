@@ -73,8 +73,8 @@ class SparseProtocol(asyncio.Protocol):
         with open(app_archive_path, "wb") as f:
             f.write(data)
 
-        if self.node.migrator_slice is not None:
-            self.node.migrator_slice.add_app_module(self.app_name, app_archive_path)
+        if self.node.module_slice is not None:
+            self.node.module_slice.add_app_module(self.app_name, app_archive_path)
             self.node.stream_manager_slice.deploy_app(self.app_dag)
 
     def object_received(self, obj : dict):
@@ -88,8 +88,8 @@ class SparseProtocol(asyncio.Protocol):
         elif obj["op"] == "connect_downstream":
             if self.node.stream_manager_slice is not None:
                 self.node.stream_manager_slice.add_upstream_node(self)
-        elif obj["op"] == "offload_task":
-            self.logger.info("Received stream tuple")
+        elif obj["op"] == "data_tuple":
+            self.node.runtime_slice.tuple_received(obj["stream_id"], obj["tuple"])
 
     def send_file(self, file_path):
         with open(file_path, "rb") as f:
@@ -109,7 +109,7 @@ class SparseProtocol(asyncio.Protocol):
     def send_data_tuple(self, stream_id : str, data_tuple):
         """Initiates app deployment process by uploading the app dag.
         """
-        self.send_payload({"op": "offload_task", "stream_id": stream_id, "activation": data_tuple })
+        self.send_payload({"op": "data_tuple", "stream_id": stream_id, "tuple": data_tuple })
 
     def deploy_app(self, app : dict):
         """Initiates app deployment process by uploading the app dag.

@@ -2,9 +2,11 @@ import asyncio
 from graphlib import TopologicalSorter
 
 from ..node import SparseSlice
-from .runtime_slice import SparseStreamRuntimeSlice
 from ..deploy.module_migrator_slice import SparseModuleMigratorSlice, SparseApp, UpstreamNode
 from ..protocols import SparseProtocol
+from ..stream_api import SparseStream
+
+from .runtime_slice import SparseStreamRuntimeSlice
 
 class SparseStreamManagerSlice(SparseSlice):
     """Sparse Stream Manager Slice receives applications to be deployed in the cluster, and decides the placement of
@@ -63,7 +65,10 @@ class SparseStreamManagerSlice(SparseSlice):
 
         if op_type == "Source":
             for upstream_node in self.upstream_nodes:
-                upstream_node.push_app(app)
+                self.runtime_slice.add_connector(upstream_node.protocol, destinations)
+                connector_stream = SparseStream()
+                app_dag = { node_name: connector_stream.stream_id}
+                upstream_node.push_app(app, { "name": "stream_pace_steering", "dag": app_dag })
             # self.runtime_slice.place_source(factory, destinations)
         elif op_type == "Sink":
             self.runtime_slice.place_sink(factory)

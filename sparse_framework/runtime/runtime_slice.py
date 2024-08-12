@@ -1,6 +1,7 @@
 import asyncio
 
 from ..node import SparseSlice
+from ..stream_api import SparseStream
 
 from .task_executor import SparseTaskExecutor
 
@@ -15,6 +16,7 @@ class SparseStreamRuntimeSlice(SparseSlice):
         self.sources = set()
         self.operators = set()
         self.sinks = set()
+        self.connector_streams = set()
 
     def get_futures(self, futures):
         self.executor = SparseTaskExecutor()
@@ -23,20 +25,26 @@ class SparseStreamRuntimeSlice(SparseSlice):
 
         return futures
 
-    def place_operator(self, operator_factory, destinations):
-        operator = operator_factory()
+    def add_connector(self, protocol, destinations):
+        connector_stream = SparseStream()
+        self.add_destinations(connector_stream, destinations)
+        self.connector_streams.add(connector_stream)
 
-        self.executor.add_operator(operator)
-
+    def add_destinations(self, stream : str, destinations : set):
         for sink in self.sinks:
             if sink.name in destinations:
-                operator.stream.add_listener(sink)
+                stream.add_listener(sink)
 
         for o in self.operators:
             if o.name in destinations:
-                operator.stream.add_listener(o)
+                stream.add_listener(o)
 
+    def place_operator(self, operator_factory, destinations):
+        operator = operator_factory()
+        self.add_destinations(operator.stream, destinations)
+        self.executor.add_operator(operator)
         self.operators.add(operator)
+
         self.logger.info(f"Placed operator '{operator.name}' with destinations {destinations}")
 
     def place_sink(self, sink_factory):
@@ -51,8 +59,8 @@ class SparseStreamRuntimeSlice(SparseSlice):
             if operator.name in destinations:
                 source.stream.add_operator(operator)
 
-        for node in self.upstream_nodes:
-            if node.protocol.transport.peername[0] in destinations:
+        for protocol in self.connector_streams:
+            if protocol.transport.peername[0] in destinations:
                 source.stream.add_protocol(node.protocol)
 
         self.sources.add(source)
@@ -61,6 +69,13 @@ class SparseStreamRuntimeSlice(SparseSlice):
         task = loop.create_task(source.start())
 
         self.logger.info(f"Placed source '{source.name}'")
+
+    def tuple_received(self, stream_id : str, data_tuple):
+        self.logger.info("Received data tuple for stream %s", stream_id)
+        for stream in self.connector_streams:
+            if stream.id == stream_id:
+                stream.emit(data_tuple)
+                return
 
     def sync_received(self, protocol, stream_id, sync):
         self.logger.debug(f"Received {sync} s sync")
