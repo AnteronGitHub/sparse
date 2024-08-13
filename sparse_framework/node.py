@@ -68,14 +68,14 @@ class SparseNode:
         self.init_slices()
 
     def init_slices(self):
-        runtime_slice = SparseStreamRuntimeSlice(self.config)
+        self.runtime_slice = SparseStreamRuntimeSlice(self.config)
         self.module_slice = SparseModuleMigratorSlice(self.config)
-        self.stream_manager_slice = SparseStreamManagerSlice(runtime_slice, self.module_slice, self.config)
+        self.stream_manager_slice = SparseStreamManagerSlice(self.runtime_slice, self.module_slice, self.config)
         self.sparse_deployer = SparseDeployer(self.config)
 
         self.slices = [
                 SparseQoSMonitorSlice(self.config),
-                runtime_slice,
+                self.runtime_slice,
                 self.stream_manager_slice,
                 self.module_slice,
                 self.sparse_deployer

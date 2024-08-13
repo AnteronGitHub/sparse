@@ -29,6 +29,9 @@ class SparseStreamRuntimeSlice(SparseSlice):
         connector_stream = SparseStream()
         self.add_destinations(connector_stream, destinations)
         self.connector_streams.add(connector_stream)
+        peer_ip = protocol.transport.get_extra_info('peername')[0]
+        self.logger.info(f"Added connector to %s with destinations %s", peer_ip, destinations)
+        return connector_stream
 
     def add_destinations(self, stream : str, destinations : set):
         for sink in self.sinks:
@@ -45,7 +48,7 @@ class SparseStreamRuntimeSlice(SparseSlice):
         self.executor.add_operator(operator)
         self.operators.add(operator)
 
-        self.logger.info(f"Placed operator '{operator.name}' with destinations {destinations}")
+        self.logger.info(f"Created stream %s for operator %s with destinations %s", operator.stream.stream_id, operator.name, destinations)
 
     def place_sink(self, sink_factory):
         sink = sink_factory(self.logger)
@@ -55,17 +58,18 @@ class SparseStreamRuntimeSlice(SparseSlice):
     def place_source(self, source_factory, destinations : set):
         source = source_factory()
 
+        for destination in destinations:
+            if type(destination) == SparseStream:
+                source.stream = destination
+                self.logger.info("Added remote stream")
+
         for operator in self.operators:
             if operator.name in destinations:
                 source.stream.add_operator(operator)
 
-        #for destination in destinations:
-        #    if ':' in destination:
-        #        self.logger.warn("TODO: Add connector stream for destination %s", destination)
-
-        # for protocol in self.connector_streams:
-        #     if protocol.transport.peername[0] in destinations:
-        #         source.stream.add_protocol(node.protocol)
+        for protocol in self.connector_streams:
+            if protocol.transport.get_extra_info('peername')[0] in destinations:
+                source.stream.add_protocol(protocol)
 
         self.sources.add(source)
 
@@ -75,9 +79,8 @@ class SparseStreamRuntimeSlice(SparseSlice):
         self.logger.info(f"Placed source '{source.name}'")
 
     def tuple_received(self, stream_id : str, data_tuple):
-        self.logger.info("Received data tuple for stream %s", stream_id)
         for stream in self.connector_streams:
-            if stream.id == stream_id:
+            if stream.stream_id == stream_id:
                 stream.emit(data_tuple)
                 return
 

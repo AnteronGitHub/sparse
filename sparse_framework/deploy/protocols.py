@@ -46,6 +46,7 @@ class DownstreamConnectorProtocol(SparseProtocol):
 
     def connection_made(self, transport):
         super().connection_made(transport)
+        self.node.stream_manager_slice.add_upstream_node(self)
 
         self.send_payload({"op": "connect_downstream"})
 

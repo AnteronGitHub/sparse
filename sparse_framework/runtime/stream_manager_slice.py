@@ -18,7 +18,7 @@ class SparseStreamManagerSlice(SparseSlice):
 
         self.upstream_nodes = set()
 
-        self.stream_replicas = []
+        #self.stream_replicas = []
 
         self.runtime_slice = runtime_slice
         self.module_slice = module_slice
@@ -35,28 +35,28 @@ class SparseStreamManagerSlice(SparseSlice):
                 self.logger.info("Removed upstream node from %s", protocol.transport.get_extra_info('peername')[0])
                 return
 
-    def stream_received(self, stream_id, new_tuple, protocol = None):
-        self.logger.info(f"Received stream replica {stream_id}")
-        stream_replica = SparseStream(stream_id)
+    # def stream_received(self, stream_id, new_tuple, protocol = None):
+    #     self.logger.info(f"Received stream replica {stream_id}")
+    #     stream_replica = SparseStream(stream_id)
 
-        if self.executor is not None and self.executor.operator is not None:
-            self.output_stream = SparseStream()
-            output_stream.add_protocol(protocol)
-            stream_replica.add_executor(self.executor, output_stream)
-            stream_replica.add_protocol(protocol)
-        if self.sink is not None:
-            stream_replica.add_sink(self.sink)
+    #     if self.executor is not None and self.executor.operator is not None:
+    #         self.output_stream = SparseStream()
+    #         output_stream.add_protocol(protocol)
+    #         stream_replica.add_executor(self.executor, output_stream)
+    #         stream_replica.add_protocol(protocol)
+    #     if self.sink is not None:
+    #         stream_replica.add_sink(self.sink)
 
-        self.stream_replicas.append(stream_replica)
-        stream_replica.emit(new_tuple)
+    #     self.stream_replicas.append(stream_replica)
+    #     stream_replica.emit(new_tuple)
 
-    def tuple_received(self, stream_id, new_tuple, protocol = None):
-        for stream in self.stream_replicas:
-            if stream.stream_id == stream_id:
-                stream.emit(new_tuple)
-                return
+    # def tuple_received(self, stream_id, new_tuple, protocol = None):
+    #     for stream in self.stream_replicas:
+    #         if stream.stream_id == stream_id:
+    #             stream.emit(new_tuple)
+    #             return
 
-        self.stream_received(stream_id, new_tuple, protocol)
+    #     self.stream_received(stream_id, new_tuple, protocol)
 
     def deploy_node(self, node_name : str, destinations : set):
         """Deploys a Sparse application node to a cluster node from a local module.
@@ -65,14 +65,28 @@ class SparseStreamManagerSlice(SparseSlice):
         #self.logger.info("Deploying app node %s with destinations %s", node_name, destinations)
 
         if op_type == "Source":
-            for upstream_node in self.upstream_nodes:
-                self.runtime_slice.add_connector(upstream_node.protocol, destinations)
-                connector_stream = SparseStream()
-                upstream_host = upstream_node.protocol.transport.get_extra_info('peername')[0]
-                app_dag = { node_name: { f"{upstream_host}:{connector_stream.stream_id}"} }
-                upstream_node.push_app(app, { "name": "stream_pace_steering", "dag": app_dag })
-                return
-            self.runtime_slice.place_source(factory, destinations)
+            if self.config.root_server_address is None:
+                for upstream_node in self.upstream_nodes:
+                    connector_stream = self.runtime_slice.add_connector(upstream_node.protocol, destinations)
+                    upstream_host = upstream_node.protocol.transport.get_extra_info('peername')[0]
+                    app_dag = { node_name: { f"{upstream_host}:{connector_stream.stream_id}"} }
+                    upstream_node.push_app(app, { "name": "stream_pace_steering", "dag": app_dag })
+                    return
+
+            updated_destinations = set()
+            for destination in destinations:
+                if ":" in destination:
+                    [peer_ip, stream_id] = destination.split(":")
+                    for upstream_node in self.upstream_nodes:
+                        if peer_ip == upstream_node.protocol.transport.get_extra_info('peername')[0]:
+                            self.logger.info("Creating a connector stream with id %s", stream_id)
+                            connector_stream = SparseStream(stream_id)
+                            connector_stream.add_protocol(upstream_node.protocol)
+                            updated_destinations.add(connector_stream)
+                else:
+                    updated_dstinations.add(destination)
+
+            self.runtime_slice.place_source(factory, updated_destinations)
         elif op_type == "Sink":
             self.runtime_slice.place_sink(factory)
             return

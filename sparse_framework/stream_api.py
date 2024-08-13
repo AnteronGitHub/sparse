@@ -27,6 +27,7 @@ class SparseStream:
 
     def add_protocol(self, protocol : SparseProtocol):
         self.protocol = protocol
+        self.logger.info("Added protocol to stream.")
 
     def add_operator(self, operator):
         self.operator = operator
@@ -43,12 +44,16 @@ class SparseStream:
             self.protocol.send_data_tuple(self.stream_id, data_tuple)
 
 class SparseSource:
-    def __init__(self, no_samples = 64, target_latency = 200, use_scheduling = True):
+    def __init__(self, stream : SparseStream = None, no_samples = 64, target_latency = 200, use_scheduling = True):
         self.logger = logging.getLogger("sparse")
         self.id = str(uuid.uuid4())
         self.current_tuple = 0
 
-        self.stream = SparseStream()
+        if stream is None:
+            self.stream = SparseStream()
+        else:
+            self.stream = stream
+
         self.target_latency = target_latency
         self.use_scheduling = use_scheduling
 
