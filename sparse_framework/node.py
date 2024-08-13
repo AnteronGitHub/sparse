@@ -116,7 +116,7 @@ class SparseNode:
 
         while True:
             try:
-                self.logger.info("Connecting to downstream server on %s:%s.", \
+                self.logger.debug("Connecting to downstream server on %s:%s.", \
                                   self.config.root_server_address, \
                                   self.config.root_server_port)
                 await loop.create_connection(lambda: DownstreamConnectorProtocol(on_con_lost, self), \

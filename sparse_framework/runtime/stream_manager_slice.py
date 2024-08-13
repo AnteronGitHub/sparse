@@ -62,18 +62,23 @@ class SparseStreamManagerSlice(SparseSlice):
         """Deploys a Sparse application node to a cluster node from a local module.
         """
         factory, op_type, app = self.module_slice.get_factory(node_name)
+        #self.logger.info("Deploying app node %s with destinations %s", node_name, destinations)
 
         if op_type == "Source":
             for upstream_node in self.upstream_nodes:
                 self.runtime_slice.add_connector(upstream_node.protocol, destinations)
                 connector_stream = SparseStream()
-                app_dag = { node_name: connector_stream.stream_id}
+                upstream_host = upstream_node.protocol.transport.get_extra_info('peername')[0]
+                app_dag = { node_name: { f"{upstream_host}:{connector_stream.stream_id}"} }
                 upstream_node.push_app(app, { "name": "stream_pace_steering", "dag": app_dag })
-            # self.runtime_slice.place_source(factory, destinations)
+                return
+            self.runtime_slice.place_source(factory, destinations)
         elif op_type == "Sink":
             self.runtime_slice.place_sink(factory)
+            return
         elif op_type == "Operator":
             self.runtime_slice.place_operator(factory, destinations)
+            return
 
     def deploy_app(self, app_dag : dict):
         """Deploys a Sparse application to a cluster.
@@ -83,9 +88,12 @@ class SparseStreamManagerSlice(SparseSlice):
         :param app_name: The name of the Sparse application to be deployed.
         :param app_dag: A dictionary representing the Directed Asyclic Graph of application nodes.
         """
+        self.logger.info("Deploying app %s", app_dag)
         for node_name in TopologicalSorter(app_dag).static_order():
             if node_name in app_dag.keys():
                 destinations = app_dag[node_name]
             else:
                 destinations = {}
+
+
             self.deploy_node(node_name, destinations)

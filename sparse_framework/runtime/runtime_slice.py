@@ -59,9 +59,13 @@ class SparseStreamRuntimeSlice(SparseSlice):
             if operator.name in destinations:
                 source.stream.add_operator(operator)
 
-        for protocol in self.connector_streams:
-            if protocol.transport.peername[0] in destinations:
-                source.stream.add_protocol(node.protocol)
+        #for destination in destinations:
+        #    if ':' in destination:
+        #        self.logger.warn("TODO: Add connector stream for destination %s", destination)
+
+        # for protocol in self.connector_streams:
+        #     if protocol.transport.peername[0] in destinations:
+        #         source.stream.add_protocol(node.protocol)
 
         self.sources.add(source)
 

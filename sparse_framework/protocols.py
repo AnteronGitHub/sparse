@@ -34,8 +34,8 @@ class SparseProtocol(asyncio.Protocol):
 
     def connection_made(self, transport):
         self.transport = transport
-        peername = self.transport.get_extra_info('peername')
-        self.logger.debug(f"Connected to {peername}.")
+        peer_ip = self.transport.get_extra_info('peername')[0]
+        self.logger.info(f"Connected to peer with IP {peer_ip}.")
 
     def connection_lost(self, exc):
         if self.node.stream_manager_slice is not None:
@@ -68,7 +68,7 @@ class SparseProtocol(asyncio.Protocol):
                 self.logger.error(f"Deserialization error. {len(data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
 
     def file_received(self, data : bytes):
-        self.logger.info("Received file")
+        self.logger.debug("Received module for app '%s'", self.app_name)
         app_archive_path = f"/tmp/{self.app_name}.zip"
         with open(app_archive_path, "wb") as f:
             f.write(data)
@@ -77,14 +77,31 @@ class SparseProtocol(asyncio.Protocol):
             self.node.module_slice.add_app_module(self.app_name, app_archive_path)
             self.node.stream_manager_slice.deploy_app(self.app_dag)
 
+    def replace_destinations(self, destinations : set):
+        peer_ip = self.transport.get_extra_info('peername')[0]
+        updated_destinations = set()
+        for destination in destinations:
+            if ':' in destination:
+                [source_ip, stream_id] = destination.split(":")
+                # TODO: if source_ip is custom
+                self.logger.debug("Replacing source ip %s for destination %s to %s", source_ip, stream_id, peer_ip)
+                updated_destinations.add(f"{peer_ip}:{stream_id}")
+            else:
+                updated_destinations.add(destination)
+
+        return updated_destinations
+
     def object_received(self, obj : dict):
         if obj["op"] == "deploy_app":
-            self.send_payload({"type": "ack"})
+            self.send_payload({"op": "ack"})
 
             app = obj["app"]
             self.app_name = "sparseapp_" + app["name"]
             self.app_dag = app["dag"]
-            self.logger.info(f"Received app '{self.app_name}'")
+            for operator in self.app_dag:
+                self.logger.debug("Received operator %s with destinations %s", operator, self.app_dag[operator])
+                self.app_dag[operator] = self.replace_destinations(self.app_dag[operator])
+
         elif obj["op"] == "connect_downstream":
             if self.node.stream_manager_slice is not None:
                 self.node.stream_manager_slice.add_upstream_node(self)
@@ -117,7 +134,7 @@ class SparseProtocol(asyncio.Protocol):
         self.send_payload({"op": "deploy_app", "app": app})
 
     def migrate_app_module(self, archive_path : str):
-        self.logger.info("Migrating app module '%s'", archive_path)
+        self.logger.debug("Migrating app module '%s'", archive_path)
         self.send_file(archive_path)
 
 class SparseClientProtocol(SparseProtocol):
