@@ -38,8 +38,7 @@ class SparseProtocol(asyncio.Protocol):
         self.logger.info(f"Connected to peer with IP {peer_ip}.")
 
     def connection_lost(self, exc):
-        if self.node.stream_manager_slice is not None:
-            self.node.stream_manager_slice.remove_upstream_node(self.transport)
+        self.node.stream_router.remove_upstream_node(self.transport)
         peername = self.transport.get_extra_info('peername')
         self.logger.debug(f"{peername} disconnected.")
 
@@ -73,9 +72,8 @@ class SparseProtocol(asyncio.Protocol):
         with open(app_archive_path, "wb") as f:
             f.write(data)
 
-        if self.node.module_slice is not None:
-            self.node.module_slice.add_app_module(self.app_name, app_archive_path)
-            self.node.stream_manager_slice.deploy_app(self.app_dag)
+        self.node.module_repo.add_app_module(self.app_name, app_archive_path)
+        self.node.stream_router.deploy_app(self.app_dag)
 
     def replace_destinations(self, destinations : set):
         peer_ip = self.transport.get_extra_info('peername')[0]
@@ -103,10 +101,9 @@ class SparseProtocol(asyncio.Protocol):
                 self.app_dag[operator] = self.replace_destinations(self.app_dag[operator])
 
         elif obj["op"] == "connect_downstream":
-            if self.node.stream_manager_slice is not None:
-                self.node.stream_manager_slice.add_upstream_node(self)
+            self.node.stream_router.add_upstream_node(self)
         elif obj["op"] == "data_tuple":
-            self.node.runtime_slice.tuple_received(obj["stream_id"], obj["tuple"])
+            self.node.runtime.tuple_received(obj["stream_id"], obj["tuple"])
 
     def send_file(self, file_path):
         with open(file_path, "rb") as f:

@@ -5,8 +5,8 @@ from ..stream_api import SparseStream
 
 from .task_executor import SparseTaskExecutor
 
-class SparseStreamRuntimeSlice(SparseSlice):
-    """Sparse Stream Runtime Slice maintains task executor, and the associated memory manager, for executing stream
+class SparseRuntime(SparseSlice):
+    """Sparse Runtime maintains task executor, and the associated memory manager, for executing stream
     application operations locally.
     """
     def __init__(self, *args, **kwargs):
@@ -30,17 +30,19 @@ class SparseStreamRuntimeSlice(SparseSlice):
         self.add_destinations(connector_stream, destinations)
         self.connector_streams.add(connector_stream)
         peer_ip = protocol.transport.get_extra_info('peername')[0]
-        self.logger.info(f"Added connector to %s with destinations %s", peer_ip, destinations)
+        self.logger.info(f"Connected stream %s from peer %s to destinations %s", connector_stream.stream_id, peer_ip, destinations)
         return connector_stream
 
     def add_destinations(self, stream : str, destinations : set):
         for sink in self.sinks:
             if sink.name in destinations:
                 stream.add_listener(sink)
+                self.logger.info("Connected stream %s to sink %s", stream.stream_id, sink.name)
 
         for o in self.operators:
             if o.name in destinations:
                 stream.add_listener(o)
+                self.logger.info("Connected stream %s for operator %s to stream %s", o.stream.stream_id, o.name, stream.stream_id)
 
     def place_operator(self, operator_factory, destinations):
         operator = operator_factory()
@@ -48,12 +50,12 @@ class SparseStreamRuntimeSlice(SparseSlice):
         self.executor.add_operator(operator)
         self.operators.add(operator)
 
-        self.logger.info(f"Created stream %s for operator %s with destinations %s", operator.stream.stream_id, operator.name, destinations)
+        self.logger.debug(f"Created stream %s for operator %s with destinations %s", operator.stream.stream_id, operator.name, destinations)
 
     def place_sink(self, sink_factory):
         sink = sink_factory(self.logger)
         self.sinks.add(sink)
-        self.logger.info(f"Placed sink '{sink.name}'")
+        self.logger.debug(f"Placed sink '{sink.name}'")
 
     def place_source(self, source_factory, destinations : set):
         source = source_factory()
@@ -61,7 +63,6 @@ class SparseStreamRuntimeSlice(SparseSlice):
         for destination in destinations:
             if type(destination) == SparseStream:
                 source.stream = destination
-                self.logger.info("Added remote stream")
 
         for operator in self.operators:
             if operator.name in destinations:
@@ -76,7 +77,7 @@ class SparseStreamRuntimeSlice(SparseSlice):
         loop = asyncio.get_running_loop()
         task = loop.create_task(source.start())
 
-        self.logger.info(f"Placed source '{source.name}'")
+        self.logger.info(f"Placed source stream %s for source %s", source.stream.stream_id, source.name)
 
     def tuple_received(self, stream_id : str, data_tuple):
         for stream in self.connector_streams:

@@ -27,7 +27,7 @@ class SparseStream:
 
     def add_protocol(self, protocol : SparseProtocol):
         self.protocol = protocol
-        self.logger.info("Added protocol to stream.")
+        self.logger.debug("Added protocol to stream.")
 
     def add_operator(self, operator):
         self.operator = operator

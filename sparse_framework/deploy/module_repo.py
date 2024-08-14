@@ -30,9 +30,9 @@ class UpstreamNode:
         self.protocol.deploy_app(app_dag)
         self.protocol.migrate_app_module(app.zip_path)
 
-class SparseModuleMigratorSlice(SparseSlice):
-    """Sparse Module Migrator Slice migrates software modules for sources, operators and sinks over the network so that
-    stream applications can be distributed in the cluster.
+class ModuleRepository(SparseSlice):
+    """Module repository serves Sparse application modules. To distribute stream applications in the cluster, modules
+    can be migrated over the network.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

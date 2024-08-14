@@ -4,9 +4,9 @@ from .protocols import DataPlaneProtocol
 class DataPlaneSlice(SparseSlice):
     """Sparse Data Plane Slice maintains connections to downstream nodes.
     """
-    def __init__(self, runtime_slice, *args, **kwargs):
+    def __init__(self, runtime, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.runtime_slice = runtime_slice
+        self.runtime = runtime
 
     def get_futures(self, futures):
         futures.append(self.start_server(self.config.listen_address, self.config.listen_port))
