@@ -30,32 +30,33 @@ class SparseRuntime(SparseSlice):
         self.add_destinations(connector_stream, destinations)
         self.connector_streams.add(connector_stream)
         peer_ip = protocol.transport.get_extra_info('peername')[0]
-        self.logger.info(f"Connected stream %s from peer %s to destinations %s", connector_stream.stream_id, peer_ip, destinations)
+        self.logger.info(f"Stream %s listening to peer %s", connector_stream.stream_id, peer_ip)
         return connector_stream
 
-    def add_destinations(self, stream : str, destinations : set):
+    def add_destinations(self, stream : SparseStream, destinations : set):
         for sink in self.sinks:
             if sink.name in destinations:
                 stream.add_listener(sink)
-                self.logger.info("Connected stream %s to sink %s", stream.stream_id, sink.name)
+                self.logger.info("Connected sink %s to stream %s", sink.id, stream.stream_id)
 
         for o in self.operators:
             if o.name in destinations:
                 stream.add_listener(o)
-                self.logger.info("Connected stream %s for operator %s to stream %s", o.stream.stream_id, o.name, stream.stream_id)
+                self.logger.info("Connected stream %s to stream %s", o.output_stream.stream_id, stream.stream_id)
 
     def place_operator(self, operator_factory, destinations):
-        operator = operator_factory()
-        self.add_destinations(operator.stream, destinations)
-        self.executor.add_operator(operator)
-        self.operators.add(operator)
+        o = operator_factory()
+        self.executor.add_operator(o)
+        self.operators.add(o)
 
-        self.logger.debug(f"Created stream %s for operator %s with destinations %s", operator.stream.stream_id, operator.name, destinations)
+        self.logger.info("Deployed '%s' operator with output stream %s", o.name, o.output_stream.stream_id)
+
+        self.add_destinations(o.output_stream, destinations)
 
     def place_sink(self, sink_factory):
         sink = sink_factory(self.logger)
         self.sinks.add(sink)
-        self.logger.debug(f"Placed sink '{sink.name}'")
+        self.logger.info("Created sink %s for '%s'", sink.id, sink.name)
 
     def place_source(self, source_factory, destinations : set):
         source = source_factory()
@@ -77,7 +78,7 @@ class SparseRuntime(SparseSlice):
         loop = asyncio.get_running_loop()
         task = loop.create_task(source.start())
 
-        self.logger.info(f"Placed source stream %s for source %s", source.stream.stream_id, source.name)
+        self.logger.info(f"Created source for '%s' with output stream %s", source.name, source.stream.stream_id)
 
     def tuple_received(self, stream_id : str, data_tuple):
         for stream in self.connector_streams:

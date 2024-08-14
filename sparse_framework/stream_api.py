@@ -27,7 +27,9 @@ class SparseStream:
 
     def add_protocol(self, protocol : SparseProtocol):
         self.protocol = protocol
-        self.logger.debug("Added protocol to stream.")
+        self.logger.info("Stream id %s connected to peer %s",
+                         self.stream_id,
+                         protocol.transport.get_extra_info('peername')[0])
 
     def add_operator(self, operator):
         self.operator = operator
@@ -39,7 +41,7 @@ class SparseStream:
         for sink in self.sinks:
             sink.tuple_received(data_tuple)
         if self.operator is not None:
-            self.operator.receive_tuple(data_tuple)
+            self.operator.buffer_input(data_tuple)
         elif self.protocol is not None:
             self.protocol.send_data_tuple(self.stream_id, data_tuple)
 
@@ -73,6 +75,7 @@ class SparseSource:
 class SparseSink:
     def __init__(self, logger):
         self.logger = logger
+        self.id = str(uuid.uuid4())
 
     @property
     def name(self):
@@ -88,7 +91,7 @@ class SparseOperator:
         self.use_batching = use_batching
 
         self.executor = None
-        self.stream = SparseStream()
+        self.output_stream = SparseStream()
 
     @property
     def name(self):
@@ -97,8 +100,8 @@ class SparseOperator:
     def set_executor(self, executor):
         self.executor = executor
 
-    def receive_tuple(self, data_tuple):
-        self.executor.buffer_input(self.id, data_tuple, self.stream.emit, None)
+    def buffer_input(self, data_tuple):
+        self.executor.buffer_input(self.id, data_tuple, self.output_stream.emit, None)
 
     def call(self, input_tuple):
         pass

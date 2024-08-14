@@ -40,7 +40,6 @@ class StreamRouter(SparseSlice):
                 [peer_ip, stream_id] = destination.split(":")
                 for upstream_node in self.upstream_nodes:
                     if peer_ip == upstream_node.protocol.transport.get_extra_info('peername')[0]:
-                        self.logger.info("Creating a connector stream with id %s to peer %s", stream_id, peer_ip)
                         connector_stream = SparseStream(stream_id)
                         connector_stream.add_protocol(upstream_node.protocol)
                         updated_destinations.add(connector_stream)
@@ -57,6 +56,7 @@ class StreamRouter(SparseSlice):
             if self.config.root_server_address is None:
                 for upstream_node in self.upstream_nodes:
                     connector_stream = self.runtime.add_connector(upstream_node.protocol, destinations)
+
                     upstream_host = upstream_node.protocol.transport.get_extra_info('peername')[0]
                     app_dag = { node_name: { f"{upstream_host}:{connector_stream.stream_id}"} }
                     upstream_node.push_app(app, { "name": "stream_pace_steering", "dag": app_dag })
