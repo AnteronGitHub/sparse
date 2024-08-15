@@ -10,7 +10,7 @@ from sparse_framework.stats import RequestStatistics, ClientRequestStatistics, S
 class SparseProtocol(asyncio.Protocol):
     """Sparse protocols provide transport for transmitting both dictionary data and files over network.
     """
-    def __init__(self, node = None):
+    def __init__(self):
         self.connection_id = str(uuid.uuid4())
         self.logger = logging.getLogger("sparse")
         self.transport = None
@@ -23,8 +23,6 @@ class SparseProtocol(asyncio.Protocol):
         self.app_name = None
         self.app_dag = None
 
-        self.node = node
-
     def clear_buffer(self):
         self.data_buffer = io.BytesIO()
         self.receiving_data = False
@@ -34,11 +32,6 @@ class SparseProtocol(asyncio.Protocol):
     def connection_made(self, transport):
         self.transport = transport
         peer_ip = self.transport.get_extra_info('peername')[0]
-
-    def connection_lost(self, exc):
-        self.node.stream_router.remove_upstream_node(self.transport)
-        peername = self.transport.get_extra_info('peername')
-        self.logger.debug(f"{peername} disconnected.")
 
     def data_received(self, data : bytes):
         if self.receiving_data:
@@ -64,15 +57,6 @@ class SparseProtocol(asyncio.Protocol):
             except pickle.UnpicklingError:
                 self.logger.error(f"Deserialization error. {len(data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
 
-    def file_received(self, data : bytes):
-        self.logger.debug("Received module for app '%s'", self.app_name)
-        app_archive_path = f"/tmp/{self.app_name}.zip"
-        with open(app_archive_path, "wb") as f:
-            f.write(data)
-
-        self.node.module_repo.add_app_module(self.app_name, app_archive_path)
-        self.node.stream_router.deploy_app(self.app_dag)
-
     def replace_destinations(self, destinations : set):
         peer_ip = self.transport.get_extra_info('peername')[0]
         updated_destinations = set()
@@ -86,19 +70,6 @@ class SparseProtocol(asyncio.Protocol):
                 updated_destinations.add(destination)
 
         return updated_destinations
-
-    def object_received(self, obj : dict):
-        if obj["op"] == "deploy_app":
-            self.send_payload({"op": "ack"})
-
-            app = obj["app"]
-            self.app_name = "sparseapp_" + app["name"]
-            self.app_dag = app["dag"]
-            for operator in self.app_dag:
-                self.logger.debug("Received operator %s with destinations %s", operator, self.app_dag[operator])
-                self.app_dag[operator] = self.replace_destinations(self.app_dag[operator])
-        elif obj["op"] == "data_tuple":
-            self.node.runtime.tuple_received(obj["stream_id"], obj["tuple"])
 
     def send_file(self, file_path):
         with open(file_path, "rb") as f:
@@ -132,9 +103,10 @@ class SparseProtocol(asyncio.Protocol):
 class ClusterClientProtocol(SparseProtocol):
     """Cluster client protocol creates an egress connection to another cluster node.
     """
-    def __init__(self, on_con_lost : asyncio.Future, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, on_con_lost : asyncio.Future, node):
+        super().__init__()
 
+        self.node = node
         self.on_con_lost = on_con_lost
 
     def connection_made(self, transport):
@@ -143,11 +115,100 @@ class ClusterClientProtocol(SparseProtocol):
 
         self.send_payload({"op": "connect_downstream"})
 
+    def connection_lost(self, exc):
+        self.node.stream_router.remove_upstream_node(self.transport)
+        peername = self.transport.get_extra_info('peername')
+        self.logger.debug(f"{peername} disconnected.")
+
+    def file_received(self, data : bytes):
+        self.send_payload({"op": "transfer_file", "type": "ack"})
+        self.logger.debug("Received module for app '%s'", self.app_name)
+        app_archive_path = f"/tmp/{self.app_name}.zip"
+        with open(app_archive_path, "wb") as f:
+            f.write(data)
+
+        self.node.module_repo.add_app_module(self.app_name, app_archive_path)
+        self.node.stream_router.deploy_app(self.app_dag)
+
+    def object_received(self, obj : dict):
+        if obj["op"] == "deploy_app":
+            self.send_payload({"op": "deploy_app", "type": "ack"})
+
+            app = obj["app"]
+            self.app_name = "sparseapp_" + app["name"]
+            self.app_dag = app["dag"]
+            for operator in self.app_dag:
+                self.logger.debug("Received operator %s with destinations %s", operator, self.app_dag[operator])
+                self.app_dag[operator] = self.replace_destinations(self.app_dag[operator])
+        elif obj["op"] == "data_tuple":
+            self.node.runtime.tuple_received(obj["stream_id"], obj["tuple"])
+
 class ClusterServerProtocol(SparseProtocol):
     """Cluster client protocol creates an ingress connection to another cluster node.
     """
+    def __init__(self, node):
+        super().__init__()
+
+        self.node = node
+
+    def connection_lost(self, exc):
+        self.node.stream_router.remove_upstream_node(self.transport)
+        peername = self.transport.get_extra_info('peername')
+        self.logger.debug(f"{peername} disconnected.")
+
+    def file_received(self, data : bytes):
+        self.send_payload({"op": "transfer_file", "type": "ack"})
+        self.logger.debug("Received module for app '%s'", self.app_name)
+        app_archive_path = f"/tmp/{self.app_name}.zip"
+        with open(app_archive_path, "wb") as f:
+            f.write(data)
+
+        self.node.module_repo.add_app_module(self.app_name, app_archive_path)
+        self.node.stream_router.deploy_app(self.app_dag)
+
     def object_received(self, obj : dict):
-        if obj["op"] == "connect_downstream":
+        if "type" in obj and obj["type"] == "ack":
+            return
+        if obj["op"] == "deploy_app":
+            self.send_payload({"op": "deploy_app", "type": "ack"})
+
+            app = obj["app"]
+            self.app_name = "sparseapp_" + app["name"]
+            self.app_dag = app["dag"]
+            for operator in self.app_dag:
+                self.logger.debug("Received operator %s with destinations %s", operator, self.app_dag[operator])
+                self.app_dag[operator] = self.replace_destinations(self.app_dag[operator])
+        elif obj["op"] == "data_tuple":
+            self.node.runtime.tuple_received(obj["stream_id"], obj["tuple"])
+        elif obj["op"] == "connect_downstream":
             self.node.stream_router.add_upstream_node(self)
-        else:
-            super().object_received(obj)
+
+class AppUploaderProtocol(SparseProtocol):
+    """App uploader protocol uploads a Sparse module including an application deployment to an open Sparse API.
+
+    Application is deployed in two phases. First its DAG is deployed as a dictionary, and then the application modules
+    are deployed as a ZIP archive.
+    """
+    def __init__(self, app : dict, archive_path : str, on_con_lost : asyncio.Future, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.on_con_lost = on_con_lost
+        self.app = app
+        self.archive_path = archive_path
+
+    def connection_made(self, transport):
+        super().connection_made(transport)
+
+        self.deploy_app(self.app)
+
+    def connection_lost(self, exc):
+        app_name = self.app["name"]
+        self.logger.info(f"Deployed application '{app_name}' successfully.")
+        if self.on_con_lost is not None:
+            self.on_con_lost.set_result(True)
+
+    def object_received(self, obj : dict):
+        if obj["op"] == "deploy_app":
+            self.migrate_app_module(self.archive_path)
+        elif obj["op"] == "transfer_file":
+            self.transport.close()

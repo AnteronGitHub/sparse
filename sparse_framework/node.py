@@ -6,7 +6,7 @@ import uuid
 
 from dotenv import load_dotenv
 
-__all__ = ["SparseNode", "SparseDeployer", "SparseSlice"]
+__all__ = ["SparseNode", "SparseSlice"]
 
 class SparseSlice:
     """Common super class for Sparse Node Slices.
@@ -42,7 +42,7 @@ class SparseNodeConfig:
         self.root_server_port = os.environ.get('SPARSE_ROOT_SERVER_PORT') or 50006
         self.app_repo_path = os.environ.get('SPARSE_APP_REPO_PATH') or '/usr/lib/sparse_framework/apps'
 
-from .deploy import ModuleRepository, SparseDeployer
+from .deploy import ModuleRepository
 from .runtime import SparseRuntime, StreamRouter
 from .stats import SparseQoSMonitorSlice
 from .protocols import ClusterClientProtocol, ClusterServerProtocol
@@ -63,22 +63,18 @@ class SparseNode:
         self.config = SparseNodeConfig()
         self.config.load_config()
 
-        self.sparse_deployer = None
-
         self.init_slices()
 
     def init_slices(self):
         self.runtime = SparseRuntime(self.config)
         self.module_repo = ModuleRepository(self.config)
         self.stream_router = StreamRouter(self.runtime, self.module_repo, self.config)
-        self.sparse_deployer = SparseDeployer(self.config)
 
         self.slices = [
                 SparseQoSMonitorSlice(self.config),
                 self.runtime,
                 self.stream_router,
                 self.module_repo,
-                self.sparse_deployer
                 ]
 
     def connected_to_server(self, protocol):
@@ -136,6 +132,3 @@ class SparseNode:
         futures = self.get_futures(is_worker=is_root)
 
         await asyncio.gather(*futures)
-
-    def deploy_app(self, app : dict):
-        self.sparse_deployer.deploy(app)
