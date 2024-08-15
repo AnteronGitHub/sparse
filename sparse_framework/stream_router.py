@@ -1,12 +1,22 @@
 import asyncio
 from graphlib import TopologicalSorter
 
-from ..node import SparseSlice
-from ..deploy.module_repo import ModuleRepository, SparseApp, UpstreamNode
-from ..protocols import SparseProtocol
-from ..stream_api import SparseStream
-
+from .node import SparseSlice
+from .deploy.module_repo import ModuleRepository, SparseApp
+from .protocols import SparseProtocol
+from .stream_api import SparseStream
 from .runtime import SparseRuntime
+
+class ClusterConnection:
+    """Cluster connection enables offloading operators to another cluster node.
+    """
+    def __init__(self, protocol : SparseProtocol, direction : str):
+        self.protocol = protocol
+        self.direction = direction
+
+    def push_app(self, app : SparseApp, app_dag : dict):
+        self.protocol.deploy_app(app_dag)
+        self.protocol.migrate_app_module(app.zip_path)
 
 class StreamRouter(SparseSlice):
     """Stream router then ensures that streams are routed according to application specifications. It receives
@@ -16,21 +26,23 @@ class StreamRouter(SparseSlice):
     def __init__(self, runtime : SparseRuntime, module_repo : ModuleRepository, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.upstream_nodes = set()
+        self.cluster_connections = set()
 
         self.runtime = runtime
         self.module_repo = module_repo
 
-    def add_upstream_node(self, protocol, direction = 'ingress'):
-        self.upstream_nodes.add(UpstreamNode(protocol))
+    def add_cluster_connection(self, protocol : SparseProtocol, direction : str = 'ingress'):
+        self.cluster_connections.add(ClusterConnection(protocol, direction))
 
         self.logger.info("Added %s connection with node %s", direction, protocol.transport.get_extra_info('peername')[0])
 
-    def remove_upstream_node(self, protocol):
-        for node in self.upstream_nodes:
-            if node.protocol == protocol:
-                self.upstream_nodes.discard(node)
-                self.logger.info("Removed upstream node from %s", protocol.transport.get_extra_info('peername')[0])
+    def remove_cluster_connection(self, protocol):
+        for connection in self.cluster_connections:
+            if connection.protocol == protocol:
+                self.cluster_connections.discard(connection)
+                self.logger.info("Removed %s connection with node %s", \
+                                 connection.direction, \
+                                 protocol.transport.get_extra_info('peername')[0])
                 return
 
     def update_destinations(self, destinations):
@@ -38,10 +50,10 @@ class StreamRouter(SparseSlice):
         for destination in destinations:
             if ":" in destination:
                 [peer_ip, stream_id] = destination.split(":")
-                for upstream_node in self.upstream_nodes:
-                    if peer_ip == upstream_node.protocol.transport.get_extra_info('peername')[0]:
+                for connection in self.cluster_connections:
+                    if peer_ip == connection.protocol.transport.get_extra_info('peername')[0]:
                         connector_stream = SparseStream(stream_id)
-                        connector_stream.add_protocol(upstream_node.protocol)
+                        connector_stream.add_protocol(connection.protocol)
                         updated_destinations.add(connector_stream)
             else:
                 updated_destinations.add(destination)
@@ -54,12 +66,12 @@ class StreamRouter(SparseSlice):
 
         if op_type == "Source":
             if self.config.root_server_address is None:
-                for upstream_node in self.upstream_nodes:
-                    connector_stream = self.runtime.add_connector(upstream_node.protocol, destinations)
+                for connection in self.cluster_connections:
+                    connector_stream = self.runtime.add_connector(connection.protocol, destinations)
 
-                    upstream_host = upstream_node.protocol.transport.get_extra_info('peername')[0]
+                    upstream_host = connection.protocol.transport.get_extra_info('peername')[0]
                     app_dag = { node_name: { f"{upstream_host}:{connector_stream.stream_id}"} }
-                    upstream_node.push_app(app, { "name": "stream_pace_steering", "dag": app_dag })
+                    connection.push_app(app, { "name": "stream_pace_steering", "dag": app_dag })
             else:
                 self.runtime.place_source(factory, self.update_destinations(destinations))
         elif op_type == "Sink":

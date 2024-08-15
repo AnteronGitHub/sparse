@@ -111,12 +111,12 @@ class ClusterClientProtocol(SparseProtocol):
 
     def connection_made(self, transport):
         super().connection_made(transport)
-        self.node.stream_router.add_upstream_node(self, direction="egress")
+        self.node.stream_router.add_cluster_connection(self, direction="egress")
 
         self.send_payload({"op": "connect_downstream"})
 
     def connection_lost(self, exc):
-        self.node.stream_router.remove_upstream_node(self.transport)
+        self.node.stream_router.remove_cluster_connection(self.transport)
         peername = self.transport.get_extra_info('peername')
         self.logger.debug(f"{peername} disconnected.")
 
@@ -152,7 +152,7 @@ class ClusterServerProtocol(SparseProtocol):
         self.node = node
 
     def connection_lost(self, exc):
-        self.node.stream_router.remove_upstream_node(self.transport)
+        self.node.stream_router.remove_cluster_connection(self.transport)
         peername = self.transport.get_extra_info('peername')
         self.logger.debug(f"{peername} disconnected.")
 
@@ -181,7 +181,7 @@ class ClusterServerProtocol(SparseProtocol):
         elif obj["op"] == "data_tuple":
             self.node.runtime.tuple_received(obj["stream_id"], obj["tuple"])
         elif obj["op"] == "connect_downstream":
-            self.node.stream_router.add_upstream_node(self)
+            self.node.stream_router.add_cluster_connection(self)
 
 class AppUploaderProtocol(SparseProtocol):
     """App uploader protocol uploads a Sparse module including an application deployment to an open Sparse API.

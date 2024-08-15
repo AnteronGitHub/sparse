@@ -22,14 +22,6 @@ class SparseApp:
 
         return self.app_module
 
-class UpstreamNode:
-    def __init__(self, protocol : SparseProtocol):
-        self.protocol = protocol
-
-    def push_app(self, app : SparseApp, app_dag : dict):
-        self.protocol.deploy_app(app_dag)
-        self.protocol.migrate_app_module(app.zip_path)
-
 class ModuleRepository(SparseSlice):
     """Module repository serves Sparse application modules. To distribute stream applications in the cluster, modules
     can be migrated over the network.

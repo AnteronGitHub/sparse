@@ -43,7 +43,8 @@ class SparseNodeConfig:
         self.app_repo_path = os.environ.get('SPARSE_APP_REPO_PATH') or '/usr/lib/sparse_framework/apps'
 
 from .deploy import ModuleRepository
-from .runtime import SparseRuntime, StreamRouter
+from .runtime import SparseRuntime
+from .stream_router import StreamRouter
 from .stats import SparseQoSMonitorSlice
 from .protocols import ClusterClientProtocol, ClusterServerProtocol
 
@@ -76,11 +77,6 @@ class SparseNode:
                 self.stream_router,
                 self.module_repo,
                 ]
-
-    def connected_to_server(self, protocol):
-        if self.source is not None:
-            self.source.stream.add_protocol(protocol)
-            self.source.emit()
 
     def get_futures(self, is_worker = True):
         """Collects node coroutines to be executed on startup.
