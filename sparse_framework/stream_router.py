@@ -31,7 +31,7 @@ class StreamRouter(SparseSlice):
         self.runtime = runtime
         self.module_repo = module_repo
 
-    def add_cluster_connection(self, protocol : SparseProtocol, direction : str = 'ingress'):
+    def add_cluster_connection(self, protocol : SparseProtocol, direction : str):
         self.cluster_connections.add(ClusterConnection(protocol, direction))
 
         self.logger.info("Added %s connection with node %s", direction, protocol.transport.get_extra_info('peername')[0])
@@ -45,13 +45,14 @@ class StreamRouter(SparseSlice):
                                  protocol.transport.get_extra_info('peername')[0])
                 return
 
-    def update_destinations(self, destinations : set):
+    def update_destinations(self, source : SparseProtocol, destinations : set):
+        source_ip = source.transport.get_extra_info('peername')[0]
         updated_destinations = set()
         for destination in destinations:
             if ":" in destination:
                 [peer_ip, stream_id] = destination.split(":")
                 for connection in self.cluster_connections:
-                    if peer_ip == connection.protocol.transport.get_extra_info('peername')[0]:
+                    if source_ip == connection.protocol.transport.get_extra_info('peername')[0]:
                         connector_stream = SparseStream(stream_id)
                         connector_stream.add_protocol(connection.protocol)
                         updated_destinations.add(connector_stream)
@@ -59,7 +60,7 @@ class StreamRouter(SparseSlice):
                 updated_destinations.add(destination)
         return updated_destinations
 
-    def deploy_operator(self, operator_name : str, destinations : set):
+    def deploy_operator(self, source : SparseProtocol, operator_name : str, destinations : set):
         """Deploys a Sparse operator to a cluster node from a local module.
         """
         factory, op_type, app = self.module_repo.get_factory(operator_name)
@@ -73,7 +74,7 @@ class StreamRouter(SparseSlice):
                     app_dag = { operator_name: { f"{upstream_host}:{connector_stream.stream_id}"} }
                     connection.push_app(app, { "name": "stream_pace_steering", "dag": app_dag })
             else:
-                self.runtime.place_source(factory, self.update_destinations(destinations))
+                self.runtime.place_source(factory, self.update_destinations(source, destinations))
         elif op_type == "Sink":
             self.runtime.place_sink(factory)
             return
@@ -81,7 +82,7 @@ class StreamRouter(SparseSlice):
             self.runtime.place_operator(factory, destinations)
             return
 
-    def deploy_app(self, app_dag : dict):
+    def create_deployment(self, source : SparseProtocol, app_dag : dict):
         """Deploys a Sparse application to a cluster.
 
         The application graph is sorted topologically so that each destination node is deployed before its sources.
@@ -97,4 +98,4 @@ class StreamRouter(SparseSlice):
                 destinations = {}
 
 
-            self.deploy_operator(operator_name, destinations)
+            self.deploy_operator(source, operator_name, destinations)

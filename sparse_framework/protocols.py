@@ -5,8 +5,6 @@ import pickle
 import struct
 import uuid
 
-from sparse_framework.stats import RequestStatistics, ClientRequestStatistics, ServerRequestStatistics
-
 class SparseProtocol(asyncio.Protocol):
     """Sparse protocols provide transport for transmitting both dictionary data and files over network.
     """
@@ -56,20 +54,6 @@ class SparseProtocol(asyncio.Protocol):
                 self.object_received(pickle.loads(data))
             except pickle.UnpicklingError:
                 self.logger.error(f"Deserialization error. {len(data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
-
-    def replace_destinations(self, destinations : set):
-        peer_ip = self.transport.get_extra_info('peername')[0]
-        updated_destinations = set()
-        for destination in destinations:
-            if ':' in destination:
-                [source_ip, stream_id] = destination.split(":")
-                # TODO: if source_ip is custom
-                self.logger.debug("Replacing source ip %s for destination %s to %s", source_ip, stream_id, peer_ip)
-                updated_destinations.add(f"{peer_ip}:{stream_id}")
-            else:
-                updated_destinations.add(destination)
-
-        return updated_destinations
 
     def send_file(self, file_path):
         with open(file_path, "rb") as f:
@@ -128,7 +112,7 @@ class ClusterClientProtocol(SparseProtocol):
             f.write(data)
 
         self.node.module_repo.add_app_module(self.app_name, app_archive_path)
-        self.node.stream_router.deploy_app(self.app_dag)
+        self.node.stream_router.create_deployment(self, self.app_dag)
 
     def object_received(self, obj : dict):
         if obj["op"] == "deploy_app":
@@ -137,9 +121,6 @@ class ClusterClientProtocol(SparseProtocol):
             app = obj["app"]
             self.app_name = "sparseapp_" + app["name"]
             self.app_dag = app["dag"]
-            for operator in self.app_dag:
-                self.logger.debug("Received operator %s with destinations %s", operator, self.app_dag[operator])
-                self.app_dag[operator] = self.replace_destinations(self.app_dag[operator])
         elif obj["op"] == "data_tuple":
             self.node.runtime.tuple_received(obj["stream_id"], obj["tuple"])
 
@@ -164,7 +145,7 @@ class ClusterServerProtocol(SparseProtocol):
             f.write(data)
 
         self.node.module_repo.add_app_module(self.app_name, app_archive_path)
-        self.node.stream_router.deploy_app(self.app_dag)
+        self.node.stream_router.create_deployment(self, self.app_dag)
 
     def object_received(self, obj : dict):
         if "type" in obj and obj["type"] == "ack":
@@ -175,13 +156,10 @@ class ClusterServerProtocol(SparseProtocol):
             app = obj["app"]
             self.app_name = "sparseapp_" + app["name"]
             self.app_dag = app["dag"]
-            for operator in self.app_dag:
-                self.logger.debug("Received operator %s with destinations %s", operator, self.app_dag[operator])
-                self.app_dag[operator] = self.replace_destinations(self.app_dag[operator])
         elif obj["op"] == "data_tuple":
             self.node.runtime.tuple_received(obj["stream_id"], obj["tuple"])
         elif obj["op"] == "connect_downstream":
-            self.node.stream_router.add_cluster_connection(self)
+            self.node.stream_router.add_cluster_connection(self, "ingress")
 
 class AppUploaderProtocol(SparseProtocol):
     """App uploader protocol uploads a Sparse module including an application deployment to an open Sparse API.
