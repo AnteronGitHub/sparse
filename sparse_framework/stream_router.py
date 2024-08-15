@@ -1,11 +1,11 @@
 import asyncio
 from graphlib import TopologicalSorter
 
+from .module_repo import ModuleRepository, SparseApp
 from .node import SparseSlice
-from .deploy.module_repo import ModuleRepository, SparseApp
 from .protocols import SparseProtocol
-from .stream_api import SparseStream
 from .runtime import SparseRuntime
+from .stream_api import SparseStream
 
 class ClusterConnection:
     """Cluster connection enables offloading operators to another cluster node.
@@ -45,7 +45,7 @@ class StreamRouter(SparseSlice):
                                  protocol.transport.get_extra_info('peername')[0])
                 return
 
-    def update_destinations(self, destinations):
+    def update_destinations(self, destinations : set):
         updated_destinations = set()
         for destination in destinations:
             if ":" in destination:
@@ -59,10 +59,10 @@ class StreamRouter(SparseSlice):
                 updated_destinations.add(destination)
         return updated_destinations
 
-    def deploy_node(self, node_name : str, destinations : set):
-        """Deploys a Sparse application node to a cluster node from a local module.
+    def deploy_operator(self, operator_name : str, destinations : set):
+        """Deploys a Sparse operator to a cluster node from a local module.
         """
-        factory, op_type, app = self.module_repo.get_factory(node_name)
+        factory, op_type, app = self.module_repo.get_factory(operator_name)
 
         if op_type == "Source":
             if self.config.root_server_address is None:
@@ -70,7 +70,7 @@ class StreamRouter(SparseSlice):
                     connector_stream = self.runtime.add_connector(connection.protocol, destinations)
 
                     upstream_host = connection.protocol.transport.get_extra_info('peername')[0]
-                    app_dag = { node_name: { f"{upstream_host}:{connector_stream.stream_id}"} }
+                    app_dag = { operator_name: { f"{upstream_host}:{connector_stream.stream_id}"} }
                     connection.push_app(app, { "name": "stream_pace_steering", "dag": app_dag })
             else:
                 self.runtime.place_source(factory, self.update_destinations(destinations))
@@ -90,11 +90,11 @@ class StreamRouter(SparseSlice):
         :param app_dag: A dictionary representing the Directed Asyclic Graph of application nodes.
         """
         self.logger.info("Creating deployment for app graph %s", app_dag)
-        for node_name in TopologicalSorter(app_dag).static_order():
-            if node_name in app_dag.keys():
-                destinations = app_dag[node_name]
+        for operator_name in TopologicalSorter(app_dag).static_order():
+            if operator_name in app_dag.keys():
+                destinations = app_dag[operator_name]
             else:
                 destinations = {}
 
 
-            self.deploy_node(node_name, destinations)
+            self.deploy_operator(operator_name, destinations)

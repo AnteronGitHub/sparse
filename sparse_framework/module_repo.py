@@ -4,8 +4,8 @@ import os
 import pickle
 import shutil
 
-from ..node import SparseSlice
-from ..protocols import SparseProtocol
+from .node import SparseSlice
+from .protocols import SparseProtocol
 
 class SparseApp:
     """A sparse app is a Python module that provides a set of sources, operators, and sinks.

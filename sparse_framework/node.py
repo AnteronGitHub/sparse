@@ -42,7 +42,7 @@ class SparseNodeConfig:
         self.root_server_port = os.environ.get('SPARSE_ROOT_SERVER_PORT') or 50006
         self.app_repo_path = os.environ.get('SPARSE_APP_REPO_PATH') or '/usr/lib/sparse_framework/apps'
 
-from .deploy import ModuleRepository
+from .module_repo import ModuleRepository
 from .runtime import SparseRuntime
 from .stream_router import StreamRouter
 from .stats import SparseQoSMonitorSlice
