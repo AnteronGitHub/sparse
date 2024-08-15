@@ -43,9 +43,9 @@ class SparseNodeConfig:
         self.app_repo_path = os.environ.get('SPARSE_APP_REPO_PATH') or '/usr/lib/sparse_framework/apps'
 
 from .deploy import ModuleRepository, SparseDeployer
-from .deploy.protocols import DownstreamConnectorProtocol
 from .runtime import SparseRuntime, StreamRouter
 from .stats import SparseQoSMonitorSlice
+from .protocols import ClusterClientProtocol, ClusterServerProtocol
 
 class SparseNode:
     """Common base class for each Node in a Sparse cluster.
@@ -100,10 +100,9 @@ class SparseNode:
         return futures
 
     async def start_app_server(self, listen_address = '0.0.0.0'):
-        from .protocols import SparseProtocol
         loop = asyncio.get_running_loop()
 
-        server = await loop.create_server(lambda: SparseProtocol(self), \
+        server = await loop.create_server(lambda: ClusterServerProtocol(self), \
                                           listen_address, \
                                           self.config.root_server_port)
         self.logger.info("Server listening to %s:%d", listen_address, self.config.root_server_port)
@@ -119,7 +118,7 @@ class SparseNode:
                 self.logger.debug("Connecting to downstream server on %s:%s.", \
                                   self.config.root_server_address, \
                                   self.config.root_server_port)
-                await loop.create_connection(lambda: DownstreamConnectorProtocol(on_con_lost, self), \
+                await loop.create_connection(lambda: ClusterClientProtocol(on_con_lost, self), \
                                              self.config.root_server_address, \
                                              self.config.root_server_port)
                 await on_con_lost

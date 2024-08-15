@@ -37,16 +37,3 @@ class SparseAppDeployerProtocol(SparseProtocol):
 
     def object_received(self, obj : dict):
         self.migrate_app_module(self.archive_path)
-
-class DownstreamConnectorProtocol(SparseProtocol):
-    def __init__(self, on_con_lost : asyncio.Future, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.on_con_lost = on_con_lost
-
-    def connection_made(self, transport):
-        super().connection_made(transport)
-        self.node.stream_router.add_upstream_node(self)
-
-        self.send_payload({"op": "connect_downstream"})
-

@@ -8,8 +8,7 @@ import uuid
 from sparse_framework.stats import RequestStatistics, ClientRequestStatistics, ServerRequestStatistics
 
 class SparseProtocol(asyncio.Protocol):
-    """Common base class for all Sparse network protocols. Provides low-level implementations for sending byte files
-    and Python objects.
+    """Sparse protocols provide transport for transmitting both dictionary data and files over network.
     """
     def __init__(self, node = None):
         self.connection_id = str(uuid.uuid4())
@@ -35,7 +34,6 @@ class SparseProtocol(asyncio.Protocol):
     def connection_made(self, transport):
         self.transport = transport
         peer_ip = self.transport.get_extra_info('peername')[0]
-        self.logger.info(f"Connected to peer with IP {peer_ip}.")
 
     def connection_lost(self, exc):
         self.node.stream_router.remove_upstream_node(self.transport)
@@ -99,9 +97,6 @@ class SparseProtocol(asyncio.Protocol):
             for operator in self.app_dag:
                 self.logger.debug("Received operator %s with destinations %s", operator, self.app_dag[operator])
                 self.app_dag[operator] = self.replace_destinations(self.app_dag[operator])
-
-        elif obj["op"] == "connect_downstream":
-            self.node.stream_router.add_upstream_node(self)
         elif obj["op"] == "data_tuple":
             self.node.runtime.tuple_received(obj["stream_id"], obj["tuple"])
 
@@ -134,84 +129,25 @@ class SparseProtocol(asyncio.Protocol):
         self.logger.debug("Migrating app module '%s'", archive_path)
         self.send_file(archive_path)
 
-class SparseClientProtocol(SparseProtocol):
-    """Protocol for streaming data over a TCP connection.
+class ClusterClientProtocol(SparseProtocol):
+    """Cluster client protocol creates an egress connection to another cluster node.
     """
-    def __init__(self, on_con_lost, node):
-        super().__init__(stats_queue = node.stats_queue, request_statistics_factory = ClientRequestStatistics)
+    def __init__(self, on_con_lost : asyncio.Future, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.on_con_lost = on_con_lost
-        self.node = node
 
     def connection_made(self, transport):
         super().connection_made(transport)
+        self.node.stream_router.add_upstream_node(self, direction="egress")
 
-        self.node.connected_to_server(self)
+        self.send_payload({"op": "connect_downstream"})
 
-    def send_payload(self, payload):
-        self.current_record = self.request_statistics.create_record("offload_task")
-        self.current_record.processing_started()
-
-        super().send_payload(payload)
-
-        self.current_record.request_sent()
-
-    def payload_received(self, payload):
-        self.current_record.response_received()
-        self.request_statistics.log_record(self.current_record)
-
-        stream_id = payload['stream_id']
-        self.logger.debug(f"Received payload for stream {stream_id}")
-
-        if 'sync' in payload.keys():
-            self.node.sync_received(self, payload['stream_id'], payload['sync'])
-
-        self.node.tuple_received(payload['stream_id'], payload['pred'], protocol=self)
-
-    def connection_lost(self, exc):
-        self.logger.info(self.request_statistics)
-        self.on_con_lost.set_result(self.request_statistics)
-
-class SparseServerProtocol(SparseProtocol):
-    def __init__(self, node, use_scheduling : bool = True):
-        super().__init__(stats_queue = node.stats_queue, request_statistics_factory = ServerRequestStatistics)
-
-        self.node = node
-
-        self.use_scheduling = use_scheduling
-
-    def payload_received(self, payload):
-        if payload["type"] == "operator":
-            self.logger.info("Received operator")
-            return
-        self.current_record = self.request_statistics.create_record(payload["op"])
-        self.current_record.request_received()
-
-        stream_id = payload['stream_id']
-        new_tuple = payload['activation']
-        self.node.tuple_received(stream_id, new_tuple, protocol=self)
-
-    def send_payload(self, stream_id, result, batch_index = 0):
-        payload = { "pred": result, 'stream_id': stream_id, 'sync': 0 }
-        if self.use_scheduling:
-            # Quantize queueing time to millisecond precision
-            queueing_time_ms = int(self.request_statistics.get_queueing_time(self.current_record) * 1000)
-
-            # Use externally measured median task latency
-            task_latency_ms = 9
-
-            # Use modulo arithmetics to spread batch requests
-            sync_delay_ms = batch_index * task_latency_ms + queueing_time_ms % task_latency_ms
-
-            self.current_record.set_sync_delay_ms(sync_delay_ms)
-            payload["sync"] = sync_delay_ms / 1000.0
-
-        super().send_payload(payload)
-
-        self.current_record.response_sent()
-        self.request_statistics.log_record(self.current_record)
-
-    def connection_lost(self, exc):
-        self.logger.info(self.request_statistics)
-
-        super().connection_lost(exc)
+class ClusterServerProtocol(SparseProtocol):
+    """Cluster client protocol creates an ingress connection to another cluster node.
+    """
+    def object_received(self, obj : dict):
+        if obj["op"] == "connect_downstream":
+            self.node.stream_router.add_upstream_node(self)
+        else:
+            super().object_received(obj)

@@ -21,10 +21,10 @@ class StreamRouter(SparseSlice):
         self.runtime = runtime
         self.module_repo = module_repo
 
-    def add_upstream_node(self, protocol):
+    def add_upstream_node(self, protocol, direction = 'ingress'):
         self.upstream_nodes.add(UpstreamNode(protocol))
 
-        self.logger.info("Added a new upstream node from %s", protocol.transport.get_extra_info('peername')[0])
+        self.logger.info("Added %s connection with node %s", direction, protocol.transport.get_extra_info('peername')[0])
 
     def remove_upstream_node(self, protocol):
         for node in self.upstream_nodes:
