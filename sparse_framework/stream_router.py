@@ -1,11 +1,18 @@
 import asyncio
 from graphlib import TopologicalSorter
 
-from .module_repo import ModuleRepository, SparseApp
+from .module_repo import ModuleRepository, SparseModule
 from .node import SparseSlice
 from .protocols import SparseProtocol
 from .runtime import SparseRuntime
 from .stream_api import SparseStream
+
+class SparseDeployment:
+    """Sparse deployment specifies a data flow between sources, operators and sinks.
+    """
+    def __init__(self, name : str, dag : dict):
+        self.name = name
+        self.dag = dag
 
 class ClusterConnection:
     """Cluster connection enables offloading operators to another cluster node.
@@ -14,9 +21,11 @@ class ClusterConnection:
         self.protocol = protocol
         self.direction = direction
 
-    def push_app(self, app : SparseApp, app_dag : dict):
-        self.protocol.deploy_app(app_dag)
-        self.protocol.migrate_app_module(app.zip_path)
+    def transfer_module(self, app : SparseModule):
+        self.protocol.transfer_module(app)
+
+    def create_deployment(self, app_dag : dict):
+        self.protocol.create_deployment(app_dag)
 
 class StreamRouter(SparseSlice):
     """Stream router then ensures that streams are routed according to application specifications. It receives
@@ -63,7 +72,7 @@ class StreamRouter(SparseSlice):
     def deploy_operator(self, source : SparseProtocol, operator_name : str, destinations : set):
         """Deploys a Sparse operator to a cluster node from a local module.
         """
-        factory, op_type, app = self.module_repo.get_factory(operator_name)
+        factory, op_type, module = self.module_repo.get_factory(operator_name)
 
         if op_type == "Source":
             if self.config.root_server_address is None:
@@ -71,8 +80,9 @@ class StreamRouter(SparseSlice):
                     connector_stream = self.runtime.add_connector(connection.protocol, destinations)
 
                     upstream_host = connection.protocol.transport.get_extra_info('peername')[0]
+
                     app_dag = { operator_name: { f"{upstream_host}:{connector_stream.stream_id}"} }
-                    connection.push_app(app, { "name": "stream_pace_steering", "dag": app_dag })
+                    connection.create_deployment({ "name": "stream_pace_steering", "dag": app_dag })
             else:
                 self.runtime.place_source(factory, self.update_destinations(source, destinations))
         elif op_type == "Sink":
@@ -81,6 +91,14 @@ class StreamRouter(SparseSlice):
         elif op_type == "Operator":
             self.runtime.place_operator(factory, destinations)
             return
+
+    def distribute_module(self, source : SparseProtocol, module : SparseModule):
+        for connection in self.cluster_connections:
+            if connection.protocol != source:
+                self.logger.info("Distributing module %s to node %s",
+                                 module.name,
+                                 connection.protocol.transport.get_extra_info('peername')[0])
+                connection.transfer_module(module)
 
     def create_deployment(self, source : SparseProtocol, app_dag : dict):
         """Deploys a Sparse application to a cluster.

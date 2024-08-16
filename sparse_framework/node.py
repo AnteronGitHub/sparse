@@ -46,7 +46,6 @@ from .module_repo import ModuleRepository
 from .runtime import SparseRuntime
 from .stream_router import StreamRouter
 from .stats import SparseQoSMonitorSlice
-from .protocols import ClusterClientProtocol, ClusterServerProtocol
 
 class SparseNode:
     """Common base class for each Node in a Sparse cluster.
@@ -92,6 +91,8 @@ class SparseNode:
         return futures
 
     async def start_app_server(self, listen_address = '0.0.0.0'):
+        from .protocols import ClusterServerProtocol
+
         loop = asyncio.get_running_loop()
 
         server = await loop.create_server(lambda: ClusterServerProtocol(self), \
@@ -102,6 +103,8 @@ class SparseNode:
             await server.serve_forever()
 
     async def connect_to_downstream_server(self):
+        from .protocols import ClusterClientProtocol
+
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
 

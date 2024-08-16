@@ -4,7 +4,7 @@ import os
 import shutil
 import tempfile
 
-from .protocols import AppUploaderProtocol
+from .protocols import ModuleUploaderProtocol, DeploymentPostProtocol
 
 class SparseAPIClient:
     """Sparse API client can be used to communicate with the Sparse API to upload applications.
@@ -31,10 +31,14 @@ class SparseAPIClient:
         while True:
             try:
                 self.logger.debug("Connecting to root server on %s:%s.", self.api_host, self.api_port)
-                await loop.create_connection(lambda: AppUploaderProtocol(app, archive_path, on_con_lost), \
+                await loop.create_connection(lambda: ModuleUploaderProtocol(app["name"], archive_path, on_con_lost), \
                                              self.api_host, \
                                              self.api_port)
                 await on_con_lost
+                await asyncio.sleep(1)
+                await loop.create_connection(lambda: DeploymentPostProtocol(app, on_con_lost), \
+                                             self.api_host, \
+                                             self.api_port)
                 break
             except ConnectionRefusedError:
                 self.logger.warn("Connection refused. Re-trying in 5 seconds.")
