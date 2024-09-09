@@ -36,6 +36,7 @@ class StreamRouter(SparseSlice):
         super().__init__(*args, **kwargs)
 
         self.cluster_connections = set()
+        self.source_streams = set()
 
         self.runtime = runtime
         self.module_repo = module_repo
@@ -44,6 +45,12 @@ class StreamRouter(SparseSlice):
         self.cluster_connections.add(ClusterConnection(protocol, direction))
 
         self.logger.info("Added %s connection with node %s", direction, protocol.transport.get_extra_info('peername')[0])
+
+    def add_source_stream(self, stream_type : str, protocol : SparseProtocol):
+        stream = self.runtime.add_connector(stream_type, protocol, {})
+        self.source_streams.add(stream)
+
+        return stream
 
     def remove_cluster_connection(self, protocol):
         for connection in self.cluster_connections:
@@ -115,5 +122,9 @@ class StreamRouter(SparseSlice):
             else:
                 destinations = {}
 
+            for source_stream in self.source_streams:
+                if source_stream.stream_type == operator_name:
+                    self.runtime.add_destinations(source_stream, destinations)
+                    return
 
             self.deploy_operator(source, operator_name, destinations)

@@ -28,7 +28,6 @@ class SparseProtocol(asyncio.Protocol):
 
     def connection_made(self, transport):
         self.transport = transport
-        peer_ip = self.transport.get_extra_info('peername')[0]
 
     def data_received(self, data : bytes):
         if self.receiving_data:
@@ -171,6 +170,10 @@ class ClusterServerProtocol(ClusterProtocol):
         if obj["op"] == "connect_downstream":
             self.node.stream_router.add_cluster_connection(self, "ingress")
             self.send_payload({"op": "connect_downstream", "status": "success"})
+        elif obj["op"] == "create_source_stream":
+            stream_type = obj["stream_type"]
+            stream = self.node.stream_router.add_source_stream(stream_type, self)
+            self.send_payload({"op": "create_source_stream", "status": "success", "stream_id": stream.stream_id})
         else:
             super().object_received(obj)
 
@@ -232,5 +235,29 @@ class DeploymentPostProtocol(SparseProtocol):
             if obj["status"] == "success":
                 self.logger.info("Deployed application '%s' successfully.", self.deployment)
                 self.transport.close()
+        else:
+            super().object_received(obj)
+
+class SourceProtocol(SparseProtocol):
+    """Source protocol connects to a cluster end point and receives a stream id that can be used to transmit data
+    tuples using the established connection.
+    """
+    def __init__(self, stream_type : str, on_stream_initialized : asyncio.Future):
+        super().__init__()
+        self.stream_type = stream_type
+        self.on_stream_initialized = on_stream_initialized
+
+    def connection_made(self, transport):
+        super().connection_made(transport)
+        self.send_payload({"op": "create_source_stream", "stream_type": self.stream_type})
+
+    def object_received(self, obj : dict):
+        if obj["op"] == "create_source_stream":
+            if obj["status"] == "success":
+                stream_id = obj["stream_id"]
+                from .stream_api import SparseStream
+                stream = SparseStream(self.stream_type, stream_id)
+                stream.add_protocol(self)
+                self.on_stream_initialized.set_result(stream)
         else:
             super().object_received(obj)
