@@ -25,8 +25,8 @@ class SparseRuntime(SparseSlice):
 
         return futures
 
-    def add_connector(self, stream_type : str, protocol, destinations):
-        connector_stream = SparseStream(stream_type)
+    def add_connector(self, stream_type : str, protocol, destinations, stream_id : str = None):
+        connector_stream = SparseStream(stream_type, stream_id)
         self.add_destinations(connector_stream, destinations)
         self.connector_streams.add(connector_stream)
         self.logger.info("Stream %s type '%s' listening to peer %s",

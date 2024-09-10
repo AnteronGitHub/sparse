@@ -46,8 +46,14 @@ class StreamRouter(SparseSlice):
 
         self.logger.info("Added %s connection with node %s", direction, protocol.transport.get_extra_info('peername')[0])
 
-    def add_source_stream(self, stream_type : str, protocol : SparseProtocol):
-        stream = self.runtime.add_connector(stream_type, protocol, {})
+    def add_source_stream(self, stream_type : str, protocol : SparseProtocol, stream_id : str = None):
+        stream = self.runtime.add_connector(stream_type, protocol, {}, stream_id)
+
+        for connection in self.cluster_connections:
+            if connection.protocol != protocol:
+                connection.protocol.create_source_stream(stream_type, stream.stream_id)
+                stream.add_protocol(connection.protocol)
+
         self.source_streams.add(stream)
 
         return stream
@@ -81,18 +87,12 @@ class StreamRouter(SparseSlice):
         """
         factory, op_type, module = self.module_repo.get_factory(operator_name)
 
-        if op_type == "Source":
-            if self.config.root_server_address is None:
-                for connection in self.cluster_connections:
-                    connector_stream = self.runtime.add_connector(connection.protocol, destinations)
-
-                    upstream_host = connection.protocol.transport.get_extra_info('peername')[0]
-
-                    app_dag = { operator_name: { f"{upstream_host}:{connector_stream.stream_id}"} }
-                    connection.create_deployment({ "name": "stream_pace_steering", "dag": app_dag })
-            else:
-                self.runtime.place_source(factory, self.update_destinations(source, destinations))
-        elif op_type == "Sink":
+        # if op_type == "Source":
+        #     for source_stream in self.source_streams:
+        #         self.logger.info("Checking source stream '%s' against operator '%s'", source_stream.stream_type, operator_name)
+        #         if source_stream.stream_type == operator_name:
+        #             self.runtime.add_destinations(source_stream, destinations)
+        if op_type == "Sink":
             self.runtime.place_sink(factory)
             return
         elif op_type == "Operator":

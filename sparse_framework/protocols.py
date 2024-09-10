@@ -77,6 +77,9 @@ class SparseProtocol(asyncio.Protocol):
     def create_deployment(self, app : dict):
         self.send_payload({"op": "create_deployment", "app": app})
 
+    def create_source_stream(self, stream_type : str, stream_id : str = None):
+        self.send_payload({"op": "create_source_stream", "stream_type": stream_type, "stream_id": stream_id})
+
     def send_data_tuple(self, stream_id : str, data_tuple):
         """Initiates app deployment process by uploading the app dag.
         """
@@ -172,7 +175,12 @@ class ClusterServerProtocol(ClusterProtocol):
             self.send_payload({"op": "connect_downstream", "status": "success"})
         elif obj["op"] == "create_source_stream":
             stream_type = obj["stream_type"]
-            stream = self.node.stream_router.add_source_stream(stream_type, self)
+            if "stream_id" in obj.keys():
+                stream_id = obj["stream_id"]
+            else:
+                stream_id = None
+
+            stream = self.node.stream_router.add_source_stream(stream_type, self, stream_id)
             self.send_payload({"op": "create_source_stream", "status": "success", "stream_id": stream.stream_id})
         else:
             super().object_received(obj)
@@ -249,7 +257,7 @@ class SourceProtocol(SparseProtocol):
 
     def connection_made(self, transport):
         super().connection_made(transport)
-        self.send_payload({"op": "create_source_stream", "stream_type": self.stream_type})
+        self.create_source_stream(self.stream_type)
 
     def object_received(self, obj : dict):
         if obj["op"] == "create_source_stream":
