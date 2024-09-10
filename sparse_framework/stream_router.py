@@ -87,11 +87,6 @@ class StreamRouter(SparseSlice):
         """
         factory, op_type, module = self.module_repo.get_factory(operator_name)
 
-        # if op_type == "Source":
-        #     for source_stream in self.source_streams:
-        #         self.logger.info("Checking source stream '%s' against operator '%s'", source_stream.stream_type, operator_name)
-        #         if source_stream.stream_type == operator_name:
-        #             self.runtime.add_destinations(source_stream, destinations)
         if op_type == "Sink":
             self.runtime.place_sink(factory)
             return
