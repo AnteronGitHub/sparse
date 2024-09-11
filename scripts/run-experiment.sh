@@ -22,7 +22,7 @@ wait_for_deployment () {
 }
 
 deploy_nodes () {
-  deploy_sparse_resource "model_server"
+#  deploy_sparse_resource "model_server"
   SPARSE_EXAMPLE="splitnn"
 
   case $SPARSE_SUITE in

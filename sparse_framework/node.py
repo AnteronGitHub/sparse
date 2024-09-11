@@ -1,14 +1,25 @@
 import asyncio
 import logging
 import os
+import pickle
 import uuid
 
 from dotenv import load_dotenv
 
-from .stats import MonitorDaemon
-from .task_executor import TaskExecutor
+__all__ = ["SparseNode", "SparseDeployer", "SparseSlice"]
 
-__all__ = ["SparseNode"]
+class SparseSlice:
+    """Common super class for Sparse Node Slices.
+
+    Slices are analogious to services in service oriented architecture. Each slice provides a coherent feature for a
+    node. Additionally, slices may utilize features from other slices to provide higher-level features.
+    """
+    def __init__(self, config):
+        self.logger = logging.getLogger("sparse")
+        self.config = config
+
+    def get_futures(self, futures):
+        return futures
 
 class SparseNodeConfig:
     def __init__(self):
@@ -16,8 +27,8 @@ class SparseNodeConfig:
         self.upstream_port = None
         self.listen_address = None
         self.listen_port = None
-        self.model_server_address = None
-        self.model_server_port = None
+        self.root_server_address = None
+        self.root_server_port = None
 
     def load_config(self):
         load_dotenv(dotenv_path=".env")
@@ -26,14 +37,19 @@ class SparseNodeConfig:
         self.upstream_port = os.environ.get('MASTER_UPSTREAM_PORT') or 50007
         self.listen_address = os.environ.get('WORKER_LISTEN_ADDRESS') or '127.0.0.1'
         self.listen_port = os.environ.get('WORKER_LISTEN_PORT') or 50007
-        self.model_server_address = os.environ.get('SPARSE_MODEL_SERVER_ADDRESS') or '0.0.0.0'
-        self.model_server_port = os.environ.get('SPARSE_MODEL_SERVER_PORT') or 50006
+        self.root_server_address = os.environ.get('SPARSE_ROOT_SERVER_ADDRESS') or '0.0.0.0'
+        self.root_server_port = os.environ.get('SPARSE_ROOT_SERVER_PORT') or 50006
+        self.app_repo_path = os.environ.get('SPARSE_APP_REPO_PATH') or '/usr/lib/sparse_framework/apps'
+
+from .deploy import SparseModuleMigratorSlice, SparseDeployer
+from .runtime import SparseStreamRuntimeSlice, SparseStreamManagerSlice, SparseMasterSlice
+from .stats import SparseQoSMonitorSlice
 
 class SparseNode:
     """Common base class for each Node in a Sparse cluster.
 
-    Nodes maintain asynchronous task loop for distributed pipelines. Nodes add tasks such as opening or listening for
-    network connections.
+    Nodes maintain the task loop for its components. Each functionality, including the runtime is implemented by slices
+    that the node houses.
     """
 
     def __init__(self, node_id : str = str(uuid.uuid4()), log_level : int = logging.INFO):
@@ -45,41 +61,48 @@ class SparseNode:
         self.config = SparseNodeConfig()
         self.config.load_config()
 
-        self.stats_queue = None
+        self.sparse_deployer = None
 
-    def get_futures(self):
-        """Common base class for each Node in a Sparse cluster.
+        self.init_slices()
 
-        Nodes maintain asynchronous task loop for distributed pipelines. Nodes add tasks such as opening or listening for
-        network connections.
+    def init_slices(self):
+        runtime_slice = SparseStreamRuntimeSlice(self.config)
+        stream_manager_slice = SparseStreamManagerSlice(runtime_slice, self.config)
+        migrator_slice = SparseModuleMigratorSlice(stream_manager_slice, self.config)
+        self.sparse_deployer = SparseDeployer(self.config)
+
+        self.slices = [
+                SparseQoSMonitorSlice(self.config),
+                runtime_slice,
+                stream_manager_slice,
+                migrator_slice,
+                self.sparse_deployer
+                ]
+
+    def connected_to_server(self, protocol):
+        if self.source is not None:
+            self.source.stream.add_protocol(protocol)
+            self.source.emit()
+
+    def get_futures(self, is_worker = True):
+        """Collects node coroutines to be executed on startup.
         """
-        self.stats_queue = asyncio.Queue()
-        self.monitor_daemon = MonitorDaemon(self.stats_queue)
-        return [self.monitor_daemon.start()]
+        futures = []
 
-    async def start(self):
+        for node_slice in self.slices:
+            futures = node_slice.get_futures(futures)
+
+        return futures
+
+    async def start(self, is_root = True, operator_factory = None, source_factory = None, sink_factory = None):
         """Starts the main task loop by collecting all of the future objects.
 
         NB! When subclassing SparseNode instead of extending this function the user should use the get_futures
         function.
         """
-        await asyncio.gather(*self.get_futures())
+        futures = self.get_futures(is_worker=is_root)
 
-    async def connect_to_server(self, protocol_factory, host, port, callback = None):
-        loop = asyncio.get_running_loop()
-        on_con_lost = loop.create_future()
+        await asyncio.gather(*futures)
 
-        await loop.create_connection(protocol_factory(on_con_lost, self.stats_queue), host, port)
-        result = await on_con_lost
-        if callback is not None:
-            callback(result)
-
-        return result
-
-    async def start_server(self, protocol_factory, addr, port):
-        loop = asyncio.get_running_loop()
-
-        self.logger.info(f"Listening to '{addr}:{port}'")
-        server = await loop.create_server(protocol_factory, addr, port)
-        async with server:
-            await server.serve_forever()
+    def deploy_app(self, app : dict):
+        self.sparse_deployer.deploy(app)

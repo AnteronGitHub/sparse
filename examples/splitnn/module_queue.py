@@ -22,6 +22,8 @@ class ModuleQueue(ModuleList):
         return module
 
     def load_parameters(self, data_path : str, model_name : str):
+        if data_path is None:
+            return False
         for i, p in enumerate(self):
             filepath = os.path.join(data_path, f"{model_name}_{self.start+i}.pt")
             if not os.path.exists(filepath):
