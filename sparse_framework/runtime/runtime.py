@@ -39,7 +39,7 @@ class SparseRuntime(SparseSlice):
         for sink in self.sinks:
             if sink.name in destinations:
                 stream.add_listener(sink)
-                self.logger.info("Connected sink %s to stream %s", sink.id, stream.stream_id)
+                self.logger.info("Connected sink '%s' to stream %s", sink.name, stream.stream_id)
 
         for o in self.operators:
             if o.name in destinations:
@@ -56,9 +56,9 @@ class SparseRuntime(SparseSlice):
         self.add_destinations(o.output_stream, destinations)
 
     def place_sink(self, sink_factory):
-        sink = sink_factory(self.logger)
+        sink = sink_factory()
         self.sinks.add(sink)
-        self.logger.info("Created sink %s for '%s'", sink.id, sink.name)
+        self.logger.info("Created sink '%s'", sink.name)
 
     def place_source(self, source_factory, destinations : set):
         source = source_factory()

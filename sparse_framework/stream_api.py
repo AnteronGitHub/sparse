@@ -4,7 +4,7 @@ import logging
 
 from .protocols import SparseProtocol
 
-__all__ = ["SparseStream", "SparseSink", "SparseOperator"]
+__all__ = ["SparseStream", "SparseOperator"]
 
 class SparseStream:
     def __init__(self, stream_type : str, stream_id : str = None):
@@ -46,18 +46,6 @@ class SparseStream:
             self.operator.buffer_input(data_tuple)
         elif self.protocol is not None:
             self.protocol.send_data_tuple(self.stream_id, data_tuple)
-
-class SparseSink:
-    def __init__(self, logger):
-        self.logger = logger
-        self.id = str(uuid.uuid4())
-
-    @property
-    def name(self):
-        return self.__class__.__name__
-
-    def tuple_received(self, new_tuple):
-        pass
 
 class SparseOperator:
     def __init__(self, use_batching : bool = True):
