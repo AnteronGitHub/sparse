@@ -1,9 +1,5 @@
-from .runtime_slice import SparseStreamRuntimeSlice
-from .stream_manager_slice import SparseStreamManagerSlice
-from .master_slice import SparseMasterSlice
+from .runtime import SparseRuntime
 
 __all__ = (
-        "SparseStreamRuntimeSlice",
-        "SparseStreamManagerSlice",
-        "SparseMasterSlice"
+        "SparseRuntime"
         )

@@ -5,11 +5,10 @@ import pickle
 import struct
 import uuid
 
-from sparse_framework.stats import RequestStatistics, ClientRequestStatistics, ServerRequestStatistics
+from .module_repo import SparseModule
 
 class SparseProtocol(asyncio.Protocol):
-    """Common base class for all Sparse network protocols. Provides low-level implementations for sending byte files
-    and Python objects.
+    """Sparse protocols provide transport for transmitting both dictionary data and files over network.
     """
     def __init__(self):
         self.connection_id = str(uuid.uuid4())
@@ -29,12 +28,6 @@ class SparseProtocol(asyncio.Protocol):
 
     def connection_made(self, transport):
         self.transport = transport
-        peername = self.transport.get_extra_info('peername')
-        self.logger.debug(f"Connected to {peername}.")
-
-    def connection_lost(self, exc):
-        peername = self.transport.get_extra_info('peername')
-        self.logger.debug(f"{peername} disconnected.")
 
     def data_received(self, data : bytes):
         if self.receiving_data:
@@ -81,84 +74,198 @@ class SparseProtocol(asyncio.Protocol):
         self.transport.write(struct.pack("!sQ", b"o", payload_size))
         self.transport.write(payload_data)
 
-class SparseClientProtocol(SparseProtocol):
-    """Protocol for streaming data over a TCP connection.
+    def create_deployment(self, app : dict):
+        self.send_payload({"op": "create_deployment", "app": app})
+
+    def create_source_stream(self, stream_type : str, stream_id : str = None):
+        self.send_payload({"op": "create_source_stream", "stream_type": stream_type, "stream_id": stream_id})
+
+    def send_data_tuple(self, stream_id : str, data_tuple):
+        """Initiates app deployment process by uploading the app dag.
+        """
+        self.send_payload({"op": "data_tuple", "stream_id": stream_id, "tuple": data_tuple })
+
+class ClusterProtocol(SparseProtocol):
+    def __init__(self, node):
+        super().__init__()
+        self.node = node
+
+        self.app_name = None
+        self.app_dag = None
+
+        self.transferring_module = None
+        self.receiving_module_name = None
+
+    def connection_lost(self, exc):
+        self.node.stream_router.remove_cluster_connection(self.transport)
+        peername = self.transport.get_extra_info('peername')
+        self.logger.debug(f"{peername} disconnected.")
+
+    def object_received(self, obj : dict):
+        if obj["op"] == "init_module_transfer":
+            if "status" in obj:
+                if obj["status"] == "accepted":
+                    self.send_file(self.transferring_module.zip_path)
+                else:
+                    self.logger.error("Module transfer initialization ended in status '%s'", obj["status"])
+            else:
+                if self.receiving_module_name is None:
+                    self.receiving_module_name = obj["module_name"]
+                    self.send_payload({"op": "init_module_transfer", "status": "accepted"})
+                else:
+                    self.send_payload({"op": "init_module_transfer", "status": "rejected"})
+        elif obj["op"] == "create_deployment":
+            if "status" in obj:
+                if obj["status"] == "success":
+                    self.logger.info("Created deployment")
+                else:
+                    self.logger.info("Unable to create a deployment")
+            else:
+                app = obj["app"]
+                self.node.stream_router.create_deployment(self, app["dag"])
+
+                self.send_payload({"op": "create_deployment", "status": "success"})
+        elif obj["op"] == "data_tuple":
+            self.node.runtime.tuple_received(obj["stream_id"], obj["tuple"])
+        else:
+            super().object_received(obj)
+
+    def transfer_module(self, module : SparseModule):
+        self.transferring_module = module
+
+        self.send_payload({ "op": "init_module_transfer", "module_name": self.transferring_module.name })
+
+    def file_received(self, data : bytes):
+        app_archive_path = f"/tmp/{self.app_name}.zip"
+        with open(app_archive_path, "wb") as f:
+            f.write(data)
+
+        module = self.node.module_repo.add_app_module(self.receiving_module_name, app_archive_path)
+        self.node.stream_router.distribute_module(self, module)
+        self.receiving_module_name = None
+
+        self.send_payload({"op": "transfer_file", "status": "success"})
+
+class ClusterClientProtocol(ClusterProtocol):
+    """Cluster client protocol creates an egress connection to another cluster node.
     """
-    def __init__(self, on_con_lost, node):
-        super().__init__(stats_queue = node.stats_queue, request_statistics_factory = ClientRequestStatistics)
+    def __init__(self, on_con_lost : asyncio.Future, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
         self.on_con_lost = on_con_lost
-        self.node = node
 
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        self.node.connected_to_server(self)
+        self.send_payload({"op": "connect_downstream"})
 
-    def send_payload(self, payload):
-        self.current_record = self.request_statistics.create_record("offload_task")
-        self.current_record.processing_started()
+    def object_received(self, obj : dict):
+        if obj["op"] == "connect_downstream":
+            if "status" in obj and obj["status"] == "success":
+                self.node.stream_router.add_cluster_connection(self, direction="egress")
+        else:
+            super().object_received(obj)
 
-        super().send_payload(payload)
+class ClusterServerProtocol(ClusterProtocol):
+    """Cluster client protocol creates an ingress connection to another cluster node.
+    """
+    def object_received(self, obj : dict):
+        if obj["op"] == "connect_downstream":
+            self.node.stream_router.add_cluster_connection(self, "ingress")
+            self.send_payload({"op": "connect_downstream", "status": "success"})
+        elif obj["op"] == "create_source_stream":
+            stream_type = obj["stream_type"]
+            if "stream_id" in obj.keys():
+                stream_id = obj["stream_id"]
+            else:
+                stream_id = None
 
-        self.current_record.request_sent()
+            stream = self.node.stream_router.add_source_stream(stream_type, self, stream_id)
+            self.send_payload({"op": "create_source_stream", "status": "success", "stream_id": stream.stream_id})
+        else:
+            super().object_received(obj)
 
-    def payload_received(self, payload):
-        self.current_record.response_received()
-        self.request_statistics.log_record(self.current_record)
+class ModuleUploaderProtocol(SparseProtocol):
+    """App uploader protocol uploads a Sparse module including an application deployment to an open Sparse API.
 
-        stream_id = payload['stream_id']
-        self.logger.debug(f"Received payload for stream {stream_id}")
+    Application is deployed in two phases. First its DAG is deployed as a dictionary, and then the application modules
+    are deployed as a ZIP archive.
+    """
+    def __init__(self, module_name : str, archive_path : str, on_con_lost : asyncio.Future, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
-        if 'sync' in payload.keys():
-            self.node.sync_received(self, payload['stream_id'], payload['sync'])
+        self.on_con_lost = on_con_lost
+        self.module_name = module_name
+        self.archive_path = archive_path
 
-        self.node.tuple_received(payload['stream_id'], payload['pred'], protocol=self)
+    def connection_made(self, transport):
+        super().connection_made(transport)
 
-    def connection_lost(self, exc):
-        self.logger.info(self.request_statistics)
-        self.on_con_lost.set_result(self.request_statistics)
-
-class SparseServerProtocol(SparseProtocol):
-    def __init__(self, node, use_scheduling : bool = True):
-        super().__init__(stats_queue = node.stats_queue, request_statistics_factory = ServerRequestStatistics)
-
-        self.node = node
-
-        self.use_scheduling = use_scheduling
-
-    def payload_received(self, payload):
-        if payload["type"] == "operator":
-            self.logger.info("Received operator")
-            return
-        self.current_record = self.request_statistics.create_record(payload["op"])
-        self.current_record.request_received()
-
-        stream_id = payload['stream_id']
-        new_tuple = payload['activation']
-        self.node.tuple_received(stream_id, new_tuple, protocol=self)
-
-    def send_payload(self, stream_id, result, batch_index = 0):
-        payload = { "pred": result, 'stream_id': stream_id, 'sync': 0 }
-        if self.use_scheduling:
-            # Quantize queueing time to millisecond precision
-            queueing_time_ms = int(self.request_statistics.get_queueing_time(self.current_record) * 1000)
-
-            # Use externally measured median task latency
-            task_latency_ms = 9
-
-            # Use modulo arithmetics to spread batch requests
-            sync_delay_ms = batch_index * task_latency_ms + queueing_time_ms % task_latency_ms
-
-            self.current_record.set_sync_delay_ms(sync_delay_ms)
-            payload["sync"] = sync_delay_ms / 1000.0
-
-        super().send_payload(payload)
-
-        self.current_record.response_sent()
-        self.request_statistics.log_record(self.current_record)
+        self.send_payload({ "op": "init_module_transfer", "module_name": self.module_name })
 
     def connection_lost(self, exc):
-        self.logger.info(self.request_statistics)
+        if self.on_con_lost is not None:
+            self.on_con_lost.set_result(True)
 
-        super().connection_lost(exc)
+    def object_received(self, obj : dict):
+        if obj["op"] == "init_module_transfer":
+            if obj["status"] == "accepted":
+                self.send_file(self.archive_path)
+        elif obj["op"] == "transfer_file":
+            if obj["status"] == "success":
+                self.logger.info("Uploaded module '%s' successfully.", self.module_name)
+                self.transport.close()
+        else:
+            super().object_received(obj)
+
+class DeploymentPostProtocol(SparseProtocol):
+    """App uploader protocol uploads a Sparse module including an application deployment to an open Sparse API.
+
+    Application is deployed in two phases. First its DAG is deployed as a dictionary, and then the application modules
+    are deployed as a ZIP archive.
+    """
+    def __init__(self, deployment : dict, on_con_lost : asyncio.Future, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.on_con_lost = on_con_lost
+        self.deployment = deployment
+
+    def connection_made(self, transport):
+        super().connection_made(transport)
+        self.send_payload({"op": "create_deployment", "app": self.deployment})
+
+    def connection_lost(self, exc):
+        if self.on_con_lost is not None:
+            self.on_con_lost.set_result(True)
+
+    def object_received(self, obj : dict):
+        if obj["op"] == "create_deployment":
+            if obj["status"] == "success":
+                self.logger.info("Deployed application '%s' successfully.", self.deployment)
+                self.transport.close()
+        else:
+            super().object_received(obj)
+
+class SourceProtocol(SparseProtocol):
+    """Source protocol connects to a cluster end point and receives a stream id that can be used to transmit data
+    tuples using the established connection.
+    """
+    def __init__(self, stream_type : str, on_stream_initialized : asyncio.Future):
+        super().__init__()
+        self.stream_type = stream_type
+        self.on_stream_initialized = on_stream_initialized
+
+    def connection_made(self, transport):
+        super().connection_made(transport)
+        self.create_source_stream(self.stream_type)
+
+    def object_received(self, obj : dict):
+        if obj["op"] == "create_source_stream":
+            if obj["status"] == "success":
+                stream_id = obj["stream_id"]
+                from .stream_api import SparseStream
+                stream = SparseStream(self.stream_type, stream_id)
+                stream.add_protocol(self)
+                self.on_stream_initialized.set_result(stream)
+        else:
+            super().object_received(obj)

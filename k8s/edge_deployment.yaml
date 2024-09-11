@@ -2,21 +2,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sparse-worker
+  name: sparse-edge
   namespace: sparse
   labels:
-    app: sparse-worker
+    app: sparse-edge
 spec:
   replicas: 1
   strategy:
     type: RollingUpdate
   selector:
     matchLabels:
-      app: sparse-worker
+      app: sparse-edge
   template:
     metadata:
       labels:
-        app: sparse-worker
+        app: sparse-edge
     spec:
       affinity:
         nodeAffinity:
@@ -26,19 +26,21 @@ spec:
               - key: sparse/node
                 operator: In
                 values:
-                - worker
+                - edge
                 - aio
               - key: kubernetes.io/arch
                 operator: In
                 values:
                 - "amd64"
       containers:
-      - name: sparse-worker
+      - name: sparse-edge
         image: anterondocker/sparse-framework:pytorch
         imagePullPolicy: IfNotPresent
         env:
         - name: WORKER_LISTEN_ADDRESS
           value: "0.0.0.0"
+        - name: SPARSE_ROOT_SERVER_ADDRESS
+          value: "sparse-root"
         volumeMounts:
         - name: sparse-code
           mountPath: /usr/lib/sparse_framework
