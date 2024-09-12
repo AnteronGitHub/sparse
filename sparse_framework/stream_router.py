@@ -35,19 +35,64 @@ class StreamRouter(SparseSlice):
     def __init__(self, runtime : SparseRuntime, module_repo : ModuleRepository, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        self.cluster_connections = set()
-        self.source_streams = set()
-
         self.runtime = runtime
         self.module_repo = module_repo
 
+        self.cluster_connections = set()
+
+        self.source_streams = set()
+        self.connector_streams = set()
+
     def add_cluster_connection(self, protocol : SparseProtocol, direction : str):
+        """Adds a connection to another cluster node for stream routing and operator migration.
+        """
         self.cluster_connections.add(ClusterConnection(protocol, direction))
 
         self.logger.info("Added %s connection with node %s", direction, protocol.transport.get_extra_info('peername')[0])
 
+    def remove_cluster_connection(self, protocol):
+        """Removes a cluster connection.
+        """
+        for connection in self.cluster_connections:
+            if connection.protocol == protocol:
+                self.cluster_connections.discard(connection)
+                self.logger.info("Removed %s connection with node %s", \
+                                 connection.direction, \
+                                 protocol.transport.get_extra_info('peername')[0])
+                return
+
+    def distribute_module(self, source : SparseProtocol, module : SparseModule):
+        for connection in self.cluster_connections:
+            if connection.protocol != source:
+                self.logger.info("Distributing module %s to node %s",
+                                 module.name,
+                                 connection.protocol.transport.get_extra_info('peername')[0])
+                connection.transfer_module(module)
+
+    def add_connector(self, stream_type : str, protocol, stream_id : str = None):
+        """Adds a new connector stream. A connector stream receives tuples over the network, either from another
+        cluster node or a data source.
+        """
+        connector_stream = SparseStream(stream_type, stream_id)
+        self.connector_streams.add(connector_stream)
+        self.logger.info("Stream %s type '%s' listening to peer %s",
+                         connector_stream.stream_id,
+                         stream_type,
+                         protocol.transport.get_extra_info('peername')[0])
+        return connector_stream
+
+    def tuple_received(self, stream_id : str, data_tuple):
+        for stream in self.connector_streams:
+            if stream.stream_id == stream_id:
+                stream.emit(data_tuple)
+                self.logger.debug("Received data for stream %s", stream_id)
+                return
+        self.logger.warn("Received data for stream %s without a connector", stream_id)
+
     def add_source_stream(self, stream_type : str, protocol : SparseProtocol, stream_id : str = None):
-        stream = self.runtime.add_connector(stream_type, protocol, {}, stream_id)
+        """Creates a connector for a source stream, and broadcasts tuples to other cluster nodes.
+        """
+        stream = self.add_connector(stream_type, protocol, stream_id)
 
         for connection in self.cluster_connections:
             if connection.protocol != protocol:
@@ -67,15 +112,6 @@ class StreamRouter(SparseSlice):
             operator.output_stream.add_protocol(protocol)
             return True
 
-    def remove_cluster_connection(self, protocol):
-        for connection in self.cluster_connections:
-            if connection.protocol == protocol:
-                self.cluster_connections.discard(connection)
-                self.logger.info("Removed %s connection with node %s", \
-                                 connection.direction, \
-                                 protocol.transport.get_extra_info('peername')[0])
-                return
-
     def update_destinations(self, source : SparseProtocol, destinations : set):
         source_ip = source.transport.get_extra_info('peername')[0]
         updated_destinations = set()
@@ -91,23 +127,21 @@ class StreamRouter(SparseSlice):
                 updated_destinations.add(destination)
         return updated_destinations
 
-    def deploy_operator(self, source : SparseProtocol, operator_name : str, destinations : set):
+    def add_destinations(self, stream : SparseStream, destinations : set):
+        """Adds destinations to a stream.
+        """
+        for o in self.runtime.operators:
+            if o.name in destinations:
+                stream.add_listener(o)
+                self.logger.info("Connected stream %s to stream %s", o.output_stream.stream_id, stream.stream_id)
+
+    def deploy_operator(self, operator_name : str):
         """Deploys a Sparse operator to a cluster node from a local module.
         """
         self.logger.info("Deploying operator '%s'", operator_name)
         operator_factory = self.module_repo.get_operator_factory(operator_name)
 
-        operator = self.runtime.place_operator(operator_factory)
-
-        self.runtime.add_destinations(operator.output_stream, destinations)
-
-    def distribute_module(self, source : SparseProtocol, module : SparseModule):
-        for connection in self.cluster_connections:
-            if connection.protocol != source:
-                self.logger.info("Distributing module %s to node %s",
-                                 module.name,
-                                 connection.protocol.transport.get_extra_info('peername')[0])
-                connection.transfer_module(module)
+        return self.runtime.place_operator(operator_factory)
 
     def create_deployment(self, source : SparseProtocol, app_dag : dict):
         """Deploys a Sparse application to a cluster.
@@ -118,6 +152,7 @@ class StreamRouter(SparseSlice):
         :param app_dag: A dictionary representing the Directed Asyclic Graph of application nodes.
         """
         self.logger.info("Creating deployment for app graph %s", app_dag)
+
         for operator_name in TopologicalSorter(app_dag).static_order():
             if operator_name in app_dag.keys():
                 destinations = app_dag[operator_name]
@@ -126,7 +161,8 @@ class StreamRouter(SparseSlice):
 
             for source_stream in self.source_streams:
                 if source_stream.stream_type == operator_name:
-                    self.runtime.add_destinations(source_stream, destinations)
+                    self.add_destinations(source_stream, destinations)
                     return
 
-            self.deploy_operator(source, operator_name, destinations)
+            operator = self.deploy_operator(operator_name)
+            self.add_destinations(operator.output_stream, destinations)

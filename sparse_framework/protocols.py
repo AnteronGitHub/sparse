@@ -126,7 +126,7 @@ class ClusterProtocol(SparseProtocol):
 
                 self.send_payload({"op": "create_deployment", "status": "success"})
         elif obj["op"] == "data_tuple":
-            self.node.runtime.tuple_received(obj["stream_id"], obj["tuple"])
+            self.node.stream_router.tuple_received(obj["stream_id"], obj["tuple"])
         else:
             super().object_received(obj)
 
