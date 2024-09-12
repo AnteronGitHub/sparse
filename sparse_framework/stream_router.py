@@ -58,6 +58,15 @@ class StreamRouter(SparseSlice):
 
         return stream
 
+    def subsribe_to_stream(self, stream_type, protocol : SparseProtocol):
+        operator = self.runtime.find_operator(stream_type)
+        self.logger.info("Subscribing to stream type '%s'", stream_type)
+        if operator is None:
+            return False
+        else:
+            operator.output_stream.add_protocol(protocol)
+            return True
+
     def remove_cluster_connection(self, protocol):
         for connection in self.cluster_connections:
             if connection.protocol == protocol:

@@ -55,6 +55,13 @@ class SparseRuntime(SparseSlice):
 
         self.add_destinations(o.output_stream, destinations)
 
+    def find_operator(self, operator_name : str):
+        for operator in self.operators:
+            if operator.name == operator_name:
+                return operator
+
+        return None
+
     def place_sink(self, sink_factory):
         sink = sink_factory()
         self.sinks.add(sink)

@@ -182,6 +182,9 @@ class ClusterServerProtocol(ClusterProtocol):
 
             stream = self.node.stream_router.add_source_stream(stream_type, self, stream_id)
             self.send_payload({"op": "create_source_stream", "status": "success", "stream_id": stream.stream_id})
+        elif obj["op"] == "subscribe_to_stream":
+            stream_type = obj["stream_type"]
+            self.node.stream_router.subsribe_to_stream(stream_type, self)
         else:
             super().object_received(obj)
 
