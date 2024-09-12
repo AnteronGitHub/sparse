@@ -13,9 +13,7 @@ class SparseRuntime(SparseSlice):
         super().__init__(*args, **kwargs)
 
         self.executor = None
-        self.sources = set()
         self.operators = set()
-        self.sinks = set()
         self.connector_streams = set()
 
     def get_futures(self, futures):
@@ -36,24 +34,20 @@ class SparseRuntime(SparseSlice):
         return connector_stream
 
     def add_destinations(self, stream : SparseStream, destinations : set):
-        for sink in self.sinks:
-            if sink.name in destinations:
-                stream.add_listener(sink)
-                self.logger.info("Connected sink '%s' to stream %s", sink.name, stream.stream_id)
-
         for o in self.operators:
             if o.name in destinations:
                 stream.add_listener(o)
                 self.logger.info("Connected stream %s to stream %s", o.output_stream.stream_id, stream.stream_id)
 
-    def place_operator(self, operator_factory, destinations):
+    def place_operator(self, operator_factory):
+        """Places a stream operator to the local runtime.
+        """
         o = operator_factory()
         self.executor.add_operator(o)
         self.operators.add(o)
 
         self.logger.info("Deployed '%s' operator with output stream %s", o.name, o.output_stream.stream_id)
-
-        self.add_destinations(o.output_stream, destinations)
+        return o
 
     def find_operator(self, operator_name : str):
         for operator in self.operators:
@@ -61,33 +55,6 @@ class SparseRuntime(SparseSlice):
                 return operator
 
         return None
-
-    def place_sink(self, sink_factory):
-        sink = sink_factory()
-        self.sinks.add(sink)
-        self.logger.info("Created sink '%s'", sink.name)
-
-    def place_source(self, source_factory, destinations : set):
-        source = source_factory()
-
-        for destination in destinations:
-            if type(destination) == SparseStream:
-                source.stream = destination
-
-        for operator in self.operators:
-            if operator.name in destinations:
-                source.stream.add_operator(operator)
-
-        for protocol in self.connector_streams:
-            if protocol.transport.get_extra_info('peername')[0] in destinations:
-                source.stream.add_protocol(protocol)
-
-        self.sources.add(source)
-
-        loop = asyncio.get_running_loop()
-        task = loop.create_task(source.start())
-
-        self.logger.info(f"Created source for '%s' with output stream %s", source.type, source.stream.stream_id)
 
     def tuple_received(self, stream_id : str, data_tuple):
         for stream in self.connector_streams:
