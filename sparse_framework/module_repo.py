@@ -35,17 +35,11 @@ class ModuleRepository(SparseSlice):
         self.logger.info("Received module '%s'", name)
         return module
 
-    def get_factory(self, node_name : str):
+    def get_operator_factory(self, operator_name : str):
         for app in self.apps:
             app_module = app.load(self.config.app_repo_path)
-            for source_factory in app_module.get_sources():
-                if source_factory.__name__ == node_name:
-                    return source_factory, "Source", app
-            for sink_factory in app_module.get_sinks():
-                if sink_factory.__name__ == node_name:
-                    return sink_factory, "Sink", app
             for operator_factory in app_module.get_operators():
-                if operator_factory.__name__ == node_name:
-                    return operator_factory, "Operator", app
+                if operator_factory.__name__ == operator_name:
+                    return operator_factory
 
-        return None, None, None
+        return None

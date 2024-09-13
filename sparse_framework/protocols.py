@@ -126,7 +126,7 @@ class ClusterProtocol(SparseProtocol):
 
                 self.send_payload({"op": "create_deployment", "status": "success"})
         elif obj["op"] == "data_tuple":
-            self.node.runtime.tuple_received(obj["stream_id"], obj["tuple"])
+            self.node.stream_router.tuple_received(obj["stream_id"], obj["tuple"])
         else:
             super().object_received(obj)
 
@@ -182,6 +182,9 @@ class ClusterServerProtocol(ClusterProtocol):
 
             stream = self.node.stream_router.add_source_stream(stream_type, self, stream_id)
             self.send_payload({"op": "create_source_stream", "status": "success", "stream_id": stream.stream_id})
+        elif obj["op"] == "subscribe_to_stream":
+            stream_type = obj["stream_type"]
+            self.node.stream_router.subsribe_to_stream(stream_type, self)
         else:
             super().object_received(obj)
 
@@ -232,7 +235,7 @@ class DeploymentPostProtocol(SparseProtocol):
 
     def connection_made(self, transport):
         super().connection_made(transport)
-        self.send_payload({"op": "create_deployment", "app": self.deployment})
+        self.create_deployment(self.deployment)
 
     def connection_lost(self, exc):
         if self.on_con_lost is not None:
@@ -243,29 +246,5 @@ class DeploymentPostProtocol(SparseProtocol):
             if obj["status"] == "success":
                 self.logger.info("Deployed application '%s' successfully.", self.deployment)
                 self.transport.close()
-        else:
-            super().object_received(obj)
-
-class SourceProtocol(SparseProtocol):
-    """Source protocol connects to a cluster end point and receives a stream id that can be used to transmit data
-    tuples using the established connection.
-    """
-    def __init__(self, stream_type : str, on_stream_initialized : asyncio.Future):
-        super().__init__()
-        self.stream_type = stream_type
-        self.on_stream_initialized = on_stream_initialized
-
-    def connection_made(self, transport):
-        super().connection_made(transport)
-        self.create_source_stream(self.stream_type)
-
-    def object_received(self, obj : dict):
-        if obj["op"] == "create_source_stream":
-            if obj["status"] == "success":
-                stream_id = obj["stream_id"]
-                from .stream_api import SparseStream
-                stream = SparseStream(self.stream_type, stream_id)
-                stream.add_protocol(self)
-                self.on_stream_initialized.set_result(stream)
         else:
             super().object_received(obj)
