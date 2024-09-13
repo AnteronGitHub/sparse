@@ -96,7 +96,7 @@ class StreamRouter(SparseSlice):
 
         for connection in self.cluster_connections:
             if connection.protocol != protocol:
-                connection.protocol.create_source_stream(stream_type, stream.stream_id)
+                connection.protocol.send_create_source_stream(stream_type, stream.stream_id)
                 stream.add_protocol(connection.protocol)
 
         self.source_streams.add(stream)
@@ -138,8 +138,12 @@ class StreamRouter(SparseSlice):
     def deploy_operator(self, operator_name : str):
         """Deploys a Sparse operator to a cluster node from a local module.
         """
-        self.logger.info("Deploying operator '%s'", operator_name)
+        self.logger.debug("Deploying operator '%s'", operator_name)
         operator_factory = self.module_repo.get_operator_factory(operator_name)
+
+        if operator_factory is None:
+            self.logger.error("No module with operator '%s' is available.", operator_name)
+            return None
 
         return self.runtime.place_operator(operator_factory)
 
@@ -165,4 +169,5 @@ class StreamRouter(SparseSlice):
                     return
 
             operator = self.deploy_operator(operator_name)
-            self.add_destinations(operator.output_stream, destinations)
+            if operator is not None:
+                self.add_destinations(operator.output_stream, destinations)

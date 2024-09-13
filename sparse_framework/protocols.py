@@ -7,8 +7,9 @@ import uuid
 
 from .module_repo import SparseModule
 
-class SparseProtocol(asyncio.Protocol):
-    """Sparse protocols provide transport for transmitting both dictionary data and files over network.
+class SparseTransportProtocol(asyncio.Protocol):
+    """Sparse transport protocol implements low-level communication for transmitting dictionary data and files over
+    network.
     """
     def __init__(self):
         self.connection_id = str(uuid.uuid4())
@@ -74,16 +75,44 @@ class SparseProtocol(asyncio.Protocol):
         self.transport.write(struct.pack("!sQ", b"o", payload_size))
         self.transport.write(payload_data)
 
-    def create_deployment(self, app : dict):
+class SparseProtocol(SparseTransportProtocol):
+    """Class includes application level messages used by sparse nodes.
+    """
+    def send_create_deployment(self, app : dict):
         self.send_payload({"op": "create_deployment", "app": app})
 
-    def create_source_stream(self, stream_type : str, stream_id : str = None):
+    def send_create_deployment_ok(self):
+        self.send_payload({"op": "create_deployment", "status": "success"})
+
+    def send_create_source_stream(self, stream_type : str, stream_id : str = None):
         self.send_payload({"op": "create_source_stream", "stream_type": stream_type, "stream_id": stream_id})
 
+    def send_create_source_stream_ok(self, stream_id : str):
+        self.send_payload({"op": "create_source_stream", "status": "success", "stream_id": stream_id})
+
+    def send_subscribe_to_stream(self, stream_type : str):
+        self.send_payload({"op": "subscribe_to_stream", "stream_type": stream_type})
+
     def send_data_tuple(self, stream_id : str, data_tuple):
-        """Initiates app deployment process by uploading the app dag.
-        """
         self.send_payload({"op": "data_tuple", "stream_id": stream_id, "tuple": data_tuple })
+
+    def send_init_module_transfer(self, module_name : str):
+        self.send_payload({ "op": "init_module_transfer", "module_name": module_name })
+
+    def send_init_module_transfer_ok(self):
+        self.send_payload({"op": "init_module_transfer", "status": "accepted"})
+
+    def send_init_module_transfer_error(self):
+        self.send_payload({"op": "init_module_transfer", "status": "rejected"})
+
+    def send_transfer_file_ok(self):
+        self.send_payload({"op": "transfer_file", "status": "success"})
+
+    def send_connect_downstream(self):
+        self.send_payload({"op": "connect_downstream"})
+
+    def send_connect_downstream_ok(self):
+        self.send_payload({"op": "connect_downstream", "status": "success"})
 
 class ClusterProtocol(SparseProtocol):
     def __init__(self, node):
@@ -111,9 +140,9 @@ class ClusterProtocol(SparseProtocol):
             else:
                 if self.receiving_module_name is None:
                     self.receiving_module_name = obj["module_name"]
-                    self.send_payload({"op": "init_module_transfer", "status": "accepted"})
+                    self.send_init_module_transfer_ok()
                 else:
-                    self.send_payload({"op": "init_module_transfer", "status": "rejected"})
+                    self.send_init_module_transfer_error()
         elif obj["op"] == "create_deployment":
             if "status" in obj:
                 if obj["status"] == "success":
@@ -124,7 +153,7 @@ class ClusterProtocol(SparseProtocol):
                 app = obj["app"]
                 self.node.stream_router.create_deployment(self, app["dag"])
 
-                self.send_payload({"op": "create_deployment", "status": "success"})
+                self.send_create_deployment_ok()
         elif obj["op"] == "data_tuple":
             self.node.stream_router.tuple_received(obj["stream_id"], obj["tuple"])
         else:
@@ -133,7 +162,7 @@ class ClusterProtocol(SparseProtocol):
     def transfer_module(self, module : SparseModule):
         self.transferring_module = module
 
-        self.send_payload({ "op": "init_module_transfer", "module_name": self.transferring_module.name })
+        self.send_init_module_transfer(self.transferring_module.name)
 
     def file_received(self, data : bytes):
         app_archive_path = f"/tmp/{self.app_name}.zip"
@@ -144,7 +173,7 @@ class ClusterProtocol(SparseProtocol):
         self.node.stream_router.distribute_module(self, module)
         self.receiving_module_name = None
 
-        self.send_payload({"op": "transfer_file", "status": "success"})
+        self.send_transfer_file_ok()
 
 class ClusterClientProtocol(ClusterProtocol):
     """Cluster client protocol creates an egress connection to another cluster node.
@@ -157,7 +186,7 @@ class ClusterClientProtocol(ClusterProtocol):
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        self.send_payload({"op": "connect_downstream"})
+        self.send_connect_downstream()
 
     def object_received(self, obj : dict):
         if obj["op"] == "connect_downstream":
@@ -172,7 +201,7 @@ class ClusterServerProtocol(ClusterProtocol):
     def object_received(self, obj : dict):
         if obj["op"] == "connect_downstream":
             self.node.stream_router.add_cluster_connection(self, "ingress")
-            self.send_payload({"op": "connect_downstream", "status": "success"})
+            self.send_connect_downstream_ok()
         elif obj["op"] == "create_source_stream":
             stream_type = obj["stream_type"]
             if "stream_id" in obj.keys():
@@ -181,7 +210,7 @@ class ClusterServerProtocol(ClusterProtocol):
                 stream_id = None
 
             stream = self.node.stream_router.add_source_stream(stream_type, self, stream_id)
-            self.send_payload({"op": "create_source_stream", "status": "success", "stream_id": stream.stream_id})
+            self.send_create_source_stream_ok(stream.stream_id)
         elif obj["op"] == "subscribe_to_stream":
             stream_type = obj["stream_type"]
             self.node.stream_router.subsribe_to_stream(stream_type, self)
@@ -204,7 +233,7 @@ class ModuleUploaderProtocol(SparseProtocol):
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        self.send_payload({ "op": "init_module_transfer", "module_name": self.module_name })
+        self.send_init_module_transfer(self.module_name)
 
     def connection_lost(self, exc):
         if self.on_con_lost is not None:
@@ -235,7 +264,7 @@ class DeploymentPostProtocol(SparseProtocol):
 
     def connection_made(self, transport):
         super().connection_made(transport)
-        self.create_deployment(self.deployment)
+        self.send_create_deployment(self.deployment)
 
     def connection_lost(self, exc):
         if self.on_con_lost is not None:

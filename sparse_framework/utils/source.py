@@ -15,7 +15,7 @@ class SourceProtocol(SparseProtocol):
 
     def connection_made(self, transport):
         super().connection_made(transport)
-        self.create_source_stream(self.stream_type)
+        self.send_create_source_stream(self.stream_type)
 
     def object_received(self, obj : dict):
         if obj["op"] == "create_source_stream":

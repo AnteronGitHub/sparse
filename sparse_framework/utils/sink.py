@@ -13,13 +13,10 @@ class SinkProtocol(SparseProtocol):
 
     def connection_made(self, transport):
         super().connection_made(transport)
-        self.subscribe_to_stream(self.stream_type)
+        self.send_subscribe_to_stream(self.stream_type)
 
     def connection_lost(self, transport):
         self.on_con_lost.set_result(True)
-
-    def subscribe_to_stream(self, stream_type : str):
-        self.send_payload({"op": "subscribe_to_stream", "stream_type": stream_type})
 
     def object_received(self, obj : dict):
         if obj["op"] == "data_tuple":
