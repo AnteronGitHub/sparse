@@ -3,6 +3,7 @@ import uuid
 import logging
 
 from ..protocols import SparseProtocol
+from ..stream_api import SparseStream
 
 class SourceProtocol(SparseProtocol):
     """Source protocol connects to a cluster end point and receives a stream id that can be used to transmit data
@@ -17,16 +18,10 @@ class SourceProtocol(SparseProtocol):
         super().connection_made(transport)
         self.send_create_source_stream(self.stream_type)
 
-    def object_received(self, obj : dict):
-        if obj["op"] == "create_source_stream":
-            if obj["status"] == "success":
-                stream_id = obj["stream_id"]
-                from ..stream_api import SparseStream
-                stream = SparseStream(self.stream_type, stream_id)
-                stream.add_protocol(self)
-                self.on_stream_initialized.set_result(stream)
-        else:
-            super().object_received(obj)
+    def create_source_stream_ok_received(self, stream_id : str):
+        stream = SparseStream(self.stream_type, stream_id)
+        stream.add_protocol(self)
+        self.on_stream_initialized.set_result(stream)
 
 class SparseSource:
     """Implementation of a simulated Sparse cluster data source. A Sparse source connects to a cluster end point and

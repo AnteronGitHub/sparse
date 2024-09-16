@@ -18,12 +18,8 @@ class SinkProtocol(SparseProtocol):
     def connection_lost(self, transport):
         self.on_con_lost.set_result(True)
 
-    def object_received(self, obj : dict):
-        if obj["op"] == "data_tuple":
-            new_tuple = obj["tuple"]
-            self.on_tuple_received(new_tuple)
-        else:
-            super().object_received(obj)
+    def data_tuple_received(self, stream_id : str, data_tuple):
+        self.on_tuple_received(data_tuple)
 
 class SparseSink:
     @property
