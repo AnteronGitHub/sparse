@@ -16,9 +16,9 @@ class SourceProtocol(SparseProtocol):
 
     def connection_made(self, transport):
         super().connection_made(transport)
-        self.send_create_source_stream(self.stream_type)
+        self.send_create_connector_stream(self.stream_type)
 
-    def create_source_stream_ok_received(self, stream_id : str):
+    def create_connector_stream_ok_received(self, stream_id : str):
         stream = SparseStream(self.stream_type, stream_id)
         stream.add_protocol(self)
         self.on_stream_initialized.set_result(stream)

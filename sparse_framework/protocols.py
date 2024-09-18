@@ -87,13 +87,13 @@ class SparseProtocol(SparseTransportProtocol):
     def send_create_deployment_ok(self):
         self.send_payload({"op": "create_deployment", "status": "success"})
 
-    def send_create_source_stream(self, stream_type : str, stream_id : str = None):
-        self.send_payload({"op": "create_source_stream", "stream_type": stream_type, "stream_id": stream_id})
+    def send_create_connector_stream(self, stream_type : str, stream_id : str = None):
+        self.send_payload({"op": "create_connector_stream", "stream_type": stream_type, "stream_id": stream_id})
 
-    def send_create_source_stream_ok(self, stream_id : str):
-        self.send_payload({"op": "create_source_stream", "status": "success", "stream_id": stream_id})
+    def send_create_connector_stream_ok(self, stream_id : str):
+        self.send_payload({"op": "create_connector_stream", "status": "success", "stream_id": stream_id})
 
-    def create_source_stream_ok_received(self, stream_id : str):
+    def create_connector_stream_ok_received(self, stream_id : str):
         pass
 
     def send_subscribe_to_stream(self, stream_type : str):
@@ -135,19 +135,19 @@ class SparseProtocol(SparseTransportProtocol):
                     pass
             else:
                 self.connect_downstream_received()
-        elif obj["op"] == "create_source_stream":
+        elif obj["op"] == "create_connector_stream":
             if "status" in obj:
                 if obj["status"] == "success":
                     stream_id = obj["stream_id"]
 
-                    self.create_source_stream_ok_received(stream_id)
+                    self.create_connector_stream_ok_received(stream_id)
                 else:
                     pass
             else:
                 stream_type = obj["stream_type"]
                 stream_id = obj["stream_id"] if "stream_id" in obj.keys() else None
 
-                self.create_source_stream_received(stream_type, stream_id)
+                self.create_connector_stream_received(stream_type, stream_id)
         elif obj["op"] == "subscribe_to_stream":
             if "status" in obj:
                 pass
@@ -262,9 +262,9 @@ class ClusterServerProtocol(ClusterProtocol):
         self.node.stream_router.add_cluster_connection(self, "ingress")
         self.send_connect_downstream_ok()
 
-    def create_source_stream_received(self, stream_type : str, stream_id : str = None):
-        stream = self.node.stream_router.add_source_stream(stream_type, self, stream_id)
-        self.send_create_source_stream_ok(stream.stream_id)
+    def create_connector_stream_received(self, stream_type : str, stream_id : str = None):
+        stream = self.node.stream_router.create_connector_stream(stream_type, self, stream_id)
+        self.send_create_connector_stream_ok(stream.stream_id)
 
     def subsribe_to_stream_received(self, stream_type : str):
         # TODO: Add static stream alias for subscribing in templates before stream creation.
