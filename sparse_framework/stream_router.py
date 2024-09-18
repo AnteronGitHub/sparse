@@ -88,9 +88,13 @@ class StreamRouter(SparseSlice):
                          protocol.transport.get_extra_info('peername')[0])
 
         # Check waiting streams
-        for waiting_stream in [k for k in self.waiting_streams.keys() if k == stream_type]:
-            self.add_destinations(connector_stream, self.waiting_streams[waiting_stream])
-            self.waiting_streams.pop(waiting_stream)
+        if stream_type in self.waiting_streams.keys():
+            dest = self.waiting_streams[stream_type]
+            if type(dest) == set:
+                self.add_destinations(connector_stream, dest)
+            else:
+                connector_stream.add_protocol(dest)
+            self.waiting_streams.pop(stream_type)
 
         # Broadcast to other cluster connections
         for connection in self.cluster_connections:
@@ -108,17 +112,16 @@ class StreamRouter(SparseSlice):
                 return
         self.logger.warn("Received data for stream %s without a connector", stream_id)
 
-    def subsribe_to_stream(self, stream_type, protocol : SparseProtocol):
+    def subsribe_to_stream(self, stream_type : str, protocol : SparseProtocol):
         operator = self.runtime.find_operator(stream_type)
-        self.logger.info("Subscribing to stream type '%s'", stream_type)
         if operator is None:
-            return False
+            self.create_waiting_stream(stream_type, protocol)
         else:
+            self.logger.info("Subscribing to stream type '%s'", stream_type)
             operator.output_stream.add_protocol(protocol)
-            return True
 
-    def create_waiting_stream(self, stream_selector : str, destinations : set):
-        self.waiting_streams[stream_selector] = destinations
+    def create_waiting_stream(self, stream_selector : str, destination):
+        self.waiting_streams[stream_selector] = destination
         self.logger.info("Waiting for stream '%s' to be available.", stream_selector)
 
     def update_destinations(self, source : SparseProtocol, destinations : set):
@@ -153,7 +156,16 @@ class StreamRouter(SparseSlice):
         if operator_factory is None:
             return None
 
-        return self.runtime.place_operator(operator_factory)
+        operator = self.runtime.place_operator(operator_factory)
+
+        for operator_name in self.waiting_streams.keys():
+            dst = self.waiting_streams[operator_name]
+            if type(dst) == set:
+                self.add_destinations(operator.output_stream, dst)
+            else:
+                operator.output_stream.add_protocol(dst)
+
+        return operator
 
     def create_deployment(self, source : SparseProtocol, app_dag : dict):
         """Deploys a Sparse application to a cluster.
