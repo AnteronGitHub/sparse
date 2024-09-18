@@ -90,6 +90,9 @@ class SparseProtocol(SparseTransportProtocol):
     def send_create_connector_stream(self, stream_type : str, stream_id : str = None):
         self.send_payload({"op": "create_connector_stream", "stream_type": stream_type, "stream_id": stream_id})
 
+    def create_connector_stream_received(self, stream_type : str, stream_id : str):
+        pass
+
     def send_create_connector_stream_ok(self, stream_id : str):
         self.send_payload({"op": "create_connector_stream", "status": "success", "stream_id": stream_id})
 

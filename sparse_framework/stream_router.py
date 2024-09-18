@@ -45,7 +45,12 @@ class StreamRouter(SparseSlice):
     def add_cluster_connection(self, protocol : SparseProtocol, direction : str):
         """Adds a connection to another cluster node for stream routing and operator migration.
         """
-        self.cluster_connections.add(ClusterConnection(protocol, direction))
+        cluster_connection = ClusterConnection(protocol, direction)
+        self.cluster_connections.add(cluster_connection)
+
+        for connector_stream in self.connector_streams:
+            cluster_connection.protocol.send_create_connector_stream(connector_stream.stream_type, connector_stream.stream_id)
+            connector_stream.add_protocol(cluster_connection.protocol)
 
         self.logger.info("Added %s connection with node %s", direction, protocol.transport.get_extra_info('peername')[0])
 
