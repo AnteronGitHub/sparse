@@ -42,6 +42,8 @@ class StreamRouter(SparseSlice):
 
         self.connector_streams = set()
 
+        self.waiting_streams = {}
+
     def add_cluster_connection(self, protocol : SparseProtocol, direction : str):
         """Adds a connection to another cluster node for stream routing and operator migration.
         """
@@ -80,15 +82,22 @@ class StreamRouter(SparseSlice):
         connector_stream = SparseStream(stream_type, stream_id)
         self.connector_streams.add(connector_stream)
 
+        self.logger.info("Created connector for stream %s type '%s' on source %s",
+                         connector_stream.stream_id,
+                         stream_type,
+                         protocol.transport.get_extra_info('peername')[0])
+
+        # Check waiting streams
+        for waiting_stream in [k for k in self.waiting_streams.keys() if k == stream_type]:
+            self.add_destinations(connector_stream, self.waiting_streams[waiting_stream])
+            self.waiting_streams.pop(waiting_stream)
+
+        # Broadcast to other cluster connections
         for connection in self.cluster_connections:
             if connection.protocol != protocol:
                 connection.protocol.send_create_connector_stream(stream_type, connector_stream.stream_id)
                 connector_stream.add_protocol(connection.protocol)
 
-        self.logger.info("Created connector for stream %s type '%s' on source %s",
-                         connector_stream.stream_id,
-                         stream_type,
-                         protocol.transport.get_extra_info('peername')[0])
         return connector_stream
 
     def tuple_received(self, stream_id : str, data_tuple):
@@ -107,6 +116,10 @@ class StreamRouter(SparseSlice):
         else:
             operator.output_stream.add_protocol(protocol)
             return True
+
+    def create_waiting_stream(self, stream_selector : str, destinations : set):
+        self.waiting_streams[stream_selector] = destinations
+        self.logger.info("Waiting for stream '%s' to be available.", stream_selector)
 
     def update_destinations(self, source : SparseProtocol, destinations : set):
         source_ip = source.transport.get_extra_info('peername')[0]
@@ -129,7 +142,7 @@ class StreamRouter(SparseSlice):
         for o in self.runtime.operators:
             if o.name in destinations:
                 stream.add_listener(o)
-                self.logger.info("Connected stream %s to stream %s", o.output_stream.stream_id, stream.stream_id)
+                self.logger.info("Stream %s connected to stream %s", stream.stream_id, o.output_stream.stream_id)
 
     def deploy_operator(self, operator_name : str):
         """Deploys a Sparse operator to a cluster node from a local module.
@@ -138,7 +151,6 @@ class StreamRouter(SparseSlice):
         operator_factory = self.module_repo.get_operator_factory(operator_name)
 
         if operator_factory is None:
-            self.logger.error("No module with operator '%s' is available.", operator_name)
             return None
 
         return self.runtime.place_operator(operator_factory)
@@ -151,19 +163,21 @@ class StreamRouter(SparseSlice):
         :param app_name: The name of the Sparse application to be deployed.
         :param app_dag: A dictionary representing the Directed Asyclic Graph of application nodes.
         """
-        self.logger.info("Creating deployment for app graph %s", app_dag)
+        self.logger.debug("Creating deployment for app graph %s", app_dag)
 
-        for operator_name in TopologicalSorter(app_dag).static_order():
-            if operator_name in app_dag.keys():
-                destinations = app_dag[operator_name]
+        for stream_selector in TopologicalSorter(app_dag).static_order():
+            if stream_selector in app_dag.keys():
+                destinations = app_dag[stream_selector]
             else:
                 destinations = {}
 
             for connector_stream in self.connector_streams:
-                if connector_stream.stream_type == operator_name:
+                if connector_stream.stream_type == stream_selector:
                     self.add_destinations(connector_stream, destinations)
                     return
 
-            operator = self.deploy_operator(operator_name)
-            if operator is not None:
+            operator = self.deploy_operator(stream_selector)
+            if operator is None:
+                self.create_waiting_stream(stream_selector, destinations)
+            else:
                 self.add_destinations(operator.output_stream, destinations)
