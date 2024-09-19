@@ -144,7 +144,7 @@ class StreamRouter(SparseSlice):
         """
         for o in self.runtime.operators:
             if o.name in destinations:
-                stream.add_listener(o)
+                stream.add_operator(o)
                 self.logger.info("Stream %s connected to stream %s", stream.stream_id, o.output_stream.stream_id)
 
     def deploy_operator(self, operator_name : str):
@@ -178,10 +178,7 @@ class StreamRouter(SparseSlice):
         self.logger.debug("Creating deployment for app graph %s", app_dag)
 
         for stream_selector in TopologicalSorter(app_dag).static_order():
-            if stream_selector in app_dag.keys():
-                destinations = app_dag[stream_selector]
-            else:
-                destinations = {}
+            destinations = app_dag[stream_selector] if stream_selector in app_dag.keys() else set()
 
             for connector_stream in self.connector_streams:
                 if connector_stream.stream_type == stream_selector:

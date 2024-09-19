@@ -11,21 +11,10 @@ class SparseStream:
         self.logger = logging.getLogger("sparse")
 
         self.stream_type = stream_type
-        if stream_id is None:
-            self.stream_id = str(uuid.uuid4())
-        else:
-            self.stream_id = stream_id
+        self.stream_id = str(uuid.uuid4()) if stream_id is None else stream_id
 
         self.protocol = None
         self.operator = None
-        self.sinks = set()
-
-    def add_listener(self, listener):
-        base_classes = [a.__name__ for a in [*listener.__class__.__bases__]]
-        if "SparseSink" in base_classes:
-            self.add_sink(listener)
-        if "SparseOperator" in base_classes:
-            self.add_operator(listener)
 
     def add_protocol(self, protocol : SparseProtocol):
         self.protocol = protocol
@@ -36,12 +25,7 @@ class SparseStream:
     def add_operator(self, operator):
         self.operator = operator
 
-    def add_sink(self, sink):
-        self.sinks.add(sink)
-
     def emit(self, data_tuple):
-        for sink in self.sinks:
-            sink.tuple_received(data_tuple)
         if self.operator is not None:
             self.operator.buffer_input(data_tuple)
         elif self.protocol is not None:
