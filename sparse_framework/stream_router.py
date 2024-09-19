@@ -51,7 +51,9 @@ class StreamRouter(SparseSlice):
         self.cluster_connections.add(cluster_connection)
 
         for connector_stream in self.connector_streams:
-            cluster_connection.protocol.send_create_connector_stream(connector_stream.stream_type, connector_stream.stream_id)
+            cluster_connection.protocol.send_create_connector_stream(connector_stream.stream_type, \
+                                                                     connector_stream.stream_id,
+                                                                     connector_stream.stream_alias)
             connector_stream.add_protocol(cluster_connection.protocol)
 
         self.logger.info("Added %s connection with node %s", direction, protocol.transport.get_extra_info('peername')[0])
@@ -75,31 +77,36 @@ class StreamRouter(SparseSlice):
                                  connection.protocol.transport.get_extra_info('peername')[0])
                 connection.transfer_module(module)
 
-    def create_connector_stream(self, stream_type : str, protocol : SparseProtocol, stream_id : str = None):
+    def create_connector_stream(self, \
+                                stream_type : str, \
+                                protocol : SparseProtocol, \
+                                stream_id : str = None, \
+                                stream_alias : str = None):
         """Adds a new connector stream. A connector stream receives tuples over the network, either from another
         cluster node or a data source.
         """
-        connector_stream = SparseStream(stream_type, stream_id)
+        connector_stream = SparseStream(stream_type, stream_id=stream_id, stream_alias=stream_alias)
         self.connector_streams.add(connector_stream)
 
-        self.logger.info("Created connector for stream %s type '%s' on source %s",
-                         connector_stream.stream_id,
-                         stream_type,
+        self.logger.info("Created connector stream %s from source %s",
+                         connector_stream.stream_alias,
                          protocol.transport.get_extra_info('peername')[0])
 
         # Check waiting streams
-        if stream_type in self.waiting_streams.keys():
-            dest = self.waiting_streams[stream_type]
+        for selector in [k for k in self.waiting_streams.keys() if k == stream_type or k == stream_alias]:
+            dest = self.waiting_streams[selector]
+
             if type(dest) == set:
                 self.add_destinations(connector_stream, dest)
             else:
                 connector_stream.add_protocol(dest)
-            self.waiting_streams.pop(stream_type)
+
+            self.waiting_streams.pop(selector)
 
         # Broadcast to other cluster connections
         for connection in self.cluster_connections:
             if connection.protocol != protocol:
-                connection.protocol.send_create_connector_stream(stream_type, connector_stream.stream_id)
+                connection.protocol.send_create_connector_stream(stream_type, connector_stream.stream_id, connector_stream.stream_alias)
                 connector_stream.add_protocol(connection.protocol)
 
         return connector_stream
@@ -145,7 +152,7 @@ class StreamRouter(SparseSlice):
         for o in self.runtime.operators:
             if o.name in destinations:
                 stream.add_operator(o)
-                self.logger.info("Stream %s connected to stream %s", stream.stream_id, o.output_stream.stream_id)
+                self.logger.info("Stream %s connected to stream %s", stream, o.output_stream)
 
     def deploy_operator(self, operator_name : str):
         """Deploys a Sparse operator to a cluster node from a local module.
@@ -181,7 +188,7 @@ class StreamRouter(SparseSlice):
             destinations = app_dag[stream_selector] if stream_selector in app_dag.keys() else set()
 
             for connector_stream in self.connector_streams:
-                if connector_stream.stream_type == stream_selector:
+                if connector_stream.matches_selector(stream_selector):
                     self.add_destinations(connector_stream, destinations)
                     return
 

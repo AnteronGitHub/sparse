@@ -7,19 +7,28 @@ from .protocols import SparseProtocol
 __all__ = ["SparseStream", "SparseOperator"]
 
 class SparseStream:
-    def __init__(self, stream_type : str, stream_id : str = None):
+    def __init__(self, stream_type : str, stream_id : str = None, stream_alias : str = None):
         self.logger = logging.getLogger("sparse")
 
         self.stream_type = stream_type
         self.stream_id = str(uuid.uuid4()) if stream_id is None else stream_id
+        self.stream_alias = stream_alias
 
         self.protocol = None
         self.operator = None
 
+    def __str__(self):
+        return self.stream_alias or self.stream_id
+
+    def matches_selector(self, stream_selector : str) -> bool:
+        return stream_selector == self.stream_alias \
+                or stream_selector == self.stream_type \
+                or stream_selector == self.stream_id
+
     def add_protocol(self, protocol : SparseProtocol):
         self.protocol = protocol
         self.logger.info("Stream id %s connected to peer %s",
-                         self.stream_id,
+                         self,
                          protocol.transport.get_extra_info('peername')[0])
 
     def add_operator(self, operator):
