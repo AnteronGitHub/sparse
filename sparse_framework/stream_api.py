@@ -7,10 +7,9 @@ from .protocols import SparseProtocol
 __all__ = ["SparseStream", "SparseOperator"]
 
 class SparseStream:
-    def __init__(self, stream_type : str, stream_id : str = None, stream_alias : str = None):
+    def __init__(self, stream_id : str = None, stream_alias : str = None):
         self.logger = logging.getLogger("sparse")
 
-        self.stream_type = stream_type
         self.stream_id = str(uuid.uuid4()) if stream_id is None else stream_id
         self.stream_alias = stream_alias
 
@@ -22,7 +21,6 @@ class SparseStream:
 
     def matches_selector(self, stream_selector : str) -> bool:
         return stream_selector == self.stream_alias \
-                or stream_selector == self.stream_type \
                 or stream_selector == self.stream_id
 
     def add_protocol(self, protocol : SparseProtocol):

@@ -9,18 +9,17 @@ class SourceProtocol(SparseProtocol):
     """Source protocol connects to a cluster end point and receives a stream id that can be used to transmit data
     tuples using the established connection.
     """
-    def __init__(self, stream_type : str, on_stream_initialized : asyncio.Future, stream_alias : str = None):
+    def __init__(self, on_stream_initialized : asyncio.Future, stream_alias : str = None):
         super().__init__()
-        self.stream_type = stream_type
         self.on_stream_initialized = on_stream_initialized
         self.stream_alias = stream_alias
 
     def connection_made(self, transport):
         super().connection_made(transport)
-        self.send_create_connector_stream(self.stream_type, stream_alias=self.stream_alias)
+        self.send_create_connector_stream(stream_alias=self.stream_alias)
 
     def create_connector_stream_ok_received(self, stream_id : str):
-        stream = SparseStream(self.stream_type, stream_id)
+        stream = SparseStream(stream_id)
         stream.add_protocol(self)
         self.on_stream_initialized.set_result(stream)
 
@@ -37,10 +36,6 @@ class SparseSource:
         self.target_latency = target_latency
 
         self.stream = None
-
-    @property
-    def type(self):
-        return self.__class__.__name__
 
     def get_tuple(self):
         pass
@@ -59,8 +54,7 @@ class SparseSource:
         while True:
             try:
                 self.logger.debug("Connecting to cluster endpoint on %s:%s.", endpoint_host, endpoint_port)
-                await loop.create_connection(lambda: SourceProtocol(self.type, \
-                                                                    on_stream_initialized, \
+                await loop.create_connection(lambda: SourceProtocol(on_stream_initialized, \
                                                                     self.stream_alias), \
                                              endpoint_host, \
                                              endpoint_port)

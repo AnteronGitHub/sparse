@@ -1,8 +1,6 @@
 import asyncio
 
 from ..node import SparseSlice
-from ..stream_api import SparseStream
-
 from .task_executor import SparseTaskExecutor
 
 class SparseRuntime(SparseSlice):

@@ -51,8 +51,7 @@ class StreamRouter(SparseSlice):
         self.cluster_connections.add(cluster_connection)
 
         for connector_stream in self.connector_streams:
-            cluster_connection.protocol.send_create_connector_stream(connector_stream.stream_type, \
-                                                                     connector_stream.stream_id,
+            cluster_connection.protocol.send_create_connector_stream(connector_stream.stream_id,
                                                                      connector_stream.stream_alias)
             connector_stream.add_protocol(cluster_connection.protocol)
 
@@ -78,14 +77,13 @@ class StreamRouter(SparseSlice):
                 connection.transfer_module(module)
 
     def create_connector_stream(self, \
-                                stream_type : str, \
                                 protocol : SparseProtocol, \
                                 stream_id : str = None, \
                                 stream_alias : str = None):
         """Adds a new connector stream. A connector stream receives tuples over the network, either from another
         cluster node or a data source.
         """
-        connector_stream = SparseStream(stream_type, stream_id=stream_id, stream_alias=stream_alias)
+        connector_stream = SparseStream(stream_id=stream_id, stream_alias=stream_alias)
         self.connector_streams.add(connector_stream)
 
         self.logger.info("Created connector stream %s from source %s",
@@ -93,7 +91,7 @@ class StreamRouter(SparseSlice):
                          protocol.transport.get_extra_info('peername')[0])
 
         # Check waiting streams
-        for selector in [k for k in self.waiting_streams.keys() if k == stream_type or k == stream_alias]:
+        for selector in [k for k in self.waiting_streams.keys() if k == stream_alias]:
             dest = self.waiting_streams[selector]
 
             if type(dest) == set:
@@ -106,7 +104,7 @@ class StreamRouter(SparseSlice):
         # Broadcast to other cluster connections
         for connection in self.cluster_connections:
             if connection.protocol != protocol:
-                connection.protocol.send_create_connector_stream(stream_type, connector_stream.stream_id, connector_stream.stream_alias)
+                connection.protocol.send_create_connector_stream(connector_stream.stream_id, connector_stream.stream_alias)
                 connector_stream.add_protocol(connection.protocol)
 
         return connector_stream
@@ -119,12 +117,12 @@ class StreamRouter(SparseSlice):
                 return
         self.logger.warn("Received data for stream %s without a connector", stream_id)
 
-    def subsribe_to_stream(self, stream_type : str, protocol : SparseProtocol):
-        operator = self.runtime.find_operator(stream_type)
+    def subsribe_to_stream(self, stream_alias : str, protocol : SparseProtocol):
+        operator = self.runtime.find_operator(stream_alias)
         if operator is None:
-            self.create_waiting_stream(stream_type, protocol)
+            self.create_waiting_stream(stream_alias, protocol)
         else:
-            self.logger.info("Subscribing to stream type '%s'", stream_type)
+            self.logger.info("Subscribing to stream type '%s'", stream_alias)
             operator.output_stream.add_protocol(protocol)
 
     def create_waiting_stream(self, stream_selector : str, destination):
