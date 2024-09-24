@@ -90,16 +90,7 @@ class StreamRouter(SparseSlice):
                          connector_stream.stream_alias,
                          protocol.transport.get_extra_info('peername')[0])
 
-        # Check waiting streams
-        for selector in [k for k in self.waiting_streams.keys() if k == stream_alias]:
-            dest = self.waiting_streams[selector]
-
-            if type(dest) == set:
-                self.add_destinations(connector_stream, dest)
-            else:
-                connector_stream.add_protocol(dest)
-
-            self.waiting_streams.pop(selector)
+        self.connect_to_waiting_streams(connector_stream)
 
         # Broadcast to other cluster connections
         for connection in self.cluster_connections:
@@ -128,6 +119,19 @@ class StreamRouter(SparseSlice):
     def create_waiting_stream(self, stream_selector : str, destination):
         self.waiting_streams[stream_selector] = destination
         self.logger.info("Waiting for stream '%s' to be available.", stream_selector)
+
+    def connect_to_waiting_streams(self, stream : SparseStream):
+        if stream.stream_alias not in self.waiting_streams.keys():
+            return
+
+        dest = self.waiting_streams[stream.stream_alias]
+
+        if type(dest) == set:
+            self.add_destinations(stream, dest)
+        else:
+            stream.add_protocol(dest)
+
+        self.waiting_streams.pop(stream.stream_alias)
 
     def update_destinations(self, source : SparseProtocol, destinations : set):
         source_ip = source.transport.get_extra_info('peername')[0]
@@ -162,13 +166,7 @@ class StreamRouter(SparseSlice):
             return None
 
         operator = self.runtime.place_operator(operator_factory)
-
-        for operator_name in self.waiting_streams.keys():
-            dst = self.waiting_streams[operator_name]
-            if type(dst) == set:
-                self.add_destinations(operator.output_stream, dst)
-            else:
-                operator.output_stream.add_protocol(dst)
+        self.connect_to_waiting_streams(operator.output_stream)
 
         return operator
 

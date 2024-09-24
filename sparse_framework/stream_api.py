@@ -45,7 +45,7 @@ class SparseOperator:
         self.use_batching = use_batching
 
         self.executor = None
-        self.output_stream = SparseStream(self.name)
+        self.output_stream = SparseStream(stream_alias=self.name)
 
     @property
     def name(self):
