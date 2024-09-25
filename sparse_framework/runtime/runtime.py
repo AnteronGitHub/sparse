@@ -27,7 +27,7 @@ class SparseRuntime(SparseSlice):
         self.executor.add_operator(o)
         self.operators.add(o)
 
-        self.logger.info("Deployed '%s' operator with output stream %s", o.name, o.output_stream.stream_id)
+        self.logger.info("Placed operator %s", o.name)
         return o
 
     def find_operator(self, operator_name : str):

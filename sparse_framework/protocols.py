@@ -21,6 +21,9 @@ class SparseTransportProtocol(asyncio.Protocol):
         self.data_type = None
         self.data_size = 0
 
+    def __str__(self):
+        return "unconnected" if self.transport is None else self.transport.get_extra_info('peername')[0]
+
     def clear_buffer(self):
         self.data_buffer = io.BytesIO()
         self.receiving_data = False
@@ -52,7 +55,9 @@ class SparseTransportProtocol(asyncio.Protocol):
             try:
                 self.object_received(pickle.loads(data))
             except pickle.UnpicklingError:
-                self.logger.error(f"Deserialization error. {len(data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
+                self.logger.error("Deserialization error. %s payload size, %s buffer size.",
+                                  len(data),
+                                  self.data_buffer.getbuffer().nbytes)
 
     def file_received(self, data : bytes):
         pass
@@ -104,8 +109,8 @@ class SparseProtocol(SparseTransportProtocol):
     def send_subscribe_to_stream(self, stream_alias : str):
         self.send_payload({"op": "subscribe_to_stream", "stream_alias": stream_alias})
 
-    def send_data_tuple(self, stream_id : str, data_tuple):
-        self.send_payload({"op": "data_tuple", "stream_id": stream_id, "tuple": data_tuple })
+    def send_data_tuple(self, stream_selector : str, data_tuple):
+        self.send_payload({"op": "data_tuple", "stream_selector": stream_selector, "tuple": data_tuple })
 
     def send_init_module_transfer(self, module_name : str):
         self.send_payload({ "op": "init_module_transfer", "module_name": module_name })
@@ -183,10 +188,10 @@ class SparseProtocol(SparseTransportProtocol):
                 app = obj["app"]
                 self.create_deployment_received(app)
         elif obj["op"] == "data_tuple":
-            stream_id = obj["stream_id"]
+            stream_selector = obj["stream_selector"]
             data_tuple = obj["tuple"]
 
-            self.data_tuple_received(stream_id, data_tuple)
+            self.data_tuple_received(stream_selector, data_tuple)
         else:
             super().object_received(obj)
 
@@ -229,8 +234,8 @@ class ClusterProtocol(SparseProtocol):
 
         self.send_create_deployment_ok()
 
-    def data_tuple_received(self, stream_id : str, data_tuple : str):
-        self.node.stream_router.tuple_received(stream_id, data_tuple)
+    def data_tuple_received(self, stream_selector : str, data_tuple : str):
+        self.node.stream_router.tuple_received(stream_selector, data_tuple)
 
     def file_received(self, data : bytes):
         app_archive_path = f"/tmp/{self.app_name}.zip"

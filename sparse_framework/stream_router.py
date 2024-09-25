@@ -40,22 +40,19 @@ class StreamRouter(SparseSlice):
 
         self.cluster_connections = set()
 
-        self.connector_streams = set()
-
-        self.waiting_streams = {}
+        self.streams = set()
 
     def add_cluster_connection(self, protocol : SparseProtocol, direction : str):
         """Adds a connection to another cluster node for stream routing and operator migration.
         """
         cluster_connection = ClusterConnection(protocol, direction)
         self.cluster_connections.add(cluster_connection)
+        self.logger.info("Added %s connection with node %s", direction, protocol)
 
-        for connector_stream in self.connector_streams:
+        for connector_stream in self.streams:
             cluster_connection.protocol.send_create_connector_stream(connector_stream.stream_id,
                                                                      connector_stream.stream_alias)
             connector_stream.add_protocol(cluster_connection.protocol)
-
-        self.logger.info("Added %s connection with node %s", direction, protocol.transport.get_extra_info('peername')[0])
 
     def remove_cluster_connection(self, protocol):
         """Removes a cluster connection.
@@ -63,98 +60,61 @@ class StreamRouter(SparseSlice):
         for connection in self.cluster_connections:
             if connection.protocol == protocol:
                 self.cluster_connections.discard(connection)
-                self.logger.info("Removed %s connection with node %s", \
-                                 connection.direction, \
-                                 protocol.transport.get_extra_info('peername')[0])
+                self.logger.info("Removed %s connection with node %s", connection.direction, protocol)
                 return
 
     def distribute_module(self, source : SparseProtocol, module : SparseModule):
         for connection in self.cluster_connections:
             if connection.protocol != source:
-                self.logger.info("Distributing module %s to node %s",
-                                 module.name,
-                                 connection.protocol.transport.get_extra_info('peername')[0])
+                self.logger.info("Distributing module %s to node %s", module.name, connection.protocol)
                 connection.transfer_module(module)
 
     def create_connector_stream(self, \
-                                protocol : SparseProtocol, \
+                                source : SparseProtocol, \
                                 stream_id : str = None, \
                                 stream_alias : str = None):
         """Adds a new connector stream. A connector stream receives tuples over the network, either from another
         cluster node or a data source.
         """
-        connector_stream = SparseStream(stream_id=stream_id, stream_alias=stream_alias)
-        self.connector_streams.add(connector_stream)
+        connector_stream = self.get_stream(stream_id, stream_alias)
+        if source in connector_stream.protocols:
+            connector_stream.protocols.remove(source)
 
-        self.logger.info("Created connector stream %s from source %s",
-                         connector_stream.stream_alias,
-                         protocol.transport.get_extra_info('peername')[0])
-
-        self.connect_to_waiting_streams(connector_stream)
+        self.logger.info("Stream %s listening to source %s", connector_stream.stream_alias, source)
 
         # Broadcast to other cluster connections
         for connection in self.cluster_connections:
-            if connection.protocol != protocol:
+            if connection.protocol != source:
+                self.logger.info("Broadcasting stream %s to peer %s", connector_stream, connection.protocol)
                 connection.protocol.send_create_connector_stream(connector_stream.stream_id, connector_stream.stream_alias)
                 connector_stream.add_protocol(connection.protocol)
 
         return connector_stream
 
-    def tuple_received(self, stream_id : str, data_tuple):
-        for stream in self.connector_streams:
-            if stream.stream_id == stream_id:
+    def tuple_received(self, stream_selector : str, data_tuple):
+        for stream in self.streams:
+            if stream.matches_selector(stream_selector):
                 stream.emit(data_tuple)
-                self.logger.debug("Received data for stream %s", stream_id)
+                self.logger.debug("Received data for stream %s", stream)
                 return
-        self.logger.warn("Received data for stream %s without a connector", stream_id)
+        self.logger.warn("Received data for stream %s without a connector", stream_selector)
 
     def subsribe_to_stream(self, stream_alias : str, protocol : SparseProtocol):
-        operator = self.runtime.find_operator(stream_alias)
-        if operator is None:
-            self.create_waiting_stream(stream_alias, protocol)
-        else:
-            self.logger.info("Subscribing to stream type '%s'", stream_alias)
-            operator.output_stream.add_protocol(protocol)
+        for stream in self.streams:
+            if stream.matches_selector(stream_alias):
+                stream.add_protocol(protocol)
+                return
 
-    def create_waiting_stream(self, stream_selector : str, destination):
-        self.waiting_streams[stream_selector] = destination
-        self.logger.info("Waiting for stream '%s' to be available.", stream_selector)
+        stream = self.get_stream(stream_alias=stream_alias)
+        stream.add_protocol(protocol)
 
-    def connect_to_waiting_streams(self, stream : SparseStream):
-        if stream.stream_alias not in self.waiting_streams.keys():
-            return
-
-        dest = self.waiting_streams[stream.stream_alias]
-
-        if type(dest) == set:
-            self.add_destinations(stream, dest)
-        else:
-            stream.add_protocol(dest)
-
-        self.waiting_streams.pop(stream.stream_alias)
-
-    def update_destinations(self, source : SparseProtocol, destinations : set):
-        source_ip = source.transport.get_extra_info('peername')[0]
-        updated_destinations = set()
-        for destination in destinations:
-            if ":" in destination:
-                [peer_ip, stream_id] = destination.split(":")
-                for connection in self.cluster_connections:
-                    if source_ip == connection.protocol.transport.get_extra_info('peername')[0]:
-                        connector_stream = SparseStream(stream_id)
-                        connector_stream.add_protocol(connection.protocol)
-                        updated_destinations.add(connector_stream)
-            else:
-                updated_destinations.add(destination)
-        return updated_destinations
-
-    def add_destinations(self, stream : SparseStream, destinations : set):
+    def connect_to_operators(self, stream : SparseStream, operator_names : set):
         """Adds destinations to a stream.
         """
         for o in self.runtime.operators:
-            if o.name in destinations:
-                stream.add_operator(o)
-                self.logger.info("Stream %s connected to stream %s", stream, o.output_stream)
+            if o.name in operator_names:
+                output_stream = self.get_stream(stream_alias=o.name)
+                stream.add_operator(o, output_stream)
 
     def deploy_operator(self, operator_name : str):
         """Deploys a Sparse operator to a cluster node from a local module.
@@ -166,9 +126,20 @@ class StreamRouter(SparseSlice):
             return None
 
         operator = self.runtime.place_operator(operator_factory)
-        self.connect_to_waiting_streams(operator.output_stream)
 
         return operator
+
+    def get_stream(self, stream_id : str = None, stream_alias : str = None):
+        stream_selector = stream_alias or stream_id
+        for stream in self.streams:
+            if stream.matches_selector(stream_selector):
+                return stream
+
+        stream = SparseStream(stream_id=stream_id, stream_alias=stream_selector)
+        self.streams.add(stream)
+        self.logger.info("Created stream %s", stream)
+
+        return stream
 
     def create_deployment(self, source : SparseProtocol, app_dag : dict):
         """Deploys a Sparse application to a cluster.
@@ -180,16 +151,13 @@ class StreamRouter(SparseSlice):
         """
         self.logger.debug("Creating deployment for app graph %s", app_dag)
 
+        # Place operators
+        for stream_selector in TopologicalSorter(app_dag).static_order():
+            self.deploy_operator(stream_selector)
+
+        # Connect streams
         for stream_selector in TopologicalSorter(app_dag).static_order():
             destinations = app_dag[stream_selector] if stream_selector in app_dag.keys() else set()
 
-            for connector_stream in self.connector_streams:
-                if connector_stream.matches_selector(stream_selector):
-                    self.add_destinations(connector_stream, destinations)
-                    return
-
-            operator = self.deploy_operator(stream_selector)
-            if operator is None:
-                self.create_waiting_stream(stream_selector, destinations)
-            else:
-                self.add_destinations(operator.output_stream, destinations)
+            output_stream = self.get_stream(stream_alias=stream_selector)
+            self.connect_to_operators(output_stream, destinations)
