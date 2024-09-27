@@ -3,49 +3,39 @@ import uuid
 import logging
 
 from ..protocols import SparseProtocol
+from ..stream_api import SparseStream
 
 class SourceProtocol(SparseProtocol):
     """Source protocol connects to a cluster end point and receives a stream id that can be used to transmit data
     tuples using the established connection.
     """
-    def __init__(self, stream_type : str, on_stream_initialized : asyncio.Future):
+    def __init__(self, on_stream_initialized : asyncio.Future, stream_alias : str = None):
         super().__init__()
-        self.stream_type = stream_type
         self.on_stream_initialized = on_stream_initialized
+        self.stream_alias = stream_alias
 
     def connection_made(self, transport):
         super().connection_made(transport)
-        self.create_source_stream(self.stream_type)
+        self.send_create_connector_stream(stream_alias=self.stream_alias)
 
-    def object_received(self, obj : dict):
-        if obj["op"] == "create_source_stream":
-            if obj["status"] == "success":
-                stream_id = obj["stream_id"]
-                from ..stream_api import SparseStream
-                stream = SparseStream(self.stream_type, stream_id)
-                stream.add_protocol(self)
-                self.on_stream_initialized.set_result(stream)
-        else:
-            super().object_received(obj)
+    def create_connector_stream_ok_received(self, stream_id : str):
+        stream = SparseStream(stream_id)
+        stream.add_protocol(self)
+        self.on_stream_initialized.set_result(stream)
 
 class SparseSource:
     """Implementation of a simulated Sparse cluster data source. A Sparse source connects to a cluster end point and
     receives a stream id that it can use to send data to.
     """
-    def __init__(self, no_samples = 64, target_latency = 200, use_scheduling = True):
+    def __init__(self, stream_alias : str = None, target_latency : int = 200):
         self.logger = logging.getLogger("sparse")
         logging.basicConfig(format='[%(asctime)s] %(name)s - %(levelname)s: %(message)s', level=logging.INFO)
+
         self.id = str(uuid.uuid4())
-        self.current_tuple = 0
+        self.stream_alias = stream_alias
+        self.target_latency = target_latency
 
         self.stream = None
-
-        self.target_latency = target_latency
-        self.use_scheduling = use_scheduling
-
-    @property
-    def type(self):
-        return self.__class__.__name__
 
     def get_tuple(self):
         pass
@@ -64,7 +54,8 @@ class SparseSource:
         while True:
             try:
                 self.logger.debug("Connecting to cluster endpoint on %s:%s.", endpoint_host, endpoint_port)
-                await loop.create_connection(lambda: SourceProtocol(self.type, on_stream_initialized), \
+                await loop.create_connection(lambda: SourceProtocol(on_stream_initialized, \
+                                                                    self.stream_alias), \
                                              endpoint_host, \
                                              endpoint_port)
                 stream = await on_stream_initialized
@@ -76,6 +67,5 @@ class SparseSource:
     async def start_stream(self):
         while True:
             self.stream.emit(self.get_tuple())
-            self.current_tuple += 1
             await asyncio.sleep(self.target_latency / 1000.0)
 

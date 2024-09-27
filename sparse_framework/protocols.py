@@ -7,8 +7,9 @@ import uuid
 
 from .module_repo import SparseModule
 
-class SparseProtocol(asyncio.Protocol):
-    """Sparse protocols provide transport for transmitting both dictionary data and files over network.
+class SparseTransportProtocol(asyncio.Protocol):
+    """Sparse transport protocol implements low-level communication for transmitting dictionary data and files over
+    network.
     """
     def __init__(self):
         self.connection_id = str(uuid.uuid4())
@@ -19,6 +20,9 @@ class SparseProtocol(asyncio.Protocol):
         self.receiving_data = False
         self.data_type = None
         self.data_size = 0
+
+    def __str__(self):
+        return "unconnected" if self.transport is None else self.transport.get_extra_info('peername')[0]
 
     def clear_buffer(self):
         self.data_buffer = io.BytesIO()
@@ -51,7 +55,9 @@ class SparseProtocol(asyncio.Protocol):
             try:
                 self.object_received(pickle.loads(data))
             except pickle.UnpicklingError:
-                self.logger.error(f"Deserialization error. {len(data)} payload size, {self.payload_buffer.getbuffer().nbytes} buffer size.")
+                self.logger.error("Deserialization error. %s payload size, %s buffer size.",
+                                  len(data),
+                                  self.data_buffer.getbuffer().nbytes)
 
     def file_received(self, data : bytes):
         pass
@@ -74,16 +80,120 @@ class SparseProtocol(asyncio.Protocol):
         self.transport.write(struct.pack("!sQ", b"o", payload_size))
         self.transport.write(payload_data)
 
-    def create_deployment(self, app : dict):
+class SparseProtocol(SparseTransportProtocol):
+    """Class includes application level messages used by sparse nodes.
+    """
+    def send_create_deployment(self, app : dict):
         self.send_payload({"op": "create_deployment", "app": app})
 
-    def create_source_stream(self, stream_type : str, stream_id : str = None):
-        self.send_payload({"op": "create_source_stream", "stream_type": stream_type, "stream_id": stream_id})
+    def create_deployment_received(self, app : dict):
+        pass
 
-    def send_data_tuple(self, stream_id : str, data_tuple):
-        """Initiates app deployment process by uploading the app dag.
-        """
-        self.send_payload({"op": "data_tuple", "stream_id": stream_id, "tuple": data_tuple })
+    def send_create_deployment_ok(self):
+        self.send_payload({"op": "create_deployment", "status": "success"})
+
+    def send_create_connector_stream(self, stream_id : str = None, stream_alias : str = None):
+        self.send_payload({"op": "create_connector_stream", \
+                           "stream_id": stream_id, \
+                           "stream_alias": stream_alias})
+
+    def create_connector_stream_received(self, stream_id : str = None, stream_alias : str = None):
+        pass
+
+    def send_create_connector_stream_ok(self, stream_id : str):
+        self.send_payload({"op": "create_connector_stream", "status": "success", "stream_id": stream_id})
+
+    def create_connector_stream_ok_received(self, stream_id : str):
+        pass
+
+    def send_subscribe_to_stream(self, stream_alias : str):
+        self.send_payload({"op": "subscribe_to_stream", "stream_alias": stream_alias})
+
+    def send_data_tuple(self, stream_selector : str, data_tuple):
+        self.send_payload({"op": "data_tuple", "stream_selector": stream_selector, "tuple": data_tuple })
+
+    def send_init_module_transfer(self, module_name : str):
+        self.send_payload({ "op": "init_module_transfer", "module_name": module_name })
+
+    def init_module_transfer_received(self):
+        pass
+
+    def send_init_module_transfer_ok(self):
+        self.send_payload({"op": "init_module_transfer", "status": "accepted"})
+
+    def send_init_module_transfer_error(self):
+        self.send_payload({"op": "init_module_transfer", "status": "rejected"})
+
+    def send_transfer_file_ok(self):
+        self.send_payload({"op": "transfer_file", "status": "success"})
+
+    def transfer_file_ok_received(self):
+        pass
+
+    def send_connect_downstream(self):
+        self.send_payload({"op": "connect_downstream"})
+
+    def send_connect_downstream_ok(self):
+        self.send_payload({"op": "connect_downstream", "status": "success"})
+
+    def object_received(self, obj : dict):
+        if obj["op"] == "connect_downstream":
+            if "status" in obj:
+                if obj["status"] == "success":
+                    self.connect_downstream_ok_received()
+                else:
+                    pass
+            else:
+                self.connect_downstream_received()
+        elif obj["op"] == "create_connector_stream":
+            if "status" in obj:
+                if obj["status"] == "success":
+                    stream_id = obj["stream_id"]
+
+                    self.create_connector_stream_ok_received(stream_id)
+                else:
+                    pass
+            else:
+                stream_id = obj["stream_id"] if "stream_id" in obj.keys() else None
+                stream_alias = obj["stream_alias"] if "stream_alias" in obj.keys() else None
+
+                self.create_connector_stream_received(stream_id, stream_alias)
+        elif obj["op"] == "subscribe_to_stream":
+            if "status" in obj:
+                pass
+            else:
+                stream_alias = obj["stream_alias"]
+
+                self.subsribe_to_stream_received(stream_alias)
+        elif obj["op"] == "init_module_transfer":
+            if "status" in obj:
+                if obj["status"] == "accepted":
+                    self.init_module_transfer_ok_received()
+                else:
+                    self.init_module_transfer_error_received()
+            else:
+                module_name = obj["module_name"]
+
+                self.init_module_transfer_received(module_name)
+        elif obj["op"] == "transfer_file":
+            if obj["status"] == "success":
+                self.transfer_file_ok_received()
+        elif obj["op"] == "create_deployment":
+            if "status" in obj:
+                if obj["status"] == "success":
+                    self.create_deployment_ok_received()
+                else:
+                    self.logger.info("Unable to create a deployment")
+            else:
+                app = obj["app"]
+                self.create_deployment_received(app)
+        elif obj["op"] == "data_tuple":
+            stream_selector = obj["stream_selector"]
+            data_tuple = obj["tuple"]
+
+            self.data_tuple_received(stream_selector, data_tuple)
+        else:
+            super().object_received(obj)
 
 class ClusterProtocol(SparseProtocol):
     def __init__(self, node):
@@ -101,39 +211,31 @@ class ClusterProtocol(SparseProtocol):
         peername = self.transport.get_extra_info('peername')
         self.logger.debug(f"{peername} disconnected.")
 
-    def object_received(self, obj : dict):
-        if obj["op"] == "init_module_transfer":
-            if "status" in obj:
-                if obj["status"] == "accepted":
-                    self.send_file(self.transferring_module.zip_path)
-                else:
-                    self.logger.error("Module transfer initialization ended in status '%s'", obj["status"])
-            else:
-                if self.receiving_module_name is None:
-                    self.receiving_module_name = obj["module_name"]
-                    self.send_payload({"op": "init_module_transfer", "status": "accepted"})
-                else:
-                    self.send_payload({"op": "init_module_transfer", "status": "rejected"})
-        elif obj["op"] == "create_deployment":
-            if "status" in obj:
-                if obj["status"] == "success":
-                    self.logger.info("Created deployment")
-                else:
-                    self.logger.info("Unable to create a deployment")
-            else:
-                app = obj["app"]
-                self.node.stream_router.create_deployment(self, app["dag"])
-
-                self.send_payload({"op": "create_deployment", "status": "success"})
-        elif obj["op"] == "data_tuple":
-            self.node.stream_router.tuple_received(obj["stream_id"], obj["tuple"])
-        else:
-            super().object_received(obj)
-
     def transfer_module(self, module : SparseModule):
         self.transferring_module = module
 
-        self.send_payload({ "op": "init_module_transfer", "module_name": self.transferring_module.name })
+        self.send_init_module_transfer(self.transferring_module.name)
+
+    def init_module_transfer_ok_received(self):
+        self.send_file(self.transferring_module.zip_path)
+
+    def init_module_transfer_error_received(self):
+        self.logger.error("Module transfer initialization failed")
+
+    def init_module_transfer_received(self, module_name : str):
+        if self.receiving_module_name is None:
+            self.receiving_module_name = module_name
+            self.send_init_module_transfer_ok()
+        else:
+            self.send_init_module_transfer_error()
+
+    def create_deployment_received(self, app : dict):
+        self.node.stream_router.create_deployment(self, app["dag"])
+
+        self.send_create_deployment_ok()
+
+    def data_tuple_received(self, stream_selector : str, data_tuple : str):
+        self.node.stream_router.tuple_received(stream_selector, data_tuple)
 
     def file_received(self, data : bytes):
         app_archive_path = f"/tmp/{self.app_name}.zip"
@@ -144,7 +246,7 @@ class ClusterProtocol(SparseProtocol):
         self.node.stream_router.distribute_module(self, module)
         self.receiving_module_name = None
 
-        self.send_payload({"op": "transfer_file", "status": "success"})
+        self.send_transfer_file_ok()
 
 class ClusterClientProtocol(ClusterProtocol):
     """Cluster client protocol creates an egress connection to another cluster node.
@@ -157,94 +259,22 @@ class ClusterClientProtocol(ClusterProtocol):
     def connection_made(self, transport):
         super().connection_made(transport)
 
-        self.send_payload({"op": "connect_downstream"})
+        self.send_connect_downstream()
 
-    def object_received(self, obj : dict):
-        if obj["op"] == "connect_downstream":
-            if "status" in obj and obj["status"] == "success":
-                self.node.stream_router.add_cluster_connection(self, direction="egress")
-        else:
-            super().object_received(obj)
+    def connect_downstream_ok_received(self):
+        self.node.stream_router.add_cluster_connection(self, direction="egress")
 
 class ClusterServerProtocol(ClusterProtocol):
     """Cluster client protocol creates an ingress connection to another cluster node.
     """
-    def object_received(self, obj : dict):
-        if obj["op"] == "connect_downstream":
-            self.node.stream_router.add_cluster_connection(self, "ingress")
-            self.send_payload({"op": "connect_downstream", "status": "success"})
-        elif obj["op"] == "create_source_stream":
-            stream_type = obj["stream_type"]
-            if "stream_id" in obj.keys():
-                stream_id = obj["stream_id"]
-            else:
-                stream_id = None
 
-            stream = self.node.stream_router.add_source_stream(stream_type, self, stream_id)
-            self.send_payload({"op": "create_source_stream", "status": "success", "stream_id": stream.stream_id})
-        elif obj["op"] == "subscribe_to_stream":
-            stream_type = obj["stream_type"]
-            self.node.stream_router.subsribe_to_stream(stream_type, self)
-        else:
-            super().object_received(obj)
+    def connect_downstream_received(self):
+        self.node.stream_router.add_cluster_connection(self, "ingress")
+        self.send_connect_downstream_ok()
 
-class ModuleUploaderProtocol(SparseProtocol):
-    """App uploader protocol uploads a Sparse module including an application deployment to an open Sparse API.
+    def create_connector_stream_received(self, stream_id : str = None, stream_alias : str = None):
+        stream = self.node.stream_router.create_connector_stream(self, stream_id, stream_alias)
+        self.send_create_connector_stream_ok(stream.stream_id)
 
-    Application is deployed in two phases. First its DAG is deployed as a dictionary, and then the application modules
-    are deployed as a ZIP archive.
-    """
-    def __init__(self, module_name : str, archive_path : str, on_con_lost : asyncio.Future, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.on_con_lost = on_con_lost
-        self.module_name = module_name
-        self.archive_path = archive_path
-
-    def connection_made(self, transport):
-        super().connection_made(transport)
-
-        self.send_payload({ "op": "init_module_transfer", "module_name": self.module_name })
-
-    def connection_lost(self, exc):
-        if self.on_con_lost is not None:
-            self.on_con_lost.set_result(True)
-
-    def object_received(self, obj : dict):
-        if obj["op"] == "init_module_transfer":
-            if obj["status"] == "accepted":
-                self.send_file(self.archive_path)
-        elif obj["op"] == "transfer_file":
-            if obj["status"] == "success":
-                self.logger.info("Uploaded module '%s' successfully.", self.module_name)
-                self.transport.close()
-        else:
-            super().object_received(obj)
-
-class DeploymentPostProtocol(SparseProtocol):
-    """App uploader protocol uploads a Sparse module including an application deployment to an open Sparse API.
-
-    Application is deployed in two phases. First its DAG is deployed as a dictionary, and then the application modules
-    are deployed as a ZIP archive.
-    """
-    def __init__(self, deployment : dict, on_con_lost : asyncio.Future, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.on_con_lost = on_con_lost
-        self.deployment = deployment
-
-    def connection_made(self, transport):
-        super().connection_made(transport)
-        self.create_deployment(self.deployment)
-
-    def connection_lost(self, exc):
-        if self.on_con_lost is not None:
-            self.on_con_lost.set_result(True)
-
-    def object_received(self, obj : dict):
-        if obj["op"] == "create_deployment":
-            if obj["status"] == "success":
-                self.logger.info("Deployed application '%s' successfully.", self.deployment)
-                self.transport.close()
-        else:
-            super().object_received(obj)
+    def subsribe_to_stream_received(self, stream_alias : str):
+        self.node.stream_router.subsribe_to_stream(stream_alias, self)
