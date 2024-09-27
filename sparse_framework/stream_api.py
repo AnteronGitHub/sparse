@@ -3,29 +3,9 @@ import uuid
 import logging
 
 from .protocols import SparseProtocol
+from .runtime.operator import StreamOperator
 
-__all__ = ["SparseStream", "SparseOperator"]
-
-class SparseOperator:
-    def __init__(self, use_batching : bool = True):
-        self.id = str(uuid.uuid4())
-        self.batch_no = 0
-        self.use_batching = use_batching
-
-        self.executor = None
-
-    @property
-    def name(self):
-        return self.__class__.__name__
-
-    def set_executor(self, executor):
-        self.executor = executor
-
-    def buffer_input(self, data_tuple, on_result_received):
-        self.executor.buffer_input(self.id, data_tuple, on_result_received, None)
-
-    def call(self, input_tuple):
-        pass
+__all__ = ["SparseStream"]
 
 class SparseStream:
     def __init__(self, stream_id : str = None, stream_alias : str = None):
@@ -49,7 +29,7 @@ class SparseStream:
         self.protocols.add(protocol)
         self.logger.info("Stream %s connected to peer %s", self, protocol)
 
-    def add_operator(self, operator : SparseOperator, output_stream):
+    def add_operator(self, operator : StreamOperator, output_stream):
         self.operator = operator
         self.output_stream = output_stream
         self.logger.info("Stream %s connected to operator %s with output stream %s", self, operator.name, output_stream)
