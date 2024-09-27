@@ -130,6 +130,8 @@ class StreamRouter(SparseSlice):
         return operator
 
     def get_stream(self, stream_id : str = None, stream_alias : str = None):
+        """Returns a stream that matches the provided stream alias or stream id. If no stream exists, one is created.
+        """
         stream_selector = stream_alias or stream_id
         for stream in self.streams:
             if stream.matches_selector(stream_selector):
