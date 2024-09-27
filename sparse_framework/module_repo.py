@@ -38,7 +38,7 @@ class ModuleRepository(SparseSlice):
     def get_operator_factory(self, operator_name : str):
         for app in self.apps:
             app_module = app.load(self.config.app_repo_path)
-            for operator_factory in app_module.get_operators():
+            for operator_factory in app_module.__all__:
                 if operator_factory.__name__ == operator_name:
                     return operator_factory
 

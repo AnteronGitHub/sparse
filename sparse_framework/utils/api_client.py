@@ -73,7 +73,7 @@ class SparseAPIClient:
 
     def archive_application(self, app : dict, app_dir : str):
         app_name = app["name"]
-        self.logger.debug("Archiving application")
+        self.logger.info("Creating Sparse module from directory %s", app_dir)
         shutil.make_archive(os.path.join(tempfile.gettempdir(), app_name), 'zip', app_dir)
         return os.path.join(tempfile.gettempdir(), f"{app_name}.zip")
 
