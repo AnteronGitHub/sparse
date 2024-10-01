@@ -25,7 +25,9 @@ class SparseStream:
         return stream_selector == self.stream_alias \
                 or stream_selector == self.stream_id
 
-    def add_protocol(self, protocol : SparseProtocol):
+    def subscribe(self, protocol : SparseProtocol):
+        """Subscribes a protocol to receive stream tuples.
+        """
         self.protocols.add(protocol)
         self.logger.info("Stream %s connected to peer %s", self, protocol)
 

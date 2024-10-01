@@ -109,8 +109,8 @@ class SparseProtocol(SparseTransportProtocol):
     def create_connector_stream_ok_received(self, stream_id : str, stream_alias : str):
         pass
 
-    def send_subscribe_to_stream(self, stream_alias : str):
-        self.send_payload({"op": "subscribe_to_stream", "stream_alias": stream_alias})
+    def send_subscribe(self, stream_alias : str):
+        self.send_payload({"op": "subscribe", "stream_alias": stream_alias})
 
     def send_data_tuple(self, stream_selector : str, data_tuple):
         self.send_payload({"op": "data_tuple", "stream_selector": stream_selector, "tuple": data_tuple })
@@ -162,13 +162,13 @@ class SparseProtocol(SparseTransportProtocol):
                 stream_alias = obj["stream_alias"] if "stream_alias" in obj.keys() else None
 
                 self.create_connector_stream_received(stream_id, stream_alias)
-        elif obj["op"] == "subscribe_to_stream":
+        elif obj["op"] == "subscribe":
             if "status" in obj:
                 pass
             else:
                 stream_alias = obj["stream_alias"]
 
-                self.subsribe_to_stream_received(stream_alias)
+                self.subscribe_received(stream_alias)
         elif obj["op"] == "init_module_transfer":
             if "status" in obj:
                 if obj["status"] == "accepted":
@@ -280,5 +280,5 @@ class ClusterServerProtocol(ClusterProtocol):
         stream = self.node.stream_router.create_connector_stream(self, stream_id, stream_alias)
         self.send_create_connector_stream_ok(stream.stream_id, stream.stream_alias)
 
-    def subsribe_to_stream_received(self, stream_alias : str):
-        self.node.stream_router.subsribe_to_stream(stream_alias, self)
+    def subscribe_received(self, stream_alias : str):
+        self.node.stream_router.subscribe(stream_alias, self)

@@ -52,7 +52,7 @@ class StreamRouter(SparseSlice):
         for connector_stream in self.streams:
             cluster_connection.protocol.send_create_connector_stream(connector_stream.stream_id,
                                                                      connector_stream.stream_alias)
-            connector_stream.add_protocol(cluster_connection.protocol)
+            connector_stream.subscribe(cluster_connection.protocol)
 
     def remove_cluster_connection(self, protocol):
         """Removes a cluster connection.
@@ -87,7 +87,7 @@ class StreamRouter(SparseSlice):
             if connection.protocol != source:
                 self.logger.info("Broadcasting stream %s to peer %s", connector_stream, connection.protocol)
                 connection.protocol.send_create_connector_stream(connector_stream.stream_id, connector_stream.stream_alias)
-                connector_stream.add_protocol(connection.protocol)
+                connector_stream.subscribe(connection.protocol)
 
         return connector_stream
 
@@ -99,14 +99,16 @@ class StreamRouter(SparseSlice):
                 return
         self.logger.warn("Received data for stream %s without a connector", stream_selector)
 
-    def subsribe_to_stream(self, stream_alias : str, protocol : SparseProtocol):
+    def subscribe(self, stream_alias : str, protocol : SparseProtocol):
+        """Subscribes a protocol to receive tuples in a data stream.
+        """
         for stream in self.streams:
             if stream.matches_selector(stream_alias):
-                stream.add_protocol(protocol)
+                stream.subscribe(protocol)
                 return
 
         stream = self.get_stream(stream_alias=stream_alias)
-        stream.add_protocol(protocol)
+        stream.subscribe(protocol)
 
     def connect_to_operators(self, stream : SparseStream, operator_names : set):
         """Adds destinations to a stream.
