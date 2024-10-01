@@ -1,3 +1,5 @@
+"""This module includes functionality related to stream api.
+"""
 import asyncio
 import uuid
 import logging
@@ -15,7 +17,7 @@ class SparseStream:
         self.stream_alias = stream_alias
 
         self.protocols = set()
-        self.operator = None
+        self.operators = set()
         self.output_stream = None
 
     def __str__(self):
@@ -31,14 +33,17 @@ class SparseStream:
         self.protocols.add(protocol)
         self.logger.info("Stream %s connected to peer %s", self, protocol)
 
-    def add_operator(self, operator : StreamOperator, output_stream):
-        self.operator = operator
-        self.output_stream = output_stream
+    def connect_to_operator(self, operator : StreamOperator, output_stream):
+        """Connects a stream to operator with given output stream.
+        """
+        self.operators.add((operator, output_stream))
         self.logger.info("Stream %s connected to operator %s with output stream %s", self, operator.name, output_stream)
 
     def emit(self, data_tuple):
-        if self.operator is not None:
-            self.operator.buffer_input(data_tuple, self.output_stream.emit)
+        """Sends a new data tuple to the connected operators and subscribed connections.
+        """
+        for operator, output_stream in self.operators:
+            operator.buffer_input(data_tuple, output_stream.emit)
+
         for protocol in self.protocols:
             protocol.send_data_tuple(self.stream_alias or self.stream_id, data_tuple)
-

@@ -32,7 +32,6 @@ class ModuleRepository(SparseSlice):
     def add_app_module(self, name : str, zip_path : str):
         module = SparseModule(name, zip_path)
         self.apps.add(module)
-        self.logger.info("Received module '%s'", name)
         return module
 
     def get_operator_factory(self, operator_name : str):

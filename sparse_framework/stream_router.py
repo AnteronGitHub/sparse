@@ -116,7 +116,7 @@ class StreamRouter(SparseSlice):
         for o in self.runtime.operators:
             if o.name in operator_names:
                 output_stream = self.get_stream(stream_alias=o.name)
-                stream.add_operator(o, output_stream)
+                stream.connect_to_operator(o, output_stream)
 
     def deploy_operator(self, operator_name : str):
         """Deploys a Sparse operator to a cluster node from a local module.

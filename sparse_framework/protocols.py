@@ -212,8 +212,7 @@ class ClusterProtocol(SparseProtocol):
 
     def connection_lost(self, exc):
         self.node.stream_router.remove_cluster_connection(self.transport)
-        peername = self.transport.get_extra_info('peername')
-        self.logger.debug(f"{peername} disconnected.")
+        self.logger.debug("Connection %s disconnected.", self)
 
     def transfer_module(self, module : SparseModule):
         self.transferring_module = module
@@ -246,6 +245,7 @@ class ClusterProtocol(SparseProtocol):
         with open(app_archive_path, "wb") as f:
             f.write(data)
 
+        self.logger.info("Received module '%s' from %s", self.receiving_module_name, self)
         module = self.node.module_repo.add_app_module(self.receiving_module_name, app_archive_path)
         self.node.stream_router.distribute_module(self, module)
         self.receiving_module_name = None
