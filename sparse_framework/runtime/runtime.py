@@ -1,5 +1,6 @@
 import asyncio
 
+from ..module_repo import ModuleRepository, OperatorNotFoundError
 from ..node import SparseSlice
 from .task_executor import SparseTaskExecutor
 
@@ -7,8 +8,10 @@ class SparseRuntime(SparseSlice):
     """Sparse Runtime maintains task executor, and the associated memory manager, for executing stream
     application operations locally.
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, module_repo : ModuleRepository, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        self.module_repo = module_repo
 
         self.executor = None
         self.operators = set()
@@ -20,15 +23,20 @@ class SparseRuntime(SparseSlice):
 
         return futures
 
-    def place_operator(self, operator_factory):
+    def place_operator(self, operator_name : str):
         """Places a stream operator to the local runtime.
         """
-        o = operator_factory()
-        self.executor.add_operator(o)
-        self.operators.add(o)
+        try:
+            operator_factory = self.module_repo.get_operator_factory(operator_name)
 
-        self.logger.info("Placed operator %s", o.name)
-        return o
+            o = operator_factory()
+            self.executor.add_operator(o)
+            self.operators.add(o)
+
+            self.logger.info("Placed operator %s", o.name)
+
+        except OperatorNotFoundError as e:
+            self.logger.warn(e)
 
     def find_operator(self, operator_name : str):
         for operator in self.operators:

@@ -67,11 +67,10 @@ class SparseNode:
         self.init_slices()
 
     def init_slices(self):
-        self.runtime = SparseRuntime(self.config)
         self.module_repo = ModuleRepository(self.config)
+        self.runtime = SparseRuntime(self.module_repo, self.config)
         self.stream_router = StreamRouter(self.runtime, self.config)
         self.cluster_orchestrator = ClusterOrchestrator(self.runtime,
-                                                        self.module_repo,
                                                         self.stream_router,
                                                         self.config)
 

@@ -8,25 +8,11 @@ from .stream_router import StreamRouter
 
 class ClusterOrchestrator(SparseSlice):
 
-    def __init__(self, runtime : SparseRuntime, module_repo : ModuleRepository, stream_router : SparseRuntime, *args, **kwargs):
+    def __init__(self, runtime : SparseRuntime, stream_router : SparseRuntime, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.runtime = runtime
-        self.module_repo = module_repo
         self.stream_router = stream_router
-
-    def deploy_operator(self, operator_name : str):
-        """Deploys a Sparse operator to a cluster node from a local module.
-        """
-        self.logger.debug("Deploying operator '%s'", operator_name)
-        operator_factory = self.module_repo.get_operator_factory(operator_name)
-
-        if operator_factory is None:
-            return None
-
-        operator = self.runtime.place_operator(operator_factory)
-
-        return operator
 
     def create_deployment(self, source : SparseProtocol, app_dag : dict):
         """Deploys a Sparse application to a cluster.
@@ -39,8 +25,9 @@ class ClusterOrchestrator(SparseSlice):
         self.logger.debug("Creating deployment for app graph %s", app_dag)
 
         # Place operators
+        # TODO: use explicit operator selectors instead of trying to deploy.
         for stream_selector in TopologicalSorter(app_dag).static_order():
-            self.deploy_operator(stream_selector)
+            self.runtime.place_operator(stream_selector)
 
         # Connect streams
         for stream_selector in TopologicalSorter(app_dag).static_order():
