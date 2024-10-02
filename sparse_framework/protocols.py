@@ -5,6 +5,7 @@ import pickle
 import struct
 import uuid
 
+from .deployment import Deployment
 from .module_repo import SparseModule
 
 class SparseTransportProtocol(asyncio.Protocol):
@@ -83,10 +84,10 @@ class SparseTransportProtocol(asyncio.Protocol):
 class SparseProtocol(SparseTransportProtocol):
     """Class includes application level messages used by sparse nodes.
     """
-    def send_create_deployment(self, app : dict):
-        self.send_payload({"op": "create_deployment", "app": app})
+    def send_create_deployment(self, deployment : Deployment):
+        self.send_payload({"op": "create_deployment", "deployment": deployment})
 
-    def create_deployment_received(self, app : dict):
+    def create_deployment_received(self, deployment : Deployment):
         pass
 
     def send_create_deployment_ok(self):
@@ -189,8 +190,8 @@ class SparseProtocol(SparseTransportProtocol):
                 else:
                     self.logger.info("Unable to create a deployment")
             else:
-                app = obj["app"]
-                self.create_deployment_received(app)
+                deployment = obj["deployment"]
+                self.create_deployment_received(deployment)
         elif obj["op"] == "data_tuple":
             stream_selector = obj["stream_selector"]
             data_tuple = obj["tuple"]
@@ -232,8 +233,8 @@ class ClusterProtocol(SparseProtocol):
         else:
             self.send_init_module_transfer_error()
 
-    def create_deployment_received(self, app : dict):
-        self.node.cluster_orchestrator.create_deployment(self, app["dag"])
+    def create_deployment_received(self, deployment : Deployment):
+        self.node.cluster_orchestrator.create_deployment(deployment)
 
         self.send_create_deployment_ok()
 

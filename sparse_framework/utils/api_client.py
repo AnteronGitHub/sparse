@@ -4,6 +4,7 @@ import os
 import shutil
 import tempfile
 
+from ..deployment import Deployment
 from ..protocols import SparseProtocol
 
 class ModuleUploaderProtocol(SparseProtocol):
@@ -41,7 +42,7 @@ class DeploymentPostProtocol(SparseProtocol):
     Application is deployed in two phases. First its DAG is deployed as a dictionary, and then the application modules
     are deployed as a ZIP archive.
     """
-    def __init__(self, deployment : dict, on_con_lost : asyncio.Future, *args, **kwargs):
+    def __init__(self, deployment : Deployment, on_con_lost : asyncio.Future, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.on_con_lost = on_con_lost
@@ -56,7 +57,7 @@ class DeploymentPostProtocol(SparseProtocol):
             self.on_con_lost.set_result(True)
 
     def create_deployment_ok_received(self):
-        self.logger.info("Deployment '%s' created successfully.", self.deployment["name"])
+        self.logger.info("Deployment '%s' created successfully.", self.deployment)
         self.transport.close()
 
 class SparseAPIClient:
@@ -97,14 +98,14 @@ class SparseAPIClient:
                 self.logger.warn("Connection refused. Re-trying in 5 seconds.")
                 await asyncio.sleep(5)
 
-    async def post_deployment(self, app : dict):
+    async def post_deployment(self, deployment : Deployment):
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
 
         while True:
             try:
                 self.logger.debug("Connecting to root server on %s:%s.", self.api_host, self.api_port)
-                await loop.create_connection(lambda: DeploymentPostProtocol(app, on_con_lost), \
+                await loop.create_connection(lambda: DeploymentPostProtocol(deployment, on_con_lost), \
                                              self.api_host, \
                                              self.api_port)
                 await on_con_lost
@@ -119,7 +120,7 @@ class SparseAPIClient:
         module_archive_path = self.archive_module(module_name, module_dir)
         asyncio.run(self.upload_module(module_name, module_archive_path))
 
-    def create_deployment(self, app : dict):
+    def create_deployment(self, deployment : Deployment):
         """Creates a Sparse application deployment in a running cluster.
         """
-        asyncio.run(self.post_deployment(app))
+        asyncio.run(self.post_deployment(deployment))
