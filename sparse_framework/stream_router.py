@@ -1,7 +1,6 @@
 import asyncio
-from graphlib import TopologicalSorter
 
-from .module_repo import ModuleRepository, SparseModule
+from .module_repo import SparseModule
 from .node import SparseSlice
 from .protocols import SparseProtocol
 from .runtime import SparseRuntime
@@ -32,11 +31,10 @@ class StreamRouter(SparseSlice):
     applications to be deployed in the cluster, and decides the placement of sources, operators and sinks in the
     cluster.
     """
-    def __init__(self, runtime : SparseRuntime, module_repo : ModuleRepository, *args, **kwargs):
+    def __init__(self, runtime : SparseRuntime, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.runtime = runtime
-        self.module_repo = module_repo
 
         self.cluster_connections = set()
 
@@ -118,19 +116,6 @@ class StreamRouter(SparseSlice):
                 output_stream = self.get_stream(stream_alias=o.name)
                 stream.connect_to_operator(o, output_stream)
 
-    def deploy_operator(self, operator_name : str):
-        """Deploys a Sparse operator to a cluster node from a local module.
-        """
-        self.logger.debug("Deploying operator '%s'", operator_name)
-        operator_factory = self.module_repo.get_operator_factory(operator_name)
-
-        if operator_factory is None:
-            return None
-
-        operator = self.runtime.place_operator(operator_factory)
-
-        return operator
-
     def get_stream(self, stream_id : str = None, stream_alias : str = None):
         """Returns a stream that matches the provided stream alias or stream id. If no stream exists, one is created.
         """
@@ -144,24 +129,3 @@ class StreamRouter(SparseSlice):
         self.logger.info("Created stream %s", stream)
 
         return stream
-
-    def create_deployment(self, source : SparseProtocol, app_dag : dict):
-        """Deploys a Sparse application to a cluster.
-
-        The application graph is sorted topologically so that each destination node is deployed before its sources.
-
-        :param app_name: The name of the Sparse application to be deployed.
-        :param app_dag: A dictionary representing the Directed Asyclic Graph of application nodes.
-        """
-        self.logger.debug("Creating deployment for app graph %s", app_dag)
-
-        # Place operators
-        for stream_selector in TopologicalSorter(app_dag).static_order():
-            self.deploy_operator(stream_selector)
-
-        # Connect streams
-        for stream_selector in TopologicalSorter(app_dag).static_order():
-            destinations = app_dag[stream_selector] if stream_selector in app_dag.keys() else set()
-
-            output_stream = self.get_stream(stream_alias=stream_selector)
-            self.connect_to_operators(output_stream, destinations)

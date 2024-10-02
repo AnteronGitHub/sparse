@@ -42,6 +42,7 @@ class SparseNodeConfig:
         self.root_server_port = os.environ.get('SPARSE_ROOT_SERVER_PORT') or 50006
         self.app_repo_path = os.environ.get('SPARSE_APP_REPO_PATH') or '/usr/lib/sparse_framework/apps'
 
+from .cluster_orchestrator import ClusterOrchestrator
 from .module_repo import ModuleRepository
 from .runtime import SparseRuntime
 from .stream_router import StreamRouter
@@ -68,13 +69,18 @@ class SparseNode:
     def init_slices(self):
         self.runtime = SparseRuntime(self.config)
         self.module_repo = ModuleRepository(self.config)
-        self.stream_router = StreamRouter(self.runtime, self.module_repo, self.config)
+        self.stream_router = StreamRouter(self.runtime, self.config)
+        self.cluster_orchestrator = ClusterOrchestrator(self.runtime,
+                                                        self.module_repo,
+                                                        self.stream_router,
+                                                        self.config)
 
         self.slices = [
                 SparseQoSMonitorSlice(self.config),
                 self.runtime,
                 self.stream_router,
                 self.module_repo,
+                self.cluster_orchestrator
                 ]
 
     def get_futures(self, is_worker = True):

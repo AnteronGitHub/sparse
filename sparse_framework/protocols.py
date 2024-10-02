@@ -233,7 +233,7 @@ class ClusterProtocol(SparseProtocol):
             self.send_init_module_transfer_error()
 
     def create_deployment_received(self, app : dict):
-        self.node.stream_router.create_deployment(self, app["dag"])
+        self.node.cluster_orchestrator.create_deployment(self, app["dag"])
 
         self.send_create_deployment_ok()
 
