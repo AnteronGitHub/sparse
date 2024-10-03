@@ -114,9 +114,10 @@ class SparseAPIClient:
                 self.logger.warn("Connection refused. Re-trying in 5 seconds.")
                 await asyncio.sleep(5)
 
-    def create_module(self, module_name : str, module_dir : str = '.'):
+    def create_module(self, module_dir : str = '.'):
         """Archives a Sparse module and uploads it to a running cluster.
         """
+        module_name = os.path.basename(os.path.realpath(module_dir))
         module_archive_path = self.archive_module(module_name, module_dir)
         asyncio.run(self.upload_module(module_name, module_archive_path))
 
