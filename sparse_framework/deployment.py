@@ -2,11 +2,13 @@ import yaml
 
 class Deployment:
     name : str
-    dag : dict
+    streams : list
+    pipelines : dict
 
-    def __init__(self, name : str, dag : dict):
+    def __init__(self, name : str, streams : set, pipelines : dict):
         self.name = name
-        self.dag = dag
+        self.streams = streams
+        self.pipelines = pipelines
 
     def __str__(self):
         return self.name
@@ -16,6 +18,4 @@ class Deployment:
         with open(file_path) as f:
             data = yaml.safe_load(f)
 
-        for k in data["dag"].keys(): data["dag"][k] = set(data["dag"][k])
-
-        return cls(data["name"], data["dag"])
+        return cls(data["name"], data["streams"], data["pipelines"])

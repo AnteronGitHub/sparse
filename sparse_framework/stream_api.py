@@ -18,7 +18,7 @@ class SparseStream:
 
         self.protocols = set()
         self.operators = set()
-        self.output_stream = None
+        self.streams = set()
 
     def __str__(self):
         return self.stream_alias or self.stream_id
@@ -39,6 +39,10 @@ class SparseStream:
         self.operators.add((operator, output_stream))
         self.logger.info("Stream %s connected to operator %s with output stream %s", self, operator.name, output_stream)
 
+    def connect_to_stream(self, stream):
+        self.streams.add(stream)
+        self.logger.info("Connected stream %s to stream %s", self, stream)
+
     def emit(self, data_tuple):
         """Sends a new data tuple to the connected operators and subscribed connections.
         """
@@ -47,3 +51,6 @@ class SparseStream:
 
         for protocol in self.protocols:
             protocol.send_data_tuple(self.stream_alias or self.stream_id, data_tuple)
+
+        for stream in self.streams:
+            stream.emit(data_tuple)

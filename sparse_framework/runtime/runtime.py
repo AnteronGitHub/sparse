@@ -35,6 +35,7 @@ class SparseRuntime(SparseSlice):
 
             self.logger.info("Placed operator %s", o.name)
 
+            return o
         except OperatorNotFoundError as e:
             self.logger.warn(e)
 

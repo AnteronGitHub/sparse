@@ -124,7 +124,7 @@ class StreamRouter(SparseSlice):
             if stream.matches_selector(stream_selector):
                 return stream
 
-        stream = SparseStream(stream_id=stream_id, stream_alias=stream_selector)
+        stream = SparseStream(stream_id=stream_id, stream_alias=stream_alias)
         self.streams.add(stream)
         self.logger.info("Created stream %s", stream)
 
