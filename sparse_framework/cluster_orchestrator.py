@@ -14,12 +14,14 @@ class ClusterOrchestrator(SparseSlice):
 
     def deploy_pipelines(self, streams : set, pipelines : dict, source : SparseStream = None):
         for stream_selector in pipelines.keys():
-            output_stream = self.stream_router.get_stream(stream_alias=stream_selector)
-            if stream_selector not in streams:
+            if stream_selector in streams:
+                output_stream = self.stream_router.get_stream(stream_alias=stream_selector)
+            else:
                 operator = self.runtime.place_operator(stream_selector)
                 if source is None:
-                    self.logger.warn("Deploying operator '%s' with no input stream", operator)
+                    self.logger.warn("Placed operator '%s' with no input stream", operator)
                 else:
+                    output_stream = self.stream_router.get_stream()
                     source.connect_to_operator(operator, output_stream)
 
             destinations = pipelines[stream_selector]

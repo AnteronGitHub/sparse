@@ -120,9 +120,10 @@ class StreamRouter(SparseSlice):
         """Returns a stream that matches the provided stream alias or stream id. If no stream exists, one is created.
         """
         stream_selector = stream_alias or stream_id
-        for stream in self.streams:
-            if stream.matches_selector(stream_selector):
-                return stream
+        if stream_selector is not None:
+            for stream in self.streams:
+                if stream.matches_selector(stream_selector):
+                    return stream
 
         stream = SparseStream(stream_id=stream_id, stream_alias=stream_alias)
         self.streams.add(stream)
