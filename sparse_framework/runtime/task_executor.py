@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from time import time
 
 from .io_buffer import SparsePytorchIOBuffer
-from ..stream_api import SparseOperator
+from .operator import StreamOperator
 
 class SparseTaskExecutor:
     """Common base class for task execution logic. This class implements potentially hardware-accelerated computations
@@ -24,7 +24,7 @@ class SparseTaskExecutor:
         self.operators = set()
         self.memory_buffers = {}
 
-    def add_operator(self, operator : SparseOperator):
+    def add_operator(self, operator : StreamOperator):
         operator.set_executor(self)
         self.operators.add(operator)
         self.memory_buffers[operator.id] = SparsePytorchIOBuffer()

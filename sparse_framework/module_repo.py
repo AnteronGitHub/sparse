@@ -21,6 +21,14 @@ class SparseModule:
 
         return self.app_module
 
+class OperatorNotFoundError(Exception):
+    """Raised a module including a referenced operator cannot be found."""
+    def __init__(self, operator_name : str):
+        self.operator_name = operator_name
+
+    def __str__(self):
+        return f"A module containing operator '{self.operator_name}' cound not be found."
+
 class ModuleRepository(SparseSlice):
     """Module repository serves Sparse application modules. To distribute stream applications in the cluster, modules
     can be migrated over the network.
@@ -32,14 +40,13 @@ class ModuleRepository(SparseSlice):
     def add_app_module(self, name : str, zip_path : str):
         module = SparseModule(name, zip_path)
         self.apps.add(module)
-        self.logger.info("Received module '%s'", name)
         return module
 
     def get_operator_factory(self, operator_name : str):
         for app in self.apps:
             app_module = app.load(self.config.app_repo_path)
-            for operator_factory in app_module.get_operators():
+            for operator_factory in app_module.__all__:
                 if operator_factory.__name__ == operator_name:
                     return operator_factory
 
-        return None
+        raise OperatorNotFoundError(operator_name)

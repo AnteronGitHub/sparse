@@ -4,6 +4,7 @@ import os
 import shutil
 import tempfile
 
+from ..deployment import Deployment
 from ..protocols import SparseProtocol
 
 class ModuleUploaderProtocol(SparseProtocol):
@@ -28,7 +29,7 @@ class ModuleUploaderProtocol(SparseProtocol):
         self.send_file(self.archive_path)
 
     def transfer_file_ok_received(self):
-        self.logger.info("Uploaded module '%s' successfully.", self.module_name)
+        self.logger.info("Module '%s' uploaded successfully.", self.module_name)
         self.transport.close()
 
     def connection_lost(self, exc):
@@ -41,7 +42,7 @@ class DeploymentPostProtocol(SparseProtocol):
     Application is deployed in two phases. First its DAG is deployed as a dictionary, and then the application modules
     are deployed as a ZIP archive.
     """
-    def __init__(self, deployment : dict, on_con_lost : asyncio.Future, *args, **kwargs):
+    def __init__(self, deployment : Deployment, on_con_lost : asyncio.Future, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.on_con_lost = on_con_lost
@@ -56,7 +57,7 @@ class DeploymentPostProtocol(SparseProtocol):
             self.on_con_lost.set_result(True)
 
     def create_deployment_ok_received(self):
-        self.logger.info("Deployed application '%s' successfully.", self.deployment)
+        self.logger.info("Deployment '%s' created successfully.", self.deployment)
         self.transport.close()
 
 class SparseAPIClient:
@@ -71,36 +72,56 @@ class SparseAPIClient:
         self.api_host = api_host
         self.api_port = api_port
 
-    def archive_application(self, app : dict, app_dir : str):
-        app_name = app["name"]
-        self.logger.debug("Archiving application")
-        shutil.make_archive(os.path.join(tempfile.gettempdir(), app_name), 'zip', app_dir)
-        return os.path.join(tempfile.gettempdir(), f"{app_name}.zip")
+    def archive_module(self, module_name : str, module_dir : str) -> str:
+        """Creates a ZIP archive of a sparse module and returns the file path of the module archive.
+        """
+        self.logger.debug("Creating Sparse module from directory %s", module_dir)
+        shutil.make_archive(os.path.join(tempfile.gettempdir(), module_name), 'zip', module_dir)
 
-    async def upload_to_server(self, app : dict, archive_path : str):
+        return os.path.join(tempfile.gettempdir(), f"{module_name}.zip")
+
+    async def upload_module(self, module_name : str, module_archive_path : str):
         loop = asyncio.get_running_loop()
         on_con_lost = loop.create_future()
 
         while True:
             try:
                 self.logger.debug("Connecting to root server on %s:%s.", self.api_host, self.api_port)
-                await loop.create_connection(lambda: ModuleUploaderProtocol(app["name"], archive_path, on_con_lost), \
+                await loop.create_connection(lambda: ModuleUploaderProtocol(module_name, \
+                                                                            module_archive_path, \
+                                                                            on_con_lost), \
                                              self.api_host, \
                                              self.api_port)
                 await on_con_lost
-                await asyncio.sleep(1)
-                await loop.create_connection(lambda: DeploymentPostProtocol(app, on_con_lost), \
-                                             self.api_host, \
-                                             self.api_port)
                 break
             except ConnectionRefusedError:
                 self.logger.warn("Connection refused. Re-trying in 5 seconds.")
                 await asyncio.sleep(5)
 
-    def upload_app(self, app : dict, app_dir : str = '.'):
-        """Archives and deploys a Sparse application. Uses the running task loop or creates one if one is not already
-        running.
-        """
-        archive_path = self.archive_application(app, app_dir)
+    async def post_deployment(self, deployment : Deployment):
+        loop = asyncio.get_running_loop()
+        on_con_lost = loop.create_future()
 
-        asyncio.run(self.upload_to_server(app, archive_path))
+        while True:
+            try:
+                self.logger.debug("Connecting to root server on %s:%s.", self.api_host, self.api_port)
+                await loop.create_connection(lambda: DeploymentPostProtocol(deployment, on_con_lost), \
+                                             self.api_host, \
+                                             self.api_port)
+                await on_con_lost
+                break
+            except ConnectionRefusedError:
+                self.logger.warn("Connection refused. Re-trying in 5 seconds.")
+                await asyncio.sleep(5)
+
+    def create_module(self, module_dir : str = '.'):
+        """Archives a Sparse module and uploads it to a running cluster.
+        """
+        module_name = os.path.basename(os.path.realpath(module_dir))
+        module_archive_path = self.archive_module(module_name, module_dir)
+        asyncio.run(self.upload_module(module_name, module_archive_path))
+
+    def create_deployment(self, deployment : Deployment):
+        """Creates a Sparse application deployment in a running cluster.
+        """
+        asyncio.run(self.post_deployment(deployment))

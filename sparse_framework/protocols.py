@@ -5,6 +5,7 @@ import pickle
 import struct
 import uuid
 
+from .deployment import Deployment
 from .module_repo import SparseModule
 
 class SparseTransportProtocol(asyncio.Protocol):
@@ -83,10 +84,10 @@ class SparseTransportProtocol(asyncio.Protocol):
 class SparseProtocol(SparseTransportProtocol):
     """Class includes application level messages used by sparse nodes.
     """
-    def send_create_deployment(self, app : dict):
-        self.send_payload({"op": "create_deployment", "app": app})
+    def send_create_deployment(self, deployment : Deployment):
+        self.send_payload({"op": "create_deployment", "deployment": deployment})
 
-    def create_deployment_received(self, app : dict):
+    def create_deployment_received(self, deployment : Deployment):
         pass
 
     def send_create_deployment_ok(self):
@@ -100,14 +101,17 @@ class SparseProtocol(SparseTransportProtocol):
     def create_connector_stream_received(self, stream_id : str = None, stream_alias : str = None):
         pass
 
-    def send_create_connector_stream_ok(self, stream_id : str):
-        self.send_payload({"op": "create_connector_stream", "status": "success", "stream_id": stream_id})
+    def send_create_connector_stream_ok(self, stream_id : str, stream_alias : str):
+        self.send_payload({"op": "create_connector_stream",
+                           "status": "success",
+                           "stream_id": stream_id,
+                           "stream_alias" : stream_alias})
 
-    def create_connector_stream_ok_received(self, stream_id : str):
+    def create_connector_stream_ok_received(self, stream_id : str, stream_alias : str):
         pass
 
-    def send_subscribe_to_stream(self, stream_alias : str):
-        self.send_payload({"op": "subscribe_to_stream", "stream_alias": stream_alias})
+    def send_subscribe(self, stream_alias : str):
+        self.send_payload({"op": "subscribe", "stream_alias": stream_alias})
 
     def send_data_tuple(self, stream_selector : str, data_tuple):
         self.send_payload({"op": "data_tuple", "stream_selector": stream_selector, "tuple": data_tuple })
@@ -149,8 +153,9 @@ class SparseProtocol(SparseTransportProtocol):
             if "status" in obj:
                 if obj["status"] == "success":
                     stream_id = obj["stream_id"]
+                    stream_alias = obj["stream_alias"]
 
-                    self.create_connector_stream_ok_received(stream_id)
+                    self.create_connector_stream_ok_received(stream_id, stream_alias)
                 else:
                     pass
             else:
@@ -158,13 +163,13 @@ class SparseProtocol(SparseTransportProtocol):
                 stream_alias = obj["stream_alias"] if "stream_alias" in obj.keys() else None
 
                 self.create_connector_stream_received(stream_id, stream_alias)
-        elif obj["op"] == "subscribe_to_stream":
+        elif obj["op"] == "subscribe":
             if "status" in obj:
                 pass
             else:
                 stream_alias = obj["stream_alias"]
 
-                self.subsribe_to_stream_received(stream_alias)
+                self.subscribe_received(stream_alias)
         elif obj["op"] == "init_module_transfer":
             if "status" in obj:
                 if obj["status"] == "accepted":
@@ -185,8 +190,8 @@ class SparseProtocol(SparseTransportProtocol):
                 else:
                     self.logger.info("Unable to create a deployment")
             else:
-                app = obj["app"]
-                self.create_deployment_received(app)
+                deployment = obj["deployment"]
+                self.create_deployment_received(deployment)
         elif obj["op"] == "data_tuple":
             stream_selector = obj["stream_selector"]
             data_tuple = obj["tuple"]
@@ -208,8 +213,7 @@ class ClusterProtocol(SparseProtocol):
 
     def connection_lost(self, exc):
         self.node.stream_router.remove_cluster_connection(self.transport)
-        peername = self.transport.get_extra_info('peername')
-        self.logger.debug(f"{peername} disconnected.")
+        self.logger.debug("Connection %s disconnected.", self)
 
     def transfer_module(self, module : SparseModule):
         self.transferring_module = module
@@ -229,8 +233,8 @@ class ClusterProtocol(SparseProtocol):
         else:
             self.send_init_module_transfer_error()
 
-    def create_deployment_received(self, app : dict):
-        self.node.stream_router.create_deployment(self, app["dag"])
+    def create_deployment_received(self, deployment : Deployment):
+        self.node.cluster_orchestrator.create_deployment(deployment)
 
         self.send_create_deployment_ok()
 
@@ -242,6 +246,7 @@ class ClusterProtocol(SparseProtocol):
         with open(app_archive_path, "wb") as f:
             f.write(data)
 
+        self.logger.info("Received module '%s' from %s", self.receiving_module_name, self)
         module = self.node.module_repo.add_app_module(self.receiving_module_name, app_archive_path)
         self.node.stream_router.distribute_module(self, module)
         self.receiving_module_name = None
@@ -274,7 +279,7 @@ class ClusterServerProtocol(ClusterProtocol):
 
     def create_connector_stream_received(self, stream_id : str = None, stream_alias : str = None):
         stream = self.node.stream_router.create_connector_stream(self, stream_id, stream_alias)
-        self.send_create_connector_stream_ok(stream.stream_id)
+        self.send_create_connector_stream_ok(stream.stream_id, stream.stream_alias)
 
-    def subsribe_to_stream_received(self, stream_alias : str):
-        self.node.stream_router.subsribe_to_stream(stream_alias, self)
+    def subscribe_received(self, stream_alias : str):
+        self.node.stream_router.subscribe(stream_alias, self)
