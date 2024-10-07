@@ -113,6 +113,21 @@ class SparseProtocol(SparseTransportProtocol):
     def send_subscribe(self, stream_alias : str):
         self.send_payload({"op": "subscribe", "stream_alias": stream_alias})
 
+    def subscribe_received(self, stream_alias : str):
+        pass
+
+    def send_subscribe_ok(self, stream_alias : str):
+        self.send_payload({"op": "subscribe", "stream_alias": stream_alias, "status": "success"})
+
+    def subscribe_ok_received(self, stream_alias : str):
+        pass
+
+    def send_subscribe_error(self, stream_alias : str):
+        self.send_payload({"op": "subscribe", "stream_alias": stream_alias, "status": "error"})
+
+    def subscribe_error_received(self, stream_alias : str):
+        pass
+
     def send_data_tuple(self, stream_selector : str, data_tuple):
         self.send_payload({"op": "data_tuple", "stream_selector": stream_selector, "tuple": data_tuple })
 
@@ -164,11 +179,13 @@ class SparseProtocol(SparseTransportProtocol):
 
                 self.create_connector_stream_received(stream_id, stream_alias)
         elif obj["op"] == "subscribe":
+            stream_alias = obj["stream_alias"]
             if "status" in obj:
-                pass
+                if obj["status"] == "success":
+                    self.subscribe_ok_received(stream_alias)
+                else:
+                    self.subscribe_error_received(stream_alias)
             else:
-                stream_alias = obj["stream_alias"]
-
                 self.subscribe_received(stream_alias)
         elif obj["op"] == "init_module_transfer":
             if "status" in obj:
@@ -283,3 +300,4 @@ class ClusterServerProtocol(ClusterProtocol):
 
     def subscribe_received(self, stream_alias : str):
         self.node.stream_router.subscribe(stream_alias, self)
+        self.send_subscribe_ok(stream_alias)
