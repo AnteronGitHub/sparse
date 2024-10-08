@@ -26,7 +26,12 @@ class SparseRuntime(SparseSlice):
     def place_operator(self, operator_name : str):
         """Places a stream operator to the local runtime.
         """
+        for operator in self.operators:
+            if operator.name == operator_name:
+                return operator
+
         try:
+
             operator_factory = self.module_repo.get_operator_factory(operator_name)
 
             o = operator_factory()

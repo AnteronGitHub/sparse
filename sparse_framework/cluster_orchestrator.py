@@ -68,7 +68,7 @@ class ClusterOrchestrator(SparseSlice):
 
         for connection in self.cluster_connections:
             if connection.protocol != source:
-                self.logger.info("Broadcasting stream %s to peer %s", stream, connection.protocol)
+                self.logger.debug("Broadcasting stream %s to peer %s", stream, connection.protocol)
 
                 connection.protocol.send_create_connector_stream(stream.stream_id, stream.stream_alias)
 
