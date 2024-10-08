@@ -229,7 +229,7 @@ class ClusterProtocol(SparseProtocol):
         self.receiving_module_name = None
 
     def connection_lost(self, exc):
-        self.node.stream_router.remove_cluster_connection(self.transport)
+        self.node.cluster_orchestrator.remove_cluster_connection(self.transport)
         self.logger.debug("Connection %s disconnected.", self)
 
     def transfer_module(self, module : SparseModule):
@@ -265,7 +265,7 @@ class ClusterProtocol(SparseProtocol):
 
         self.logger.info("Received module '%s' from %s", self.receiving_module_name, self)
         module = self.node.module_repo.add_app_module(self.receiving_module_name, app_archive_path)
-        self.node.stream_router.distribute_module(self, module)
+        self.node.cluster_orchestrator.distribute_module(self, module)
         self.receiving_module_name = None
 
         self.send_transfer_file_ok()
@@ -284,18 +284,20 @@ class ClusterClientProtocol(ClusterProtocol):
         self.send_connect_downstream()
 
     def connect_downstream_ok_received(self):
-        self.node.stream_router.add_cluster_connection(self, direction="egress")
+        self.node.cluster_orchestrator.add_cluster_connection(self, direction="egress")
 
 class ClusterServerProtocol(ClusterProtocol):
     """Cluster client protocol creates an ingress connection to another cluster node.
     """
 
     def connect_downstream_received(self):
-        self.node.stream_router.add_cluster_connection(self, "ingress")
+        self.node.cluster_orchestrator.add_cluster_connection(self, "ingress")
         self.send_connect_downstream_ok()
 
     def create_connector_stream_received(self, stream_id : str = None, stream_alias : str = None):
         stream = self.node.stream_router.create_connector_stream(self, stream_id, stream_alias)
+        self.node.cluster_orchestrator.distribute_stream(self, stream)
+
         self.send_create_connector_stream_ok(stream.stream_id, stream.stream_alias)
 
     def subscribe_received(self, stream_alias : str):
