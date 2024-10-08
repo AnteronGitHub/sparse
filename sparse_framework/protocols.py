@@ -46,8 +46,21 @@ class SparseTransportProtocol(asyncio.Protocol):
         self.data_buffer.write(payload)
 
         if self.data_buffer.getbuffer().nbytes >= self.data_size:
-            self.message_received(self.data_type.decode(), self.data_buffer.getvalue())
-            self.clear_buffer()
+            payload_type = self.data_type.decode()
+            self.data_buffer.seek(0)
+            payload_bytes = self.data_buffer.read(self.data_size)
+
+            if self.data_buffer.getbuffer().nbytes - self.data_size == 0:
+                self.clear_buffer()
+            else:
+                header = self.data_buffer.read(9)
+                [self.data_type, self.data_size] = struct.unpack("!sQ", header)
+
+                payload = self.data_buffer.read()
+                self.data_buffer = io.BytesIO()
+                self.data_buffer.write(payload)
+
+            self.message_received(payload_type, payload_bytes)
 
     def message_received(self, payload_type : str, data : bytes):
         if payload_type == "f":
@@ -130,6 +143,9 @@ class SparseProtocol(SparseTransportProtocol):
 
     def send_data_tuple(self, stream_selector : str, data_tuple):
         self.send_payload({"op": "data_tuple", "stream_selector": stream_selector, "tuple": data_tuple })
+
+    def data_tuple_received(self, stream_selector : str, data_tuple : str):
+        pass
 
     def send_init_module_transfer(self, module_name : str):
         self.send_payload({ "op": "init_module_transfer", "module_name": module_name })

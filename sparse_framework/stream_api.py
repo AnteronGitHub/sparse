@@ -46,6 +46,11 @@ class SparseStream:
     def emit(self, data_tuple):
         """Sends a new data tuple to the connected operators and subscribed connections.
         """
+        if self.stream_alias is not None:
+            self.logger.debug("Stream %s emitting data to %s operators and %s connections",
+                             self,
+                             len(self.operators),
+                             len(self.protocols))
         for operator, output_stream in self.operators:
             operator.buffer_input(data_tuple, output_stream.emit)
 

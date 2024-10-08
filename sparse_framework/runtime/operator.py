@@ -12,6 +12,9 @@ class StreamOperator:
 
         self.executor = None
 
+    def __str__(self):
+        return self.name
+
     @property
     def name(self):
         return self.__class__.__name__

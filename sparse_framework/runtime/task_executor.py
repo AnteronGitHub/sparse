@@ -16,7 +16,7 @@ class SparseTaskExecutor:
     is possible to implement custom initialization code by overriding optional start() hook.
     """
     def __init__(self):
-        self.logger = logging.getLogger("sparse")
+        self.logger = logging.getLogger("SparseExecutor")
         self.executor = ThreadPoolExecutor()
 
         self.queue = asyncio.Queue()
@@ -39,6 +39,7 @@ class SparseTaskExecutor:
         loop = asyncio.get_running_loop()
         while True:
             operator_id, callback = await self.queue.get()
+            self.logger.debug("Dispatched tuple from queue (size %s)", self.queue.qsize())
             await loop.run_in_executor(self.executor, functools.partial(self.execute_task, operator_id, callback))
             self.queue.task_done()
 
@@ -53,6 +54,7 @@ class SparseTaskExecutor:
             return
 
         if not operator.use_batching or batch_index == 0:
+            self.logger.debug("Buffered tuple for operator %s", operator)
             self.queue.put_nowait((operator_id, memory_buffer.result_received))
 
     def execute_task(self, operator_id, callback):
