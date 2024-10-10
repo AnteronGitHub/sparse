@@ -4,10 +4,9 @@ import multiprocessing
 __all__ = ["SparseIOBuffer"]
 
 class TaskData:
-    def __init__(self, input_data, done_callback, statistics_record):
+    def __init__(self, input_data, done_callback):
         self.input_data = input_data
         self.done_callback = done_callback
-        self.statistics_record = statistics_record
 
 class SparseIOBuffer:
     """Memory buffer for Node's task executor.
@@ -23,12 +22,12 @@ class SparseIOBuffer:
         self.lock = m.Lock()
         self.input_buffer = []
 
-    def buffer_input(self, input_data, rx_callback, statistics_record) -> int:
+    def buffer_input(self, input_data, rx_callback) -> int:
         """Appends an input tensor to the specified model's input buffer and returns its index.
         """
         with self.lock:
             index = len(self.input_buffer)
-            task_data = TaskData(self.transferToDevice(input_data), rx_callback, statistics_record)
+            task_data = TaskData(self.transferToDevice(input_data), rx_callback)
             self.input_buffer.append(task_data)
 
         self.logger.debug(f"{index+1} samples buffered.")
@@ -39,7 +38,7 @@ class SparseIOBuffer:
             task_data = self.input_buffer.pop(0)
 
         self.logger.debug(f"Dispatched sample from buffer.")
-        return task_data.input_data, [task_data.done_callback], [task_data.statistics_record]
+        return task_data.input_data, [task_data.done_callback]
 
     def dispatch_batch(self):
         with self.lock:
@@ -48,16 +47,14 @@ class SparseIOBuffer:
 
         input_data = []
         callbacks = []
-        statistics_records = []
         batch_size = 0
         for task_data in task_data_batch:
             input_data.append(task_data.input_data)
             callbacks.append(task_data.done_callback)
-            statistics_records.append(task_data.statistics_record)
             batch_size += 1
 
         self.logger.debug(f"Dispatched batch of {batch_size} samples from buffer.")
-        return input_data, callbacks, statistics_records
+        return input_data, callbacks
 
     def result_received(self, result, callbacks, use_batching : bool):
         transferred_result = self.transferToHost(result)
@@ -97,6 +94,6 @@ class SparsePytorchIOBuffer(SparseIOBuffer):
         return tensor.to("cpu")
 
     def dispatch_batch(self):
-        features, callbacks, statistics_records = super().dispatch_batch()
+        features, callbacks = super().dispatch_batch()
 
-        return torch.cat(features), callbacks, statistics_records
+        return torch.cat(features), callbacks

@@ -2,16 +2,20 @@ import asyncio
 
 from ..module_repo import ModuleRepository, OperatorNotFoundError
 from ..node import SparseSlice
+from ..stats import QoSMonitor
+
+from .operator import StreamOperator
 from .task_executor import SparseTaskExecutor
 
 class SparseRuntime(SparseSlice):
     """Sparse Runtime maintains task executor, and the associated memory manager, for executing stream
     application operations locally.
     """
-    def __init__(self, module_repo : ModuleRepository, *args, **kwargs):
+    def __init__(self, module_repo : ModuleRepository, qos_monitor : QoSMonitor, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.module_repo = module_repo
+        self.qos_monitor = qos_monitor
 
         self.executor = None
         self.operators = set()
@@ -35,14 +39,28 @@ class SparseRuntime(SparseSlice):
             operator_factory = self.module_repo.get_operator_factory(operator_name)
 
             o = operator_factory()
+            o.set_runtime(self)
             self.executor.add_operator(o)
             self.operators.add(o)
 
-            self.logger.info("Placed operator %s", o.name)
+            self.logger.info("Placed operator %s", o)
 
             return o
         except OperatorNotFoundError as e:
             self.logger.warn(e)
+
+    def call_operator(self, operator : StreamOperator, source, input_tuple, output):
+        self.executor.buffer_input(operator.id,
+                                   input_tuple,
+                                   lambda output_tuple: self.result_received(operator,
+                                                                             source,
+                                                                             output_tuple,
+                                                                             output))
+        self.qos_monitor.operator_input_buffered(operator, source)
+
+    def result_received(self, operator : StreamOperator, source, output_tuple, output):
+        self.qos_monitor.operator_result_received(operator, source)
+        output.emit(output_tuple)
 
     def find_operator(self, operator_name : str):
         for operator in self.operators:

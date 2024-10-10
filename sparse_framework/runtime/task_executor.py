@@ -25,7 +25,6 @@ class SparseTaskExecutor:
         self.memory_buffers = {}
 
     def add_operator(self, operator : StreamOperator):
-        operator.set_executor(self)
         self.operators.add(operator)
         self.memory_buffers[operator.id] = SparsePytorchIOBuffer()
 
@@ -43,10 +42,9 @@ class SparseTaskExecutor:
             await loop.run_in_executor(self.executor, functools.partial(self.execute_task, operator_id, callback))
             self.queue.task_done()
 
-    def buffer_input(self, operator_id, input_data, result_callback, statistics_record):
+    def buffer_input(self, operator_id, input_data, result_callback):
         memory_buffer = self.memory_buffers[operator_id]
-        batch_index = memory_buffer.buffer_input(input_data, result_callback, statistics_record)
-        #statistics_record.task_queued()
+        batch_index = memory_buffer.buffer_input(input_data, result_callback)
 
         operator = self.get_operator(operator_id)
         if operator is None:
@@ -65,14 +63,15 @@ class SparseTaskExecutor:
             return
 
         if operator.use_batching:
-            features, callbacks, statistics_records = memory_buffer.dispatch_batch()
+            features, callbacks = memory_buffer.dispatch_batch()
         else:
-            features, callbacks, statistics_records = memory_buffer.pop_input()
+            features, callbacks = memory_buffer.pop_input()
 
         task_started_at = time()
         pred = operator.call(features)
         task_completed_at = time()
 
+        # TODO: Log task completed timestamp
         #for record in statistics_records:
             # record.task_started(task_started_at, self.operator.batch_no)
             # record.task_completed(task_completed_at)

@@ -10,7 +10,7 @@ class StreamOperator:
         self.batch_no = 0
         self.use_batching = use_batching
 
-        self.executor = None
+        self.runtime = None
 
     def __str__(self):
         return self.name
@@ -19,11 +19,11 @@ class StreamOperator:
     def name(self):
         return self.__class__.__name__
 
-    def set_executor(self, executor):
-        self.executor = executor
+    def set_runtime(self, runtime):
+        self.runtime = runtime
 
-    def buffer_input(self, data_tuple, on_result_received):
-        self.executor.buffer_input(self.id, data_tuple, on_result_received, None)
+    def buffer_input(self, stream_id : str, data_tuple, on_result_received):
+        self.executor.buffer_input(self.id, data_tuple, on_result_received)
 
     def call(self, input_tuple):
         pass
