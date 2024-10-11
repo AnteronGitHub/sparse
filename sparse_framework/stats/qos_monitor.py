@@ -63,4 +63,4 @@ class QoSMonitor(SparseSlice):
     def operator_result_received(self, operator : StreamOperator, source):
         record = self.statistics_service.get_operator_runtime_statistics_record(operator, source)
         record.result_received()
-        self.logger.info("Operator %s processing latency: %.2f ms", operator, record.processing_latency)
+        self.logger.debug("Operator %s processing latency: %.2f ms", operator, record.processing_latency)

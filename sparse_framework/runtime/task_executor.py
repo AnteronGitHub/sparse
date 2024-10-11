@@ -5,8 +5,23 @@ import logging
 from concurrent.futures import ThreadPoolExecutor
 from time import time
 
-from .io_buffer import SparsePytorchIOBuffer
 from .operator import StreamOperator
+
+class InputBufferedForOperatorNotFoundInRuntimeError(Exception):
+    """Raised a module including a referenced operator cannot be found."""
+    def __init__(self, operator_id : str):
+        self.operator_id = operator_id
+
+    def __str__(self):
+        return f"Input buffered for operator {self.operator_id} that is not found in the runtime"
+
+class TaskDispatchedForOperatorNotFoundInRuntimeError(Exception):
+    """Raised a module including a referenced operator cannot be found."""
+    def __init__(self, operator_id : str):
+        self.operator_id = operator_id
+
+    def __str__(self):
+        return f"Dispatched a task for operator {self.operator_id} that is not found in the runtime"
 
 class SparseTaskExecutor:
     """Common base class for task execution logic. This class implements potentially hardware-accelerated computations
@@ -22,11 +37,9 @@ class SparseTaskExecutor:
         self.queue = asyncio.Queue()
 
         self.operators = set()
-        self.memory_buffers = {}
 
     def add_operator(self, operator : StreamOperator):
         self.operators.add(operator)
-        self.memory_buffers[operator.id] = SparsePytorchIOBuffer()
 
     def get_operator(self, operator_id):
         for o in self.operators:
@@ -43,38 +56,23 @@ class SparseTaskExecutor:
             self.queue.task_done()
 
     def buffer_input(self, operator_id, input_data, result_callback):
-        memory_buffer = self.memory_buffers[operator_id]
-        batch_index = memory_buffer.buffer_input(input_data, result_callback)
-
         operator = self.get_operator(operator_id)
         if operator is None:
-            self.logger.error("Received input for an unregistered operator")
-            return
+            raise InputBufferedForOperatorNotFoundInRuntimeError(operator_id)
+
+        batch_index = operator.buffer_input(input_data, result_callback)
 
         if not operator.use_batching or batch_index == 0:
-            self.logger.debug("Buffered tuple for operator %s", operator)
+            self.logger.debug("Created task for operator %s", operator)
             self.queue.put_nowait(operator_id)
 
     def execute_task(self, operator_id):
         operator = self.get_operator(operator_id)
-        memory_buffer = self.memory_buffers[operator_id]
         if operator is None:
-            self.logger.error("Dispatched task for an unregistered operator")
-            return
+            raise TaskDispatchedForOperatorNotFoundInRuntimeError(operator_id)
 
-        if operator.use_batching:
-            features, callbacks = memory_buffer.dispatch_batch()
-        else:
-            features, callbacks = memory_buffer.pop_input()
+        features, callbacks = operator.dispatch_buffer()
 
-        task_started_at = time()
         pred = operator.call(features)
-        task_completed_at = time()
 
-        # TODO: Log task completed timestamp
-        #for record in statistics_records:
-            # record.task_started(task_started_at, self.operator.batch_no)
-            # record.task_completed(task_completed_at)
-        operator.batch_no += 1
-
-        memory_buffer.result_received(pred, callbacks, use_batching = operator.use_batching)
+        operator.result_received(pred, callbacks)
