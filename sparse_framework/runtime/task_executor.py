@@ -37,9 +37,9 @@ class SparseTaskExecutor:
     async def start(self):
         loop = asyncio.get_running_loop()
         while True:
-            operator_id, callback = await self.queue.get()
+            operator_id = await self.queue.get()
             self.logger.debug("Dispatched tuple from queue (size %s)", self.queue.qsize())
-            await loop.run_in_executor(self.executor, functools.partial(self.execute_task, operator_id, callback))
+            await loop.run_in_executor(self.executor, functools.partial(self.execute_task, operator_id))
             self.queue.task_done()
 
     def buffer_input(self, operator_id, input_data, result_callback):
@@ -53,9 +53,9 @@ class SparseTaskExecutor:
 
         if not operator.use_batching or batch_index == 0:
             self.logger.debug("Buffered tuple for operator %s", operator)
-            self.queue.put_nowait((operator_id, memory_buffer.result_received))
+            self.queue.put_nowait(operator_id)
 
-    def execute_task(self, operator_id, callback):
+    def execute_task(self, operator_id):
         operator = self.get_operator(operator_id)
         memory_buffer = self.memory_buffers[operator_id]
         if operator is None:
@@ -77,4 +77,4 @@ class SparseTaskExecutor:
             # record.task_completed(task_completed_at)
         operator.batch_no += 1
 
-        callback(pred, callbacks, use_batching = operator.use_batching)
+        memory_buffer.result_received(pred, callbacks, use_batching = operator.use_batching)
