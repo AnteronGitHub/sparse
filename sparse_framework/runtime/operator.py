@@ -28,13 +28,11 @@ class StreamOperator:
     def buffer_input(self, input_data, result_callback):
         return self.memory_buffer.buffer_input(input_data, result_callback)
 
-    def dispatch_buffer(self):
-        if self.use_batching:
-            return self.memory_buffer.dispatch_batch()
-        else:
-            return self.memory_buffer.pop_input()
+    def execute_task(self):
+        features, callbacks = self.memory_buffer.dispatch_batch() if self.use_batching else self.memory_buffer.pop_input()
 
-    def result_received(self, result, callbacks):
+        result = self.call(features)
+
         self.memory_buffer.result_received(result, callbacks, use_batching = self.use_batching)
 
     def call(self, input_tuple):

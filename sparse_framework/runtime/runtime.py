@@ -5,11 +5,10 @@ from ..node import SparseSlice
 from ..stats import QoSMonitor
 
 from .operator import StreamOperator
-from .task_executor import SparseTaskExecutor
+from .task_dispatcher import TaskDispatcher
 
 class SparseRuntime(SparseSlice):
-    """Sparse Runtime maintains task executor, and the associated memory manager, for executing stream
-    application operations locally.
+    """Sparse runtime maintains task queue, task executor, and stream processing operations.
     """
     def __init__(self, module_repo : ModuleRepository, qos_monitor : QoSMonitor, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -17,13 +16,15 @@ class SparseRuntime(SparseSlice):
         self.module_repo = module_repo
         self.qos_monitor = qos_monitor
 
-        self.executor = None
+        self.task_queue = None
+        self.task_dispatcher = None
         self.operators = set()
 
     def get_futures(self, futures):
-        self.executor = SparseTaskExecutor()
+        self.task_queue = asyncio.Queue()
+        self.task_dispatcher = TaskDispatcher(self.task_queue)
 
-        futures.append(self.executor.start())
+        futures.append(self.task_dispatcher.start())
 
         return futures
 
@@ -35,12 +36,10 @@ class SparseRuntime(SparseSlice):
                 return operator
 
         try:
-
             operator_factory = self.module_repo.get_operator_factory(operator_name)
 
             o = operator_factory()
             o.set_runtime(self)
-            self.executor.add_operator(o)
             self.operators.add(o)
 
             self.logger.info("Placed operator %s", o)
@@ -50,12 +49,15 @@ class SparseRuntime(SparseSlice):
             self.logger.warn(e)
 
     def call_operator(self, operator : StreamOperator, source, input_tuple, output):
-        self.executor.buffer_input(operator.id,
-                                   input_tuple,
-                                   lambda output_tuple: self.result_received(operator,
-                                                                             source,
-                                                                             output_tuple,
-                                                                             output))
+        batch_index = operator.buffer_input(input_tuple,
+                                            lambda output_tuple: self.result_received(operator,
+                                                                                      source,
+                                                                                      output_tuple,
+                                                                                      output))
+        if not operator.use_batching or batch_index == 0:
+            self.logger.debug("Created task for operator %s", operator)
+            self.task_queue.put_nowait(operator)
+
         self.qos_monitor.operator_input_buffered(operator, source)
 
     def result_received(self, operator : StreamOperator, source, output_tuple, output):
