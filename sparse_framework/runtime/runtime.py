@@ -38,7 +38,7 @@ class SparseRuntime(SparseSlice):
         try:
             operator_factory = self.module_repo.get_operator_factory(operator_name)
 
-            o = operator_factory()
+            o = operator_factory(qos_monitor=self.qos_monitor)
             o.set_runtime(self)
             self.operators.add(o)
 
@@ -50,6 +50,7 @@ class SparseRuntime(SparseSlice):
 
     def call_operator(self, operator : StreamOperator, source, input_tuple, output):
         batch_index = operator.buffer_input(input_tuple,
+                                            source,
                                             lambda output_tuple: self.result_received(operator,
                                                                                       source,
                                                                                       output_tuple,

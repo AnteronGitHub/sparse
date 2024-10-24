@@ -22,16 +22,27 @@ class OperatorRuntimeStatisticsRecord:
     def input_buffered(self):
         self.input_buffered_at = time()
 
+    def input_dispatched(self):
+        self.input_dispatched_at = time()
+
     def result_received(self):
         self.result_received_at = time()
+
+    @property
+    def queueing_time(self) -> float:
+        """Time waited in queue for the operator in milliseconds.
+        """
+        if self.result_received_at is None or self.input_dispatched_at is None:
+            return None
+        return (self.input_dispatched_at - self.input_buffered_at)*1000.0
 
     @property
     def processing_latency(self) -> float:
         """Processing latency for the operator in milliseconds.
         """
-        if self.result_received_at is None or self.input_buffered_at is None:
+        if self.result_received_at is None or self.input_dispatched_at is None:
             return None
-        return (self.result_received_at - self.input_buffered_at)*1000.0
+        return (self.result_received_at - self.input_dispatched_at)*1000.0
 
 class OperatorRuntimeStatisticsService:
     def __init__(self):
@@ -60,7 +71,14 @@ class QoSMonitor(SparseSlice):
         record = self.statistics_service.get_operator_runtime_statistics_record(operator, source)
         record.input_buffered()
 
+    def operator_input_dispatched(self, operator : StreamOperator, source):
+        record = self.statistics_service.get_operator_runtime_statistics_record(operator, source)
+        record.input_dispatched()
+
     def operator_result_received(self, operator : StreamOperator, source):
         record = self.statistics_service.get_operator_runtime_statistics_record(operator, source)
         record.result_received()
-        self.logger.debug("Operator %s processing latency: %.2f ms", operator, record.processing_latency)
+        self.logger.info("Operator %s queueing time: %.2f ms, processing latency: %.2f ms",
+                          operator,
+                          record.queueing_time,
+                          record.processing_latency)
